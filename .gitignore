@@ -15,6 +15,7 @@ Corpora
 
 # sensitiv data
 test_zas_rep_tools_streamer.py
+Streamer.py
 user-config
 *.log
 data
