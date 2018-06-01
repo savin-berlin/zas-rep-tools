@@ -10,18 +10,18 @@ temp
 env
 user_agreement.txt
 logs
-Corpora
+
 
 
 # sensitiv data
 user-config
 *.log
-data
 user-config.zip
 *.config
 *.secret
-
+Corpora
 man
+test_data
 
 # virtualenv
 include
@@ -34,6 +34,10 @@ __pycache__/
 
 # C extensions
 *.so
+
+
+x
+
 
 # Distribution / packaging
 .Python
