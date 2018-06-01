@@ -20,7 +20,7 @@ import re
 import json
 
 
-from zas_rep_tools.src.classes.corpus import Corpus
+from zas_rep_tools.src.classes.Corpus import Corpus
 from zas_rep_tools.src.utils.debugger import p
 
 path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Corpus))))

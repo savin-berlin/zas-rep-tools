@@ -55,7 +55,7 @@ class TestZASStreamerStreamer(unittest.TestCase):
         #p(self._path_to_zas_rep_tools)
 
 
-        #test-API-Data:
+        #test-API-Data: it is just a test account! Please dear peeps, don't use it for another goals! 
         self.test_consumer_key = "97qaczWSRfaaGVhKS6PGHSYXh"
         self.test_consumer_secret = "mWUhEL0MiJh7FqNlOkQG8rAbC8AYs4YiEOzdiCwx26or1oxivc"
         self.test_access_token = "1001080557130932224-qi6FxuYwtvpbae17kCjAS9kfL8taNT"
