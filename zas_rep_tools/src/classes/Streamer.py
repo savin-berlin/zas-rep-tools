@@ -426,7 +426,7 @@ class Streamer(object):
                 #stream.filter( track=terms, stall_warnings=True)
                 #stream.filter(languages=[self._language],  stall_warnings=True)
 
-                p(terms, c= "m")
+                #p(terms, c= "m")
                 if self._language:
                     log_msg_settings = "{} (l+t)".format(msg_settings)
                     logfile.write( "    {} \n".format(log_msg_settings) )

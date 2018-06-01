@@ -101,7 +101,7 @@ class TestZASStreamerStreamer(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_streamer_initialisation_000(self):
-        stream = Streamer(self.test_consumer_key,self.test_consumer_secret,self.test_access_token,self.test_access_token_secret,self.path_to_output)
+        stream = Streamer(self.test_consumer_key,self.test_consumer_secret,self.test_access_token,self.test_access_token_secret,self.path_to_output, language="de")
 
         assert  isinstance(stream, Streamer)
         #stream.stream_twitter()
@@ -155,7 +155,7 @@ class TestZASStreamerStreamer(unittest.TestCase):
     #@attr(status='stable')
     @wipd
     def test_stream_twitter_500(self):
-        stream = Streamer(self.test_consumer_key,self.test_consumer_secret,self.test_access_token,self.test_access_token_secret,self.path_to_output, use_logger=False)
+        stream = Streamer(self.test_consumer_key,self.test_consumer_secret,self.test_access_token,self.test_access_token_secret,self.path_to_output, use_logger=False, language="de")
 
         #assert  isinstance(stream, Streamer)
         #stream.stream_twitter()
