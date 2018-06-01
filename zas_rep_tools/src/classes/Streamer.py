@@ -127,7 +127,7 @@ class Streamer(object):
                      "terms":True if self._terms else False,
                      "stop_words":True if self._stop_words else False   }
         
-        p(self._streamer_settings)
+        # p(self._streamer_settings)
 
         # make Variable global for tweepy
         global ignore_retweets
@@ -253,7 +253,7 @@ class Streamer(object):
 
         all_terms_to_track = []
         if self._terms:
-            if (self._terms and self._stop_words) or (self._terms and self._language):
+            if self._terms and self._stop_words:
                 if  Streamer.stop_words_collection[language]:
                     all_terms_to_track = self._get_stop_words() + self._terms
 
@@ -299,7 +299,7 @@ class Streamer(object):
 
     def _evaluate_stop_words(self):
         # change setting, if was toked intern stop_words set
-        if self._language and not self._stop_words:
+        if self._language and not self._stop_words and not self._terms:
             if self._language in Streamer.supported_stop_words:
                 self._streamer_settings["stop_words"] = True
 
@@ -341,6 +341,7 @@ class Streamer(object):
                 else:
                     self.logger.error("InputError:  Not supported format of stop-words. Please give them as path of as a list.")
                     sys.exit()
+
 
 
 
@@ -404,7 +405,7 @@ class Streamer(object):
         # longer timeout to keep SSL connection open even when few tweets are coming in
         stream = tweepy.streaming.Stream(auth, CustomStreamListener(), timeout=1000.0)
         terms = self.get_track_terms()
-
+        #p(terms)
         # open output file
         old_date = date.today()
 
