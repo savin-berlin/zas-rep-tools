@@ -92,8 +92,17 @@ Streamer:
     -> Register as a Twitter user (https://twitter.com).
     -> Create a new Twitter application (https://apps.twitter.com) and receive consumer key and secret.
     -> After the step above, you will be redirected to your app's page. Create an access token in the "Your access token" section.
+    -> could be just be given up to 400 terms/stops_words
+    -> just stream for language is not allow, terms should be given also 
+    Languages
+        -> twitter supported languages
+            https://developer.twitter.com/en/docs/developer-utilities/supported-languages/api-reference/get-help-languages.html
+        -> langid suppported languages
+            https://github.com/saffsd/langid.py
+        -> should be given as (ISO 639-1 codes given) 
 
     $ zas-rep-tools streamTwitter ./
+
 
 
 
