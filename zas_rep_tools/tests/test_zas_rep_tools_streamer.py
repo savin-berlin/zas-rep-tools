@@ -160,11 +160,14 @@ class TestZASStreamerStreamer(unittest.TestCase):
         #assert  isinstance(stream, Streamer)
         #stream.stream_twitter()
         #print "fghjk"
-        @exit_after(5)
-        def run_streamer():
-            stream.stream_twitter()
+        try:
+            @exit_after(5)
+            def run_streamer():
+                stream.stream_twitter()
 
-        run_streamer()
+            run_streamer()
+        except SystemExit:
+            assert  True
 
         # try:
         #     run_streamer()
