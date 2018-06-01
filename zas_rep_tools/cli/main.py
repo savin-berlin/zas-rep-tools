@@ -16,9 +16,10 @@ import os
 import inspect
 
 #from zas_rep_tools.src.utils.logger import Logger
-from zas_rep_tools.src.utils.cli import logger_initialisation, was_user_asked_for_agreement, get_agreement_data, ask_user_agreement, is_error_tracking_allowed, ask_user_for_twitter_api_data, was_user_asked_for_path_to_twitter_data, get_api_data
+from zas_rep_tools.src.utils.cli import logger_initialisation, was_user_asked_for_agreement, get_agreement_data, ask_user_agreement, is_error_tracking_allowed, ask_user_for_twitter_api_data, was_user_asked_for_path_to_file_with_twitter_creditials, get_api_data, respeak_agreement
 from zas_rep_tools.src.classes.Reader import  Reader
 from zas_rep_tools.src.classes.Streamer import Streamer
+from zas_rep_tools.src.utils.debugger import p
 
 
 
@@ -98,7 +99,7 @@ def to_implement(corpus_name, rep_type, search_type, case, context, context_left
 @click.option('--save_logs', '-sl', default=True)
 #@click.option('--logs_dir', '-l', default="logs")
 def findRep(corpus_name, rep_type, search_type, case, context, context_left, context_right, scopus, refer,
-			logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
+            logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
     logger = logger_initialisation("findRep" ,use_logger_for_script, save_logs, logs_dir)
 
@@ -118,7 +119,7 @@ def findRep(corpus_name, rep_type, search_type, case, context, context_left, con
 @click.option('--save_logs', '-sl', default=True)
 #@click.option('--logs_dir', '-l', default="logs")
 def addCorp(paths_to_corp, corpus_name, corpus_language, corpus_ordninance, main_cat,
-			logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
+            logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
     logger = logger_initialisation("addCorp" ,use_logger_for_script, save_logs, logs_dir)
 
@@ -165,24 +166,88 @@ def corpInfo(corpname, logs_dir, use_logger_for_classes, use_logger_for_script, 
 
 @main.command('streamTwitter')
 @click.argument('path_to_save',type=click.Path())
-@click.option('--language', '-l', default="de")
-@click.option('--logs_dir', '-l', default="logs")
+@click.option('--language', '-l', default=False)
+@click.option('--stop_words', '-sw', default=False)
+@click.option('--terms', '-t', default=False)
+@click.option('--encoding', '-e', default='utf_8')
+@click.option('--ignore_rt', '-ir', default=False)
+@click.option('--logs_dir', '-ld', default="logs")
 @click.option('--use_logger_for_classes', '-lc', default=True)
 @click.option('--use_logger_for_script', '-ls', default=True)
 @click.option('--save_logs', '-sl', default=True)
 #@click.option('--logs_dir', '-l', default="logs")
-def streamTwitter( path_to_save,language, logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
+def streamTwitter( path_to_save,language,stop_words,terms,encoding,ignore_rt, logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
     logger = logger_initialisation("streamTwitter" ,use_logger_for_script, save_logs, logs_dir)
 
 
-    if not  was_user_asked_for_path_to_twitter_data():
+    if not  was_user_asked_for_path_to_file_with_twitter_creditials():
         consumer_key, consumer_secret, access_token, access_token_secret  = ask_user_for_twitter_api_data()
     else:
         consumer_key, consumer_secret, access_token, access_token_secret = get_api_data()
 
-    stream = Streamer(consumer_key, consumer_secret, access_token, access_token_secret, path_to_save, language=language)
+    #p(get_api_data())
+    #p(agreement_data['email'])
+
+
+    if stop_words and  not os.path.isfile(stop_words):
+        stop_words = stop_words.split(",")
+        logger.info("Recognized stop-words: {}".format(stop_words))
+
+    if terms and not os.path.isfile(terms):
+        terms = terms.split(",")
+        logger.info("Recognized terms: {}".format(terms))
+
+
+    stream = Streamer(consumer_key, consumer_secret, access_token, access_token_secret, path_to_save, platfrom="twitter",
+                    language=language, email_addresse=agreement_data['email'], stop_words=stop_words, terms=terms,
+                    encoding=encoding, ignore_rt=ignore_rt)
     stream.stream_twitter()
+
+
+
+
+@main.command('streamerInfo')
+@click.argument('command')
+@click.option('--logs_dir', '-ld', default="logs")
+@click.option('--use_logger_for_classes', '-lc', default=True)
+@click.option('--use_logger_for_script', '-ls', default=True)
+@click.option('--save_logs', '-sl', default=True)
+#@click.option('--logs_dir', '-l', default="logs")
+def streamerInfo(command, logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
+    # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
+    logger = logger_initialisation("streamerInfo" ,use_logger_for_script, save_logs, logs_dir)
+    possible_commands = ["enc", "lang", "nltk_lang", "twitter_lang", "classiefier_lang", "stop_words", "platforms"]
+
+
+    if command not in possible_commands:
+        logger.error("Given Command {} is not exist. Please use one of the following commands: {}".format(command, possible_commands))
+ 
+    if command == "enc":
+        print Streamer.supported_encodings_types
+
+    if command == "lang":
+        print Streamer.supported_languages
+
+    if command == "nltk_lang":
+        print [k for k in Streamer.NLTKlanguages] 
+
+    if command == "twitter_lang":
+        print Streamer.supported_languages_by_twitter
+
+    if command == "classiefier_lang":
+        print Streamer.supported_languages_by_langid
+
+    if command == "stop_words":
+        print Streamer.supported_stop_words
+
+
+
+    if command == "platforms":
+        print Streamer.supported_platforms
+
+
+    #print Streamer.supported_encodings_types
 
 
 @main.command('retypeTwitterData')
@@ -213,6 +278,24 @@ def deleteAllUserData( logs_dir, use_logger_for_classes, use_logger_for_script, 
 
     path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Streamer))))
     shutil.rmtree(os.path.join(path_to_zas_rep_tools, "user-config"), ignore_errors=True)
+
+
+@main.command('respeakAgreement')
+@click.option('--logs_dir', '-l', default="logs")
+@click.option('--use_logger_for_classes', '-lc', default=True)
+@click.option('--use_logger_for_script', '-ls', default=True)
+@click.option('--save_logs', '-sl', default=True)
+#@click.option('--logs_dir', '-l', default="logs")
+def respeakAgreement( logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
+    # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
+    logger = logger_initialisation("streamTwitter" ,use_logger_for_script, save_logs, logs_dir)
+    print "\nRespeaking-Process was started:\n\n"
+    respeak_agreement()
+
+    #path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Streamer))))
+    #shutil.rmtree(os.path.join(path_to_zas_rep_tools, "user-config"), ignore_errors=True)
+
+
 
 
 
@@ -249,3 +332,5 @@ def extractCorp(corpus_name, path_to_save,format_to_save, logs_dir, use_logger_f
 
 
 
+if __name__ == "__main__":
+    main()

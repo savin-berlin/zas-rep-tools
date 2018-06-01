@@ -66,7 +66,7 @@ class Crawler(object):
         ## Error-Tracking:Initialization #1
         if self._error_tracking:
             self.client = initialisation()
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         self.logger.debug('Intern InstanceAttributes was initialized')
@@ -75,12 +75,12 @@ class Crawler(object):
 
         ### Error Tracking #2
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         ### Error Tracking #3
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
 

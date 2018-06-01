@@ -70,7 +70,7 @@ class Reader(object):
         ## Error-Tracking:Initialization #1
         if self._error_tracking:
             self.client = initialisation()
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         self.logger.debug('Intern InstanceAttributes was initialized')
@@ -79,12 +79,12 @@ class Reader(object):
 
         ### Error Tracking #2
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         ### Error Tracking #3
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
 
@@ -111,7 +111,7 @@ class PlainTextCorpusReader(Reader):
         ## Error-Tracking:Initialization #1
         if error_tracking:
             self.client = initialisation()
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         #Input: Encapsulation:
@@ -134,7 +134,7 @@ class PlainTextCorpusReader(Reader):
 
         ### Error Tracking #2
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         self.logger.debug('An instance of PlainTextCorpusReader() was created ')
@@ -184,7 +184,7 @@ class XMLCorpusReader(Reader):
         ## Error-Tracking:Initialization #1
         if self._error_tracking:
             self.client = initialisation()
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         self.logger.debug('Intern InstanceAttributes was initialized')
@@ -193,12 +193,12 @@ class XMLCorpusReader(Reader):
 
         ### Error Tracking #2
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         ### Error Tracking #3
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
 
@@ -236,7 +236,7 @@ class CSVCorpusReader(Reader):
         ## Error-Tracking:Initialization #1
         if self._error_tracking:
             self.client = initialisation()
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         self.logger.debug('Intern InstanceAttributes was initialized')
@@ -245,12 +245,12 @@ class CSVCorpusReader(Reader):
 
         ### Error Tracking #2
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         ### Error Tracking #3
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
 
@@ -290,7 +290,7 @@ class JSONCorpusReader(Reader):
         ## Error-Tracking:Initialization #1
         if self._error_tracking:
             self.client = initialisation()
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         self.logger.debug('Intern InstanceAttributes was initialized')
@@ -299,12 +299,12 @@ class JSONCorpusReader(Reader):
 
         ### Error Tracking #2
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         ### Error Tracking #3
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
 

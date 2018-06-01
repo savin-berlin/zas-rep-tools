@@ -21,6 +21,8 @@ user-config
 data
 user-config.zip
 
+*.secret
+
 man
 
 # virtualenv

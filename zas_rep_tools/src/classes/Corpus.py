@@ -65,7 +65,7 @@ class Corpus(object):
         ## Error-Tracking:Initialization #1
         if self._error_tracking:
             self.client = initialisation()
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         self.logger.debug('Intern InstanceAttributes was initialized')
@@ -74,12 +74,12 @@ class Corpus(object):
 
         ### Error Tracking #2
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         ### Error Tracking #3
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
 
@@ -120,7 +120,7 @@ class BloggerCorpus(Corpus):
         ## Error-Tracking:Initialization #1
         if self._error_tracking:
             self.client = initialisation()
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         self.logger.debug('Intern InstanceAttributes was initialized')
@@ -129,12 +129,12 @@ class BloggerCorpus(Corpus):
 
         ### Error Tracking #2
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         ### Error Tracking #3
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
 
@@ -174,7 +174,7 @@ class TwitterCorpus(Corpus):
         ## Error-Tracking:Initialization #1
         if self._error_tracking:
             self.client = initialisation()
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         self.logger.debug('Intern InstanceAttributes was initialized')
@@ -183,12 +183,12 @@ class TwitterCorpus(Corpus):
 
         ### Error Tracking #2
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         ### Error Tracking #3
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
 
@@ -225,7 +225,7 @@ class Document(object):
         ## Error-Tracking:Initialization #1
         if self._error_tracking:
             self.client = initialisation()
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
 
@@ -235,12 +235,12 @@ class Document(object):
 
         ### Error Tracking #2
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
         ### Error Tracking #3
         if self._error_tracking:
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
+            self.client.context.merge({'tags': self.__dict__})
 
 
 

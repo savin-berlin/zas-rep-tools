@@ -3,6 +3,7 @@ import time
 import datetime
 import logging
 from zas_rep_tools.src.utils.debugger import p
+from raven.conf import setup_logging
 
 
 class Logger :
@@ -35,6 +36,7 @@ class Logger :
             formatter = logging.Formatter("%(asctime)s,%(msecs)03d %(name)-12s: %(levelname)-8s %(message)s", "%H:%M:%S")
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
+            #setup_logging(handler)
 
             #! if folder_for_log :
             #!     if save_logs:
@@ -91,6 +93,7 @@ class Logger :
             formatter = logging.Formatter("%(asctime)s,%(msecs)03d %(name)-12s: %(levelname)-8s %(message)s", "%H:%M:%S")
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
+            #setup_logging(handler)
 
             if not folder_for_log:
                 if save_logs:
