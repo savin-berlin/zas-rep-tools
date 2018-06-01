@@ -570,32 +570,28 @@ class CustomStreamListener(tweepy.StreamListener):
                     if "retweeted_status" not in data:
 
                         file_selected.write(u"{} <t>{}</t>\n".format(unicode(tId),  text))
+                        json_file = io.open(os.path.join(path_to_the_jsons, "{}.json".format(tId)), "a", encoding="utf-8")
+                        json_file.write(unicode(json.dumps(data,
+                                            indent=4, sort_keys=True,
+                                            separators=(',', ': '), ensure_ascii=False)))
+                        json_file.close()
 
 
                 else:
-
                     if "retweeted_status" in data:
-                        file_retweets.write(unicode(tId)+"\n")
-
-
-                        json_file = io.open(os.path.join(path_to_the_jsons, "{}.json".format(tId)), "a", encoding="utf-8")
-                        json_file.write(unicode(json.dumps(data,
-                                            indent=4, sort_keys=True,
-                                            separators=(',', ': '), ensure_ascii=False)))
-                        json_file.close()
-
-                    
+                        file_retweets.write(u"{} \n".format(unicode(tId)))
                     else:
                         file_selected.write(u"{} <t>{}</t>\n".format(unicode(tId),  text))
-                        json_file = io.open(os.path.join(path_to_the_jsons, "{}.json".format(tId)), "a", encoding="utf-8")
-                        json_file.write(unicode(json.dumps(data,
-                                            indent=4, sort_keys=True,
-                                            separators=(',', ': '), ensure_ascii=False)))
-                        json_file.close()
+                    json_file = io.open(os.path.join(path_to_the_jsons, "{}.json".format(tId)), "a", encoding="utf-8")
+                    json_file.write(unicode(json.dumps(data,
+                                        indent=4, sort_keys=True,
+                                        separators=(',', ': '), ensure_ascii=False)))
+                    json_file.close()
+
 
 
             else:
-                file_outsorted.write(u"{} <t>{}</t>\n".format(unicode(tId),  text))
+                file_outsorted.write(u"{} <t>{}</t> <l>{}</l>\n".format(unicode(tId),  text, lang))
                 json_file = io.open(os.path.join(path_to_the_jsons, "{}.json".format(tId)), "a", encoding="utf-8")
                 json_file.write(unicode(json.dumps(data,
                                     indent=4, sort_keys=True,
