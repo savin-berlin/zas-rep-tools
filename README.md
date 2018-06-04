@@ -100,8 +100,25 @@ Streamer:
         -> langid suppported languages
             https://github.com/saffsd/langid.py
         -> should be given as (ISO 639-1 codes given) 
+    Stop_word:
+        -> there is a good and filtered stop-word just for german language on board. 
+        -> another stop-words, which are not really filtered and could be same in the another languages was toked from nltk.corpus.stopword. ["dutch","finnish","german","italian", "portuguese","spanish","turkish","danish","english", "french","hungarian","norwegian","russian","swedish"]
+        -> supported stop words_ [u'ru', u'fr', u'en', u'nl', u'pt', u'no', u'sv', u'de', u'tr', u'it', u'hu', u'fi', u'da', u'es']
+        -> wenn die Sprache gegeben ist, und keine Stop-words explizit gegeben wurden, dann sucht das Tool in dem internen-set of stop-words, wenn erfolgreich, dann wird dieses Set genommen. 
+    Strategie:
+        ->  Tip: l+t liefert viel mehr von den Tweets aus einer bestimmten Sprache!!! (ung. 35-45 % mehr als die "t" strategie) also, Empfehlung: zu den stopp-words immer die Sprache bestimmen
+        -> können ausgewählt werden
+        -> retweets können ignoriert werden
+        -> wenn keine Strategie explizit ausgewählt ist, dann ermittelt das Tool anhand von den vorhandenen Daten selst die beste Strategie 
+    used-terms
+        -> können nach Wusnch sicherheitshalber auf den Disk gespeichert werden
 
-    $ zas-rep-tools streamTwitter ./
+    input stop_words/terms
+        - could be given, 
+            -> as path_to txt file, each word each line
+            -> just for stop_words -> a langauge code for exist intern stop-words set
+            -> a comma-separated-string as a given set(!! without any spaces in-between) 
+    $ zas-rep-tools streamTwitter ./ -l de
 
 
 

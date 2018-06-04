@@ -24,7 +24,8 @@ import logging
 import sys
 import signal
 
-
+from blessings import Terminal
+import curses
 import shutil
 import io
 import inspect
@@ -46,7 +47,7 @@ from nltk.corpus import stopwords
 from zas_rep_tools.src.utils.logger import Logger
 from zas_rep_tools.src.utils.debugger import p
 from zas_rep_tools.src.utils.error_tracking import initialisation
-from zas_rep_tools.src.utils.helpers import send_email
+from zas_rep_tools.src.utils.helpers import send_email, paste_new_line, write_data_to_json
 
 
 abs_path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Logger))))
@@ -65,33 +66,25 @@ class Streamer(object):
     supported_languages_by_twitter = [u'fr', u'en', u'ar', u'ja', u'es', u'de', u'it', u'id', u'pt', u'ko', u'tr', u'ru', u'nl', u'fil', u'msa', u'zh-tw', u'zh-cn', u'hi', u'no', u'sv', u'fi', u'da', u'pl', u'hu', u'fa', u'he', u'ur', u'th', u'en-gb']
     NLTKlanguages= {u'ru': u'russian', u'fr': u'french', u'en': u'english', u'nl': u'dutch', u'pt': u'portuguese', u'no': u'norwegian', u'sv': u'swedish', u'de': u'german', u'tr': u'turkish', u'it': u'italian', u'hu': u'hungarian', u'fi': u'finnish', u'da': u'danish', u'es': u'spanish'}
     supported_languages = set(supported_languages_by_langid) & set(supported_languages_by_twitter )
-    #p(supported_languages)
-    #sys.exit()
+
     supported_encodings_types = set(aliases.values())
-    # for k,v in NLTKlanguages.iteritems():
-    #     if stopwords.words(v):
-    #         p((k, v))
-    #         print stopwords.words(v)
 
-    # 
-
-
+    supported_filter_strategies = ['t', 't+l']
     stop_words_collection = {k:stopwords.words(v) for k,v in NLTKlanguages.iteritems()}
     stop_words_collection.update({u"de":os.path.join(abs_paths_to_stop_words, u"de.txt")}) # add my own set for german lang
 
     supported_stop_words = [k for k in stop_words_collection] # language naming should be the same as in this module "langid.classify(data["text"])[0]""
 
-    # for k,v in stop_words_collection.iteritems():
-    #     p((k, v))
-    # sys.exit()
+
 
 
     supported_platforms= ["twitter"]
     #p(path_to_zas_rep_tools)
 
     def __init__(self, consumer_key, consumer_secret, access_token, access_token_secret, storage_path,
-                platfrom="twitter", language=False, terms=False, stop_words=False, encoding="utf_8", email_addresse=False, ignore_rt=False, 
-                folder_for_log_files=False,  use_logger=True, logger_level=logging.INFO, error_tracking=True):
+                platfrom="twitter", language=False, terms=False, stop_words=False, encoding="utf_8",
+                email_addresse=False, ignore_rt=False, save_used_terms=False, filterStrat=False,
+                folder_for_log_files=False,  use_logger=True, logger_level=logging.INFO,   error_tracking=True):
 
         ## Logger Initialisation 
         global global_logger
@@ -122,22 +115,21 @@ class Streamer(object):
         self._encoding = encoding
         self._email_addresse = email_addresse
         self._ignore_retweets = ignore_rt
-
+        self._save_used_terms = save_used_terms
+        self._filterStrat = filterStrat
         self._streamer_settings = {"language":True if self._language else False, 
                      "terms":True if self._terms else False,
-                     "stop_words":True if self._stop_words else False   }
+                     "stop_words":True if self._stop_words else False ,
+                     "filter":self._filterStrat  }
         
         # p(self._streamer_settings)
 
         # make Variable global for tweepy
-        global ignore_retweets
-        ignore_retweets = self._ignore_retweets
+        self.t = Terminal()
 
         #p(inpdata)
         #p(email_addresse)
         #InstanceAttributes: Initialization
-
-
 
 
         ## Error-Tracking:Initialization #1
@@ -171,31 +163,84 @@ class Streamer(object):
         
         # to ensure the possibility to get intern stop_words_set
 
-        if not self._language:
-            language = str(self._language)
-        else:
-            language = self._language
+        # if not self._language:
+        #     language = str(self._language)
+        # else:
+        #     language = self._language
 
 
-        try:
-            if isinstance(Streamer.stop_words_collection[language], (str,unicode)):
-                if os.path.isfile(Streamer.stop_words_collection[language]):
-                    stop_words = [line.strip() for line in codecs.open(Streamer.stop_words_collection[language], encoding=self._encoding)]
-                    self.logger.debug("Stop words was read from a file")
+        if self._stop_words and not self._language:
+            self.logger.error("ToolRestriction: Stop-words cannot be given as stand-alone parameter. It should be given together with the any languages. If you want to give stop-words alone, please use for it parameter with the name 'terms'. ")
+            sys.exit()
+
+        elif not self._stop_words and  self._language:
+            if self._language in Streamer.stop_words_collection:
+                if isinstance(Streamer.stop_words_collection[self._language], (str,unicode)):
+                    if os.path.isfile(Streamer.stop_words_collection[self._language]):
+                        stop_words = [line.strip() for line in codecs.open(Streamer.stop_words_collection[self._language], encoding=self._encoding)]
+                        self.logger.debug("Stop words was read from a file")
+                    else:
+                        self.logger.error("StopWordsGetterError: Given path to stop_words is not exist")
+                        sys.exit()
+                elif isinstance(Streamer.stop_words_collection[self._language], list):
+                    stop_words = Streamer.stop_words_collection[self._language]
+                    self.logger.debug("Stop words was read from a given list")
                 else:
-                    self.logger.error("StopWordsGetterError: Given path to stop_words is not exist")
+                    self.logger.error("StopWordsGetterError: Not supported format of stop-words. Please give them as path of as a list.")
                     sys.exit()
-            elif isinstance(Streamer.stop_words_collection[language], list):
 
-                stop_words = Streamer.stop_words_collection[language]
+                self._streamer_settings["stop_words"] = True
+                self.logger.info("Stop-words was took from the intern-set for the '{}' language.".format(self._language))
+                
+            else:
+                self.logger.error("StopWordsGetterError: Stop-words for given language ('{}') wasn't found in the intern set of stop-words. Please import them into the Streamer using 'stop_words' parameter ".format(language) )
+                sys.exit()
+            #self.logger.error("TwitterRestriction: Language cannot be given as stand-alone parameter. It should be given together with the stop-words or terms.")
+            #sys.exit()
+
+        elif self._stop_words and self._language:
+            #Streamer.stop_words_collection[self._language] = 
+            if isinstance(self._stop_words, (str,unicode)):
+                if self._stop_words in Streamer.stop_words_collection:
+                    if isinstance(Streamer.stop_words_collection[self._stop_words], (str,unicode)):
+                        if os.path.isfile(Streamer.stop_words_collection[self._stop_words]):
+                            stop_words = [line.strip() for line in codecs.open(Streamer.stop_words_collection[self._stop_words], encoding=self._encoding)]
+                            self.logger.debug("Stop words was read from a file")
+                        else:
+                            self.logger.error("StopWordsGetterError: Given path to stop_words is not exist")
+                            sys.exit()
+                    elif isinstance(Streamer.stop_words_collection[self._stop_words], list):
+                        stop_words = Streamer.stop_words_collection[self._stop_words]
+                        self.logger.debug("Stop words was read from a given list")
+                    else:
+                        self.logger.error("StopWordsGetterError: Given path to stop_words or stop-words in the intern collection is not exist")
+                        sys.exit()
+                    self.logger.info("Stop-words was took from the intern-set for the '{}' language.".format(self._stop_words))
+
+                elif os.path.isfile(self._stop_words):
+                    stop_words = [line.strip() for line in codecs.open(self._stop_words, encoding=self._encoding)]
+                    self.logger.debug("Stop words was read from a file")
+
+                else:
+                    self.logger.error("StopWordsGetterError: Not supported format of stop-words. Please give them as path or as a list. (or check, if given path to file exist)")
+                    sys.exit()
+
+
+            elif isinstance(self._stop_words, list):
+                stop_words = self._stop_words
                 self.logger.debug("Stop words was read from a given list")
             else:
                 self.logger.error("StopWordsGetterError: Not supported format of stop-words. Please give them as path of as a list.")
                 sys.exit()
-                
-        except KeyError:
-            self.logger.error("StopWordsGetterError: Stop-words for given language ('{}') wasn't found. Please import them into the Streamer using 'stop_words' parameter ".format(language) )
+
+        elif not self._stop_words and not self._language and not self._terms:
+            self.logger.error("InputError: No filtering parameters was given.")
             sys.exit()
+
+        else:
+            self.logger.error("StopWordsGetterError: Something was wrong!")
+            sys.exit()
+
 
         return stop_words
 
@@ -222,6 +267,7 @@ class Streamer(object):
         
         self._evaluate_stop_words()
         self._evaluate_terms()
+        self._validate_filter_strat()
         self._validate_storage_path()
         self._validate_given_encoding()
         
@@ -235,7 +281,20 @@ class Streamer(object):
                 self.logger.error("PathError: It wasn't possible to create following directory: '{}' ".format(os.path.join(os.getcwd(),self._storage_path)))
                 sys.exit()
 
-
+    def _validate_filter_strat(self):
+        if self._filterStrat:
+            if self._filterStrat not in Streamer.supported_filter_strategies:
+                self.logger.error("Given filter-strategies ('{}') is not supported. Please use one of the possible: {}".format(self._filterStrat,Streamer.supported_filter_strategies))
+                sys.exit()
+        elif not self._filterStrat:
+            if self._language:
+                self._filterStrat = "t+l"
+                self._streamer_settings['filter'] = self._filterStrat
+                self.logger.info("FilterStrategie was automatically set to: '{}'.".format(self._filterStrat))
+            elif not self._language:
+                self._filterStrat = "t" 
+                self._streamer_settings['filter'] = self._filterStrat
+                self.logger.info("FilterStrategie was automatically set to: '{}'.".format(self._filterStrat))
 
     def _validate_given_language(self):
         if self._language:
@@ -243,35 +302,42 @@ class Streamer(object):
                 self.logger.error("Given Language ('{}'') is not supported. Please use one of the following languages: {}".format(self._language, Streamer.supported_languages))
                 sys.exit()
 
+            # if not self._stop_words:
+            #     self.logger.error("TwitterRestriction: Language cannot be given as stand-alone parameter. It should be given together with the stop-words or terms. ")
+            #     sys.exit()
+
 
     def get_track_terms(self):
-        if not self._language:
-            language = str(self._language)
-        else:
-            language = self._language
-
-
         all_terms_to_track = []
-        if self._terms:
-            if self._terms and self._stop_words:
-                if  Streamer.stop_words_collection[language]:
-                    all_terms_to_track = self._get_stop_words() + self._terms
 
-            else:
+        if self._terms:
+            if self._stop_words:
+                all_terms_to_track = self._get_stop_words() + self._terms
+
+            elif not self._stop_words:
                 all_terms_to_track = self._terms
-            
+
         elif not self._terms:
-            if Streamer.stop_words_collection[language]:
+            if self._stop_words:
                 all_terms_to_track = self._get_stop_words()
-            else:
-                self.logger.error("InputError: Don't found any stop_words/terms. It is not allow to stream Twitter without any stop_words/terms.")      
-                sys.exit()
+
+            elif not self._stop_words:
+                if not self._language:
+                    self.logger.error("InputError: Don't found any stop_words/terms/language. It is not allow to stream Twitter without any stop_words/terms.")      
+                    sys.exit()
+                all_terms_to_track = self._get_stop_words()
+
 
         if len(all_terms_to_track) > 400:
             self.logger.error("InputError:  The Number of given stop_word/terms are exceeded (Twitter-API restriction). It is allow to track not more as 400 words. It was given '{}' words together. Please give less number of  stop_word/terms.\n\n  Following words was given: \n{} ".format(len(all_terms_to_track), all_terms_to_track) )
             sys.exit()
+        elif len(all_terms_to_track) == 0:
+            self.logger.error("InputError:  Not terms/stop_words for tracking was given.")
+            sys.exit()
         #p(all_terms_to_track)
         return all_terms_to_track
+
+
 
     def _evaluate_terms(self):
         if self._terms:
@@ -299,48 +365,30 @@ class Streamer(object):
 
     def _evaluate_stop_words(self):
         # change setting, if was toked intern stop_words set
-        if self._language and not self._stop_words and not self._terms:
-            if self._language in Streamer.supported_stop_words:
-                self._streamer_settings["stop_words"] = True
+        # if self._language and not self._stop_words and not self._terms:
+        #     if self._language in Streamer.supported_stop_words:
+        #         self._streamer_settings["stop_words"] = True
 
 
-        if self._stop_words:
-            if self._language:
-                if isinstance(self._stop_words, (str,unicode, list)):
-                    if isinstance(self._stop_words, (str,unicode)):
-                        if not  os.path.isfile(self._stop_words):
-                            self.logger.error("InputError: Given path to stop words is not exist ({})".format(self._stop_words))
-                            sys.exit()
 
-                    Streamer.stop_words_collection[self._language] = self._stop_words
+        if self._stop_words and not self._language:
+            self.logger.error("ToolRestriction: Stop-words cannot be given as stand-alone parameter. It should be given together with the any languages. If you want to give stop-words alone, please use for it parameter with the name 'terms'. ")
+            sys.exit()
 
+        elif not self._stop_words and  self._language:
+            pass
 
-                else:
-                    self.logger.error("InputError:  Not supported format of stop-words. Please give them as path of as a list.")
-                    sys.exit()
-            else:
-                if isinstance(self._stop_words, (str,unicode, list)):
+        elif self._stop_words and self._language:
+            pass
 
-                    if isinstance(self._stop_words, (str,unicode)): 
-                        if  self._stop_words in Streamer.supported_stop_words: # if will be used intern set of stop_words
-                            Streamer.stop_words_collection[str(self._language)] = Streamer.stop_words_collection[self._stop_words]
-                            return True
+        elif not self._stop_words and not self._language and not self._terms:
+            self.logger.error("InputError: No filtering parameters was given.")
+            sys.exit()
 
-                        if not  os.path.isfile(self._stop_words):
-                            self.logger.error("InputError: Given path to stop words is not exist ({})".format(self._stop_words))
-                            sys.exit()
-                    
-                    elif isinstance(self._stop_words, list):
-                        Streamer.stop_words_collection[str(self._language)] = self._stop_words
+        # else:
+        #     self.logger.error("StopWordsGetterError: Something was wrong!")
+        #     sys.exit()
 
-                    else:
-                        self.logger.error("InputError:  Not supported format of stop-words. Please give them as path of as a list.")
-                        sys.exit()
-
-
-                else:
-                    self.logger.error("InputError:  Not supported format of stop-words. Please give them as path of as a list.")
-                    sys.exit()
 
 
 
@@ -359,7 +407,7 @@ class Streamer(object):
     def get_exist_stop_words(self):
         return Streamer.supported_languages
 
-    def _create_main_log_mag(self):
+    def _create_main_log_message(self):
         msg_to_log = " >>>Streaming was started<<< "
         if self._language:
             msg_to_log = "{} for '{}' language".format(msg_to_log, self._language)
@@ -376,10 +424,18 @@ class Streamer(object):
 
         return msg_to_log
 
+    def _initialize_status_bar(self):
+        if self._language:
+            sys.stdout.write("\n Status: {startW} totalSaved  {stop} = {startW}{selected:^8}{stop} + {startW}{retweets:^8}{stop} + {startW}other_lang{stop}    {startW}|undelivered|{stop} \n".format(selected=self._name_in_the_status_bar_original_tweets, retweets= self._name_in_the_status_bar_retweets, startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
+            print "         {startW}{total:^13d}{stop}   {startW}{original:^8d}{stop}   {startW}{retweets:^8}{stop}   {startW}{outsorted:^10d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=0, original=0, retweets= 0, outsorted=0, undelivered=0 ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal)
+        else:
+            sys.stdout.write("\n Status: {startW} totalSaved  {stop}    {startW}|undelivered|{stop} \n".format( startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
+            print "         {startW}{total:^13d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=0,  undelivered=0 ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal)
+
+
     def stream_twitter(self):
         global old_date
         global logfile
-        global language
         global storage_path
         global email_addresse
         global file_selected
@@ -392,62 +448,82 @@ class Streamer(object):
 
 
         email_addresse= self._email_addresse
-        language = self._language
         storage_path = self._storage_path
+
+        old_date = date.today()
+        path_to_the_day = os.path.join(storage_path, str(old_date))
         #last_error = ""
+
+        file_selected, file_outsorted, file_undelivered, file_retweets, path_to_the_jsons =  create_new_files_for_new_day(str(old_date), storage_path, self._language)
 
         auth = tweepy.OAuthHandler(self._consumer_key, self._consumer_secret)
         auth.set_access_token(self._access_token, self._access_token_secret)
-        api = tweepy.API(auth, parser=tweepy.parsers.JSONParser())
+        api = tweepy.API(auth, parser=tweepy.parsers.JSONParser(),timeout=5)
         logfile = codecs.open(os.path.join(self._storage_path,"streaming.log"), 'a', encoding="utf-8")
         #localtime = time.asctime( time.localtime(time.time()) )
         
+
+
         # longer timeout to keep SSL connection open even when few tweets are coming in
-        stream = tweepy.streaming.Stream(auth, CustomStreamListener(), timeout=1000.0)
+        stream = tweepy.streaming.Stream(auth, CustomStreamListener(language=self._language, ignore_retweets=self._ignore_retweets), timeout=1000.0)
         terms = self.get_track_terms()
+        self.logger.info("{} terms/stop_words used for tacking.".format(len(terms)))
+        #p(terms)
+        if self._save_used_terms:
+            #p(os.path.join(path_to_the_day, "used_terms.log"))
+            output_file_used_terms = codecs.open(os.path.join(path_to_the_day, "used_terms.log"), "a", encoding="utf-8")
+            output_file_used_terms.write("{}:::{}:::{}\n\n\n".format(old_date, len(terms), terms))
+            output_file_used_terms.close()
         #p(terms)
         # open output file
-        old_date = date.today()
-
-        file_selected, file_outsorted, file_undelivered, file_retweets, path_to_the_jsons =  create_new_files_for_new_day(str(old_date), storage_path, language)
         
         #non_stop = True 
         last_5_error = []
+        self._name_in_the_status_bar_original_tweets = "orig_{}".format(self._language) if self._language else "original"
+        self._name_in_the_status_bar_retweets = "rt_{}".format(self._language) if self._language else "retweets"
         # stall_warnings - will inform you if you're falling behind. Falling behind means that you're unable to process tweets as quickly as the Twitter API is sending them to you.
         while True:
             #send_email("msm.filin@gmail.com", "Error", "Some error ")
             try:
 
-                msg_to_log = self._create_main_log_mag()
+                msg_to_log = self._create_main_log_message()
                 #log_msg = "\n{} Starting stream for '{}' language.\n" 
                 logfile.write( "{} {} \n".format(time.asctime( time.localtime(time.time()) ) , msg_to_log)  )
                 msg_settings = "StreamerFilterSetting: {}".format(self._streamer_settings)
-                
 
-                #stream.filter( track=terms, stall_warnings=True)
-                #stream.filter(languages=[self._language],  stall_warnings=True)
 
-                #p(terms, c= "m")
-                if self._language:
-                    log_msg_settings = "{} (l+t)".format(msg_settings)
-                    logfile.write( "    {} \n".format(log_msg_settings) )
-                    global_logger.info(log_msg_settings)
-                    global_logger.info(msg_to_log)
-                    stream.filter(languages=[self._language], track=terms, stall_warnings=True)
-                else:
+                if self._filterStrat == "t+l":
+                    if not self._language:
+                        self.logger.error("FilterStrategieError: Language is not given! But selected Strategy ('{}') requires an language. Please select  another Strategy or give an language. ".format(self._filterStrat))
+                        sys.exit()
+                    else:
+                        log_msg_settings = "{} (l+t)".format(msg_settings)
+                        logfile.write( "    {} \n".format(log_msg_settings) )
+                        global_logger.info(log_msg_settings)
+                        global_logger.info(msg_to_log)
+                        self._initialize_status_bar()
+                        #stream = tweepy.streaming.Stream(auth, CustomStreamListener(), timeout=30)
+                        stream.filter(languages=[self._language], track=terms, stall_warnings=True)
+                        #streamer_arguments = "languages=['{}'], track={}, stall_warnings=True".format(self._language, terms)
+                elif self._filterStrat == "t":
                     log_msg_settings = "{} (t)".format(msg_settings)
                     logfile.write( "    {} \n".format(log_msg_settings) )
                     global_logger.info(log_msg_settings)
                     global_logger.info(msg_to_log)
-                    stream.filter( track=terms, stall_warnings=True)
+                    self._initialize_status_bar()
+                    #stream = tweepy.streaming.Stream(auth, CustomStreamListener(), timeout=30)
+                    stream.filter(track=terms, stall_warnings=True) # , async=True
+
 
                 
             except KeyboardInterrupt:
+                paste_new_line()
                 global_logger.info("Streaming was aborted. stopping all processes.....")
                 log_msg = "    {} Stream was aborted by user 'KeyboardInterrupt' \n" 
                 logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())))  )
 
-
+                stream.disconnect() # that should wait until next tweet, so let's delete it
+                del stream
                 logfile.close()
                 file_selected.close()
                 file_outsorted.close()
@@ -463,11 +539,13 @@ class Streamer(object):
                 if "Failed to establish a new connection" in str(e):
                     log_msg = "     {} No Internet Connection. Wait 15 sec.....  \n" 
                     logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())))  )
+                    paste_new_line()
                     global_logger.critical("No Internet Connection. Wait 15 sec.....")
                     time.sleep(15)
                 else:
                     log_msg = "     {} Stream get an Error: '{}' \n" 
                     logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())),e)  )
+                    paste_new_line()
                     global_logger.critical("Streaming get an Error......‘{}‘".format(e))
 
                 last_5_error.append(str(e))
@@ -479,6 +557,7 @@ class Streamer(object):
                         msg = 'Hey,</br></br> Something was Wrong!  Streamer throw the following error-message and the Streaming Process was stopped:</br> <p style="margin-left: 50px;"><strong><font color="red">{}</strong> </font> </p> Please  check if everything is fine with this Process. </br></br> Greeting, </br>Your Streamer'.format(e)
                         last_error = str(e)
                         subject = "TwitterStreamer was stopped (Reason: last 5 errors are same)"
+                        paste_new_line()
                         send_email(email_addresse, subject, msg)
                         global_logger.error("Stream was stopped after 5 same errors in stack")
                         os._exit(1)
@@ -490,23 +569,49 @@ class Streamer(object):
                 if last_error != str(e):
                     msg = "Hey,</br></br> Something was Wrong!  Streamer throw the following error-message:</br> <p style='margin-left: 50px;''><strong><font color='red'>{}</strong> </font> </p> Please  check if everything is fine with this Process. </br></br> Greeting, </br>Your Streamer".format(e)
                     last_error = str(e)
+                    paste_new_line()
                     send_email(email_addresse, 'Error: '+str(e), msg)
 
             except tweepy.TweepError, e:
-                pass
+                paste_new_line()
+                global_logger.info("Streaming geted an error: '{}'".format(e))
+                log_msg = "    Streaming geted an error: {} \n" 
+                logfile.write(  log_msg.format(e) )
+
 
                 
 
 
 
+
 class CustomStreamListener(tweepy.StreamListener):
 
-    def __init__(self):
+    def __init__(self, language=False, ignore_retweets = False):
 
 
         logger = Logger()
         self.logger = Logger().myLogger("CustomStreamListener")
+        self._num_tweets_all = 0
+        self._num_tweets_saved_on_the_disk = 0
+        self._num_tweets_selected = 0 # selected language, contain tweets and retweets
+        self._num_tweets_outsorted = 0
+        self._num_tweets_undelivered = 0
+        self._num_retweets = ">ignore<" if ignore_retweets else 0
+        self._num_original_tweets = 0
+        self._language = language
+        self._ignore_retweets = ignore_retweets
+        self.t = Terminal()
 
+
+        if self._ignore_retweets:
+            self._num_retweets = ">ignore<"
+
+        #sys.stdout.write("\r         {startW}{total:^13d}{stop}   {startW}{original:^8d}{stop}   {startW}{retweets:^8}{stop}   {startW}{outsorted:^9d}{stop}  {startW}{undelivered:^11d}{stop}  ".format(total=self._num_tweets_all, original=self._num_original_tweets, retweets= self._num_retweets, outsorted=self._num_tweets_outsorted, undelivered=self._num_tweets_undelivered ,startW=self.t.bold_black_on_bright_white, startG=self.t.bold_black_on_bright_green, startY=self.t.bold_black_on_bright_yellow, startB=self.t.bold_black_on_bright_blue, startR=self.t.bold_black_on_bright_red, stop=self.t.normal))
+
+
+    def on_connect(self):
+        sys.stdout.write("\033[A") # “Move the cursor up (1 line up)”
+        #pass
 
     def on_data(self, data):
 
@@ -517,40 +622,43 @@ class CustomStreamListener(tweepy.StreamListener):
         global file_retweets
         global logfile
         global path_to_the_jsons
-        global ignore_retweets
-        global language
-
+      
+        self._language  
         new_date = date.today()
-        #p(old_date, c="m")
+
         if not new_date == old_date:
-            # file_selected.write('\n]') # close an json array
-            # file_outsorted.write('\n]') # close an json array
             file_selected.close()
             file_outsorted.close()
             file_undelivered.close()
             file_retweets.close()
             #p(path_to_the_jsons)
             ziparch = shutil.make_archive("jsons", 'zip', path_to_the_jsons)
-            
+        
             shutil.move(ziparch, os.path.dirname(path_to_the_jsons))
             shutil.rmtree(path_to_the_jsons, ignore_errors=True)
             self.logger.info("All JSONS was archived")
             #p(ziparch)
 
-            file_selected, file_outsorted, file_undelivered, file_retweets, path_to_the_jsons =  create_new_files_for_new_day(str(new_date), storage_path, language)
+            file_selected, file_outsorted, file_undelivered, file_retweets, path_to_the_jsons =  create_new_files_for_new_day(str(new_date), storage_path, self._language)
             # file_selected.write('[\n') # start a new json array
             # file_outsorted.write('[\n') # start a new json array
             
             old_date = new_date
+            paste_new_line()
             self.logger.info("New day was started!")
 
 
 
         data = json.loads(data)
         
-        #p(data)
-        #try:
-        #
+
+        ### Print Status of downloaded Tweets
+        self._num_tweets_all += 1
+        
+        #sys.stdout.write("\r Status: {start}{}{stop} ".format(self._num_tweets_all,  start=self.t.bold_black_on_bright_white, stop=self.t.normal))
+        #print "\n\r Status: totalDownload = selected + retweets + outsorted (undelivered)" 
+        
+
         try:
             tId = data["id"]
 
@@ -564,57 +672,82 @@ class CustomStreamListener(tweepy.StreamListener):
 
             # filter out all retweets
             lang = langid.classify(text)[0];
-            if lang == language:
-
-                if ignore_retweets:
-
+            if lang == self._language:
+                self._num_tweets_selected += 1
+                if self._ignore_retweets:
                     if "retweeted_status" not in data:
-
+                        self._num_original_tweets += 1
                         file_selected.write(u"{} <t>{}</t>\n".format(unicode(tId),  text))
-                        json_file = io.open(os.path.join(path_to_the_jsons, "{}.json".format(tId)), "a", encoding="utf-8")
-                        json_file.write(unicode(json.dumps(data,
-                                            indent=4, sort_keys=True,
-                                            separators=(',', ': '), ensure_ascii=False)))
-                        json_file.close()
-
+                        write_data_to_json(os.path.join(path_to_the_jsons, "{}.json".format(tId)), data)
+                        self._num_tweets_saved_on_the_disk += 1
 
                 else:
                     if "retweeted_status" in data:
+                        self._num_retweets += 1
                         file_retweets.write(u"{} \n".format(unicode(tId)))
                     else:
+                        self._num_original_tweets += 1
                         file_selected.write(u"{} <t>{}</t>\n".format(unicode(tId),  text))
-                    json_file = io.open(os.path.join(path_to_the_jsons, "{}.json".format(tId)), "a", encoding="utf-8")
-                    json_file.write(unicode(json.dumps(data,
-                                        indent=4, sort_keys=True,
-                                        separators=(',', ': '), ensure_ascii=False)))
-                    json_file.close()
+                    
 
+                    write_data_to_json(os.path.join(path_to_the_jsons, "{}.json".format(tId)), data)
+                    self._num_tweets_saved_on_the_disk += 1
 
 
             else:
-                file_outsorted.write(u"{} <t>{}</t> <l>{}</l>\n".format(unicode(tId),  text, lang))
-                json_file = io.open(os.path.join(path_to_the_jsons, "{}.json".format(tId)), "a", encoding="utf-8")
-                json_file.write(unicode(json.dumps(data,
-                                    indent=4, sort_keys=True,
-                                    separators=(',', ': '), ensure_ascii=False)))
-                json_file.close()
+                if self._ignore_retweets:
+                    if "retweeted_status" not in data:
+                        self._num_tweets_outsorted +=1
+                        file_outsorted.write(u"{} <t>{}</t> <l>{}</l>\n".format(unicode(tId),  text, lang))
+                        write_data_to_json(os.path.join(path_to_the_jsons, "{}.json".format(tId)), data)
+                        self._num_tweets_saved_on_the_disk += 1
+                else:  
+                    self._num_tweets_outsorted +=1
+                    file_outsorted.write(u"{} <t>{}</t> <l>{}</l>\n".format(unicode(tId),  text, lang))
+                    write_data_to_json(os.path.join(path_to_the_jsons, "{}.json".format(tId)), data)
+                    self._num_tweets_saved_on_the_disk += 1
+
+
+
+            self._update_status_bar()
+
 
             #self._output_file_other_tweets.write(  data["created_at"]+ data["id_str"]+ data["text"] + "\n"  )
         except KeyError, ke:
             #p(data)
             if "limit" in str(data):
+                #{u'limit': {u'track': 233, u'timestamp_ms': u'1527958183844'}}
+                #p(data)
+                if data["limit"]["track"] > self._num_tweets_undelivered:
+                    self._num_tweets_undelivered = data["limit"]["track"]
+                
+                #pattern = r""
                 time_now = time.asctime( time.localtime(time.time()) )
                 file_undelivered.write(u"{} {} \n".format( time_now, data) )
             else:
+                paste_new_line()
                 self.logger.critical(str(repr(ke)))
+        except Exception, e:
+
+            log_msg = "     {} Encountered error with status code (Streamer still be on): '{}' \n"
+            logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())),e)  )
+            paste_new_line()
+            self.logger.critical(log_msg)
 
 
+    def _update_status_bar(self):
+        if self._language:
+            sys.stdout.write("\r         {startW}{total:^13d}{stop}   {startW}{original:^8d}{stop}   {startW}{retweets:^8}{stop}   {startW}{outsorted:^10d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=self._num_tweets_saved_on_the_disk, original=self._num_original_tweets, retweets= self._num_retweets, outsorted=self._num_tweets_outsorted, undelivered=self._num_tweets_undelivered ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
+            sys.stdout.flush()
+        else:
+            sys.stdout.write("\r         {startW}{total:^13d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=self._num_tweets_saved_on_the_disk,  undelivered=self._num_tweets_undelivered ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
+            sys.stdout.flush()
 
     def on_error(self, status_code):
-        #p(type(status_code))
+        """Called when a non-200 status code is returned"""
         log_msg = "     {} Encountered error with status code (Streamer still be on): '{}' \n"
         logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())),status_code)  )
-        #self.logger.critical(log_msg)
+        
 
 
         #return True # Don't kill the stream
@@ -622,21 +755,52 @@ class CustomStreamListener(tweepy.StreamListener):
         if status_code == 401:
             #print status_code
             logger_msg = "UnauthorizedError401: Your credentials are invalid or your system time is wrong.\nTry re-creating the credentials correctly again following the instructions here (https://developer.twitter.com/en/docs/basics/authentication/guides/access-tokens). \nAfter recreation you need to retype your data. Use: $ zas-rep-tools retypeTwitterData"
+            paste_new_line()
             self.logger.error(logger_msg)
             #return False
             os._exit(1)
-
-
+        else:
+            paste_new_line()
+            self.logger.critical(log_msg)
 
         return True
 
     def on_timeout(self):
+        """Called when stream connection times out"""
         logfile.write("    "+str(time.asctime( time.localtime(time.time()) )) + ' Timeout...' + "\n")
+        paste_new_line()
         self.logger.warning(" Timeout...")
+        time.sleep(30)
         return True # Don't kill the stream
 
 
+    def on_disconnect(self, notice):
+        """Called when twitter sends a disconnect notice
 
+        Disconnect codes are listed here:
+        https://dev.twitter.com/docs/streaming-apis/messages#Disconnect_messages_disconnect
+        """
+        logfile.write("    "+str(time.asctime( time.localtime(time.time()) )) + ' Disconnected from twitter...' + "\n")
+        paste_new_line()
+        self.logger.warning("OnDisconnect: Twitter sends a disconnect notice ('{}')".format(notice))
+        time.sleep(30)
+        return True
+
+    def on_limit(self, track):
+        """Called when a limitation notice arrives"""
+        logfile.write("    "+str(time.asctime( time.localtime(time.time()) )) + ' Disconnected from twitter...' + "\n")
+        paste_new_line()
+        self.logger.warning("OnLimit: Limitation notice arrives ('{}')".format(track))
+        time.sleep(30)
+        return True
+
+    def on_warning(self, notice):
+        """Called when a disconnection warning message arrives"""
+        logfile.write("    "+str(time.asctime( time.localtime(time.time()) )) + ' Disconnected from twitter...' + "\n")
+        paste_new_line()
+        self.logger.warning("OnWarning: disconnection warning message arrives ('{}')".format(notice))
+        time.sleep(30)
+        return True
 
 
 

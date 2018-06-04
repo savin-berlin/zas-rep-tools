@@ -166,20 +166,25 @@ def corpInfo(corpname, logs_dir, use_logger_for_classes, use_logger_for_script, 
 
 @main.command('streamTwitter')
 @click.argument('path_to_save',type=click.Path())
-@click.option('--language', '-l', default=False)
+@click.option('--language', '-l', default=False, type=click.Choice(list(Streamer.supported_languages)+ [False,"False", "false"]))
 @click.option('--stop_words', '-sw', default=False)
 @click.option('--terms', '-t', default=False)
-@click.option('--encoding', '-e', default='utf_8')
-@click.option('--ignore_rt', '-ir', default=False)
+@click.option('--encoding', '-e', default='utf_8', type=click.Choice(list(Streamer.supported_encodings_types)))
+@click.option('--ignore_rt', '-irt', default=False, type=bool)
+@click.option('--filter_strategie', '-f', default=False, type=click.Choice(list(["t", "t+l", "False", False, "false"])))
+@click.option('--save_used_terms', '-sut', default=True, type=bool)
 @click.option('--logs_dir', '-ld', default="logs")
-@click.option('--use_logger_for_classes', '-lc', default=True)
-@click.option('--use_logger_for_script', '-ls', default=True)
-@click.option('--save_logs', '-sl', default=True)
+@click.option('--use_logger_for_classes', '-lc', default=True,type=bool)
+@click.option('--use_logger_for_script', '-ls', default=True,type=bool)
+@click.option('--save_logs', '-sl', default=True,type=bool)
 #@click.option('--logs_dir', '-l', default="logs")
-def streamTwitter( path_to_save,language,stop_words,terms,encoding,ignore_rt, logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
+def streamTwitter( path_to_save,language,stop_words,terms,encoding,ignore_rt, filter_strategie, save_used_terms, logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
     logger = logger_initialisation("streamTwitter" ,use_logger_for_script, save_logs, logs_dir)
-
+    #p(list(Streamer.supported_languages)+ [False,"False"])
+    #p(type(ignore_rt))
+    #ignore_rt = bool(ignore_rt)
+    #save_used_terms = bool(save_used_terms)
 
     if not  was_user_asked_for_path_to_file_with_twitter_creditials():
         consumer_key, consumer_secret, access_token, access_token_secret  = ask_user_for_twitter_api_data()
@@ -191,8 +196,9 @@ def streamTwitter( path_to_save,language,stop_words,terms,encoding,ignore_rt, lo
 
 
     if stop_words and  not os.path.isfile(stop_words):
-        stop_words = stop_words.split(",")
-        logger.info("Recognized stop-words: {}".format(stop_words))
+        if stop_words not in Streamer.stop_words_collection:
+            stop_words = stop_words.split(",")
+            logger.info("Recognized stop-words: {}".format(stop_words))
 
     if terms and not os.path.isfile(terms):
         terms = terms.split(",")
@@ -201,7 +207,7 @@ def streamTwitter( path_to_save,language,stop_words,terms,encoding,ignore_rt, lo
 
     stream = Streamer(consumer_key, consumer_secret, access_token, access_token_secret, path_to_save, platfrom="twitter",
                     language=language, email_addresse=agreement_data['email'], stop_words=stop_words, terms=terms,
-                    encoding=encoding, ignore_rt=ignore_rt)
+                    encoding=encoding, ignore_rt=ignore_rt, save_used_terms=save_used_terms, filterStrat=filter_strategie)
     stream.stream_twitter()
 
 

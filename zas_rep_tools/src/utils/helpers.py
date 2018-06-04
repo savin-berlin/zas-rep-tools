@@ -17,7 +17,8 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from zas_rep_tools.src.utils.logger import Logger
-
+import io
+import json
 
 
 
@@ -31,6 +32,17 @@ def get_file_list(path, extention):
     else:
         return False
 
+
+def paste_new_line():
+    print "\n"
+
+
+def write_data_to_json(path, data):
+    json_file = io.open(path, "a", encoding="utf-8")
+    json_file.write(unicode(json.dumps(data,
+                        indent=4, sort_keys=True,
+                        separators=(',', ': '), ensure_ascii=False)))
+    json_file.close()
 
 
 
@@ -67,6 +79,7 @@ def send_email(toaddr,Subject, text):
             #p(server_answer)
             if server_answer:
                 logger_msg = "\nEmailSendingError: SMTP Server returned following error: ‘{}‘.".format(server_answer, "http://www.supermailer.de/smtp_reply_codes.htm")
+
                 logger.error(logger_msg) 
 
 
