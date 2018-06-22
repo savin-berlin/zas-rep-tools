@@ -2,15 +2,28 @@ import os
 import time
 import datetime
 import logging
+import coloredlogs
 from zas_rep_tools.src.utils.debugger import p
 from raven.conf import setup_logging
 
 
-class Logger :
 
+class Logger :
+    coloredlogs.DEFAULT_DATE_FORMAT = "%H:%M:%S"
+    coloredlogs.DEFAULT_LOG_FORMAT = '%(asctime)s  %(name)s %(levelname)s %(message)s'
     def myLogger(self, logger_name, folder_for_log=False,  level=logging.INFO , use_logger=True, save_logs=False): # for classes
+        coloredlogs.install(level=level)
+
+
         self.logger = logging.getLogger(logger_name)
         save_logs = True if folder_for_log else False
+
+        ## coloring
+        # logging.addLevelName( logging.WARNING, "\033[1;31m%s\033[1;0m" % logging.getLevelName(logging.WARNING))
+        # logging.addLevelName( logging.ERROR, "\033[1;41m%s\033[1;0m" % logging.getLevelName(logging.ERROR))
+        # logging.addLevelName( logging.CRITICAL, "\033[1;31m%s\033[1;0m" % logging.getLevelName(logging.CRITICAL))
+        # logging.addLevelName( logging.INFO, "\033[1;95m%s\033[1;0m" % logging.getLevelName(logging.INFO))
+
         #p(self.logger.handlers)
         if len(self.logger.handlers): # to delete massage duplicates
             while self.logger.handlers:
@@ -30,13 +43,13 @@ class Logger :
             self.logger = logging.getLogger(logger_name)
             self.logger.setLevel(logging.DEBUG)
 
-            # create console handler and set level to info
-            handler = logging.StreamHandler()
-            handler.setLevel(level)
-            formatter = logging.Formatter("%(asctime)s,%(msecs)03d %(name)-12s: %(levelname)-8s %(message)s", "%H:%M:%S")
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
-            #setup_logging(handler)
+            # # create console handler and set level to info
+            # handler = logging.StreamHandler()
+            # handler.setLevel(level)
+            # formatter = logging.Formatter("%(asctime)s,%(msecs)03d %(name)-12s: %(levelname)-8s %(message)s", "%H:%M:%S")
+            # handler.setFormatter(formatter)
+            # self.logger.addHandler(handler)
+            # #setup_logging(handler)
 
             #! if folder_for_log :
             #!     if save_logs:
@@ -64,8 +77,20 @@ class Logger :
 
 
     def myLogger2(self,  folder_for_log=False,  logger_name="",  level=logging.INFO, use_logger=True, save_logs=False): #for scripts 
+        coloredlogs.install(level=level)
+
+
+
         self.logger = logging.getLogger(logger_name)
         save_logs = True if folder_for_log else False
+
+        ## coloring
+        # logging.addLevelName( logging.WARNING, "\033[1;31m%s\033[1;0m" % logging.getLevelName(logging.WARNING))
+        # logging.addLevelName( logging.ERROR, "\033[1;41m%s\033[1;0m" % logging.getLevelName(logging.ERROR))
+        # logging.addLevelName( logging.CRITICAL, "\033[1;31m%s\033[1;0m" % logging.getLevelName(logging.CRITICAL))
+        # logging.addLevelName( logging.INFO, "\033[1;95m%s\033[1;0m" % logging.getLevelName(logging.INFO))
+
+
         self.logger.setLevel(logging.DEBUG)
 
         if not os.path.isdir(folder_for_log):
@@ -88,11 +113,11 @@ class Logger :
             now = datetime.datetime.now()
 
             # create console handler and set level to info
-            handler = logging.StreamHandler()
-            handler.setLevel(level)
-            formatter = logging.Formatter("%(asctime)s,%(msecs)03d %(name)-12s: %(levelname)-8s %(message)s", "%H:%M:%S")
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
+            # handler = logging.StreamHandler()
+            # handler.setLevel(level)
+            # formatter = logging.Formatter("%(asctime)s,%(msecs)03d %(name)-12s: %(levelname)-8s %(message)s", "%H:%M:%S")
+            # handler.setFormatter(formatter)
+            # self.logger.addHandler(handler)
             #setup_logging(handler)
 
             if not folder_for_log:
