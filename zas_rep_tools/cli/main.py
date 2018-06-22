@@ -14,10 +14,12 @@ import click
 import shutil
 import os
 import inspect
+import sys
 
 #from zas_rep_tools.src.utils.logger import Logger
-from zas_rep_tools.src.utils.cli import logger_initialisation, was_user_asked_for_agreement, get_agreement_data, ask_user_agreement, is_error_tracking_allowed, ask_user_for_twitter_api_data, was_user_asked_for_path_to_file_with_twitter_creditials, get_api_data, respeak_agreement
+from zas_rep_tools.src.utils.cli_helper import *
 from zas_rep_tools.src.classes.Reader import  Reader
+from zas_rep_tools.src.classes.DB import  DB
 from zas_rep_tools.src.classes.Streamer import Streamer
 from zas_rep_tools.src.utils.debugger import p
 
@@ -25,6 +27,7 @@ from zas_rep_tools.src.utils.debugger import p
 
 @click.group()
 def main():
+    ### agreement
     if not  was_user_asked_for_agreement():
         ask_user_agreement()
 
@@ -32,6 +35,20 @@ def main():
     agreement_data = get_agreement_data()
 
     answer_error_tracking = is_error_tracking_allowed()
+
+
+    #### projects folder
+    if not  was_user_asked_for_path_to_projects_folder():
+        ask_user_for_projects_folder()
+
+
+    global db_settings
+    db_settings = get_db_settings()
+
+
+    ### error-tracking
+    answer_error_tracking = is_error_tracking_allowed()
+
 
 
 
@@ -58,6 +75,25 @@ def implemented(corpus_name, rep_type, search_type, case, context, context_left,
 
 
 
+@main.command('test')
+@click.argument('path')
+@click.option('--logs_dir', '-l', default="logs")
+@click.option('--use_logger_for_classes', '-lc', default=True)
+@click.option('--use_logger_for_script', '-ls', default=True)
+@click.option('--save_logs', '-sl', default=True)
+#@click.option('--logs_dir', '-l', default="logs")
+def test(path, logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
+    # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
+    logger = logger_initialisation("to_implement" ,use_logger_for_script, save_logs, logs_dir)
+    #db = DB(developingMode = True)
+    db = DB()
+    #p(path)
+    db.connect_corpus(path)
+
+
+
+
+
 @main.command('to_implement')
 @click.argument('corpus_name')
 @click.argument('rep_type') #["rep","red","repinred"]
@@ -77,6 +113,134 @@ def to_implement(corpus_name, rep_type, search_type, case, context, context_left
             logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
     logger = logger_initialisation("to_implement" ,use_logger_for_script, save_logs, logs_dir)
+
+
+    ################################
+    ######### New IDEAS #############
+
+    # Step 1: Initialisation 
+    ## platforms
+    configs = Configer()
+    configs.addPlatform(name)
+
+
+    ## templates
+    configs.addTemplate(name, columns)
+    configs.save(path_to_configs)
+
+
+    #Open other configs
+    configs = Configer(path_to_configs)
+    configs.templates()
+    configs.platforms()
+
+
+
+
+
+    #Step 2: Add or Import Corpus
+
+    #Add
+    corpus = Corpus(name, plattform_name, template_name, version, language, source, typ)
+    corpus.saveOnDisc(path) 
+    corpus.commit()
+    corpus.export() 
+    corpus.addData(path_to_data, typ_of_data) # use reader on stream 
+
+    configs.addCorpus(name,path,corpus_id) 
+
+
+    #Open/Import
+    corpus = Corpus(path_to_corp) 
+
+    if corpus.id not in configs.corporaIDs:
+        configs.addCorpus(name,path,corpus_id)
+
+
+
+
+
+
+    #Step 3: (Re-) Compute or Import Statistics
+    stats = Stats(name, corpus_id)
+
+
+    if stats.id not in configs.statsIDs:
+        configs.addStats(name,path,corpus_id, stats_id)
+
+
+
+
+
+
+
+
+    #Step 4: Get needed Stats
+    getted_stats = stats.repl(search_pattern="['very','tiny'] or False", context="5|0", interpunktion="True|False",case="lower|senstitiv",meta_data="True|False") #if search_pattern is False then give all data
+    getted_stats = stats.redu(search_pattern="['very','tiny'] or False", context="5|0", interpunktion="True|False",case="lower|senstitiv",meta_data="True|False")
+    getted_stats = stats.replINredu()
+
+
+    export = StatsExporter(getted_stats)
+    export.csv(path_to_save)
+
+
+    #Step 5: Additional
+    #Info about
+        # added Corpora
+        # computed Stats
+        # added templates 
+        # added platforms
+        # 
+    # Delete
+        # Stats
+        # Corpus
+        # Clean project Folder
+        # user config 
+    # Export Corpus into other DATAFORMAT
+    # COnvert Corpus into other DATAFORMAT (NOT!!! if time will available)
+
+
+
+
+
+
+
+
+    ################################
+    ################################
+    #old IDEAS########
+    db = DB("path_to")
+    db.connect()
+
+    db.tables()
+    db.templates()
+    db.corpora()
+    db.stats()
+    #db.baseline()
+    #db.documents()
+
+
+
+    db.add_template()
+    db.add_corp(pfad_to_corp, name_of_template)
+    db.del_corp(corp_name)
+
+
+
+    # Stats
+    db.compute_stats(corpus_name,name, context_size=3)
+    db.del_stats()
+    db.get_baselines(stats_name)
+    db.get_stats(stats_name, typ="repl|redu", scopus=2, case="lower|sensitiv", pattern=[('very','much'),('kind','of')], context_size=3)
+
+
+
+    # EXPORT
+    db.export_corpus(corpus_name, output_type="JSON|XML|CSV|TXT")
+    db.export_stats(stats_name, output_type="JSON|XML|CSV|TXT")
+
+
 
 
 
@@ -103,6 +267,8 @@ def findRep(corpus_name, rep_type, search_type, case, context, context_left, con
     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
     logger = logger_initialisation("findRep" ,use_logger_for_script, save_logs, logs_dir)
 
+    if not is_project_folder_still_exist():
+        sys.exit()
 
 
 
@@ -122,6 +288,9 @@ def addCorp(paths_to_corp, corpus_name, corpus_language, corpus_ordninance, main
             logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
     logger = logger_initialisation("addCorp" ,use_logger_for_script, save_logs, logs_dir)
+
+    if not is_project_folder_still_exist():
+        sys.exit()
 
 
 @main.command('encodings')
@@ -144,7 +313,8 @@ def delCorp(corpus_name, logs_dir, use_logger_for_classes, use_logger_for_script
     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
     logger = logger_initialisation("delCorp" ,use_logger_for_script, save_logs, logs_dir)
 
-
+    if not is_project_folder_still_exist():
+        sys.exit()
 
 
 
@@ -159,7 +329,8 @@ def corpInfo(corpname, logs_dir, use_logger_for_classes, use_logger_for_script, 
     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
     logger = logger_initialisation("corpInfo" ,use_logger_for_script, save_logs, logs_dir)
 
-
+    if not is_project_folder_still_exist():
+        sys.exit()
 
 
 
@@ -334,8 +505,22 @@ def convertCorp(corpus_language, path_to_save,format_to_save, logs_dir, use_logg
 def extractCorp(corpus_name, path_to_save,format_to_save, logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
     logger = logger_initialisation("extractCorp" ,use_logger_for_script, save_logs, logs_dir)
+ 
+    if not is_project_folder_still_exist():
+        sys.exit()
 
 
+@main.command('changeProjectsFolder')
+@click.option('--logs_dir', '-l', default="logs")
+@click.option('--use_logger_for_classes', '-lc', default=True)
+@click.option('--use_logger_for_script', '-ls', default=True)
+@click.option('--save_logs', '-sl', default=True)
+#@click.option('--logs_dir', '-l', default="logs")
+def changeProjectsFolder( logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
+    # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
+    logger = logger_initialisation("extractCorp" ,use_logger_for_script, save_logs, logs_dir)
+
+    change_projects_folder()
 
 
 if __name__ == "__main__":

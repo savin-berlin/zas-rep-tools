@@ -121,6 +121,16 @@ Streamer:
     $ zas-rep-tools streamTwitter ./ -l de
 
 
+DB
+    -> default number of attached DB set by 10. It could be extended max to 62 (https://stackoverflow.com/questions/16897503/increasing-limit-of-attached-databases-in-sqlite-from-pdo)
+    -> add new project:
+        -> "documents_columns" need to be given ad dict, where all additonal field should be 
+        added except the following: [text, document_id, corpus_id]
+
+
+    -> ProjectDBs
+        -> firstly they could be in the Project Folder or secondly  in other folder 
+        -> PrjDBs should have in the name a part of the string wit the name of the Project and also have ".db" extension 
 
 
 ##### __Descriptions:__   

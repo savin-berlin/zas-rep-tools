@@ -19,7 +19,11 @@ from email.mime.text import MIMEText
 from zas_rep_tools.src.utils.logger import Logger
 import io
 import json
+import inspect
 
+
+
+path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Logger))))
 
 
 def get_file_list(path, extention):
