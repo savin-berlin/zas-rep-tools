@@ -98,8 +98,8 @@ class TestZAScorpusDBDB(unittest.TestCase):
     # def test_initialisation_000(self):
     #     db = DB( developingMode = True)
     #     #db = DB()
-    #     #db.initialise_corpus(self.path_to_temp_prjFolder, "twitter_streamed_de", "de", "twitter", "intern")
-    #     #db.initialise_corpus(self.abs_path_to_test_prjFolder, "twitter_streamed_de", "de", "twitter", "intern")
+    #     #db.init_corpus(self.path_to_temp_prjFolder, "twitter_streamed_de", "de", "twitter", "intern")
+    #     #db.init_corpus(self.abs_path_to_test_prjFolder, "twitter_streamed_de", "de", "twitter", "intern")
     #     #p(db.rowsNumber("info"))
     #     # p(db.tables())
     #     # p(db.tableColumns("info"))
@@ -111,8 +111,8 @@ class TestZAScorpusDBDB(unittest.TestCase):
         
     #     #db = DB( )
     #     db = DB( developingMode = True)
-    #     db.initialise_stats(self.path_to_temp_prjFolder, "twrd", "twitter_streamed", "intern", "de")
-    #     #db.initialise_stats(self.abs_path_to_test_prjFolder, "twrd", "twitter_streamed", "intern", "de")
+    #     db.init_stats(self.path_to_temp_prjFolder,  "twitter_streamed", "de", "intern","twrd")
+    #     #db.init_stats(self.abs_path_to_test_prjFolder,  "twitter_streamed", "de", "intern","twrd")
     #     #p(db.tables())
     #     #p(db.tableColumns("info"))
     #     #p(db.get_all_attributs())
@@ -122,20 +122,91 @@ class TestZAScorpusDBDB(unittest.TestCase):
 
  
     @wipd
-    def test_initialisation_001(self):
-        db = DB( developingMode = True)
-        db.connect(self.path_to_temp_test_corpus )
+    def test_initialisation_corpus_001(self):
+        db = DB(developingMode = True)
+        #db = DB()
+        #p(self.path_to_temp_test_corpus)
+        
+        #db.connect(self.path_to_temp_test_corpus)
+        #p(db.tables())
+        #p(db.tables())
         #db.connect(self.path_to_temp_test_fakeDB)
+        db.init_corpus(self.path_to_temp_testFolder, "twitter_streamed", "de", "intern", "twitter" )
+        #db.init_corpus(self.path_to_temp_prjFolder, "twitter_streamed", "de", "intern", "twitter", template_name="twitter")
+        #db.init_corpus(self.path_to_temp_prjFolder, "twitter_streamed_de",
+        #    "de", "intern", "twitter",
+        #    template_name="twitter",
+        #    additional_columns_with_types_for_documents=[("kaka","TEXT"), ("koko","BLOB")])
+        #additional_columns_with_types
         db.attach(self.path_to_temp_test_stats)
-        p(db.fname())
-        p(db.path())
-        #p(db.attachedDBs())
-        p(db.attachedDBs())
-        p(db.fnameAttachedDBs())
-        p(db.pathAttachedDBs())
-        p(db.dbsName())
+        # p(db.tables("stats"))
+        #p(db.tables())
+        # p(db.tableColumns("documents"))
+        # # p(db.get_all_attributs(), c="m")
+        # # p(db.tableColumns("documents"), c="r")
+        # db.insertCV("documents", [u'docs_id', u'text'], ["1","h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
+        # # db.insert_row("documents", [u'docs_id', u'text'], ["2","hjk"])
+        # # db.insert_row("documents", [u'docs_id', u'text'], ["3","hj😀😀😀😀😀😀k"])
+        # # db.insert_row("documents", [u'docs_id', u'text'], ["4","h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
+        # #db.insert_values("documents", [None,"ghj"])
+        # #db.insert_values("documents", [None,"ghj"])
+        # p(db.rowsNumber("documents"))
+        p(db.rowsNumber("documents"))
+        db.lazy_writer("documents", "cv", [ u'text'], ["h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
+        db.lazy_writer("documents", "v", values= [None,"h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
+        db.lazy_writer("documents", "v", values= [None,"h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
+        db.lazy_writer("documents", "v", values= [None,"h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
+        p(db.rowsNumber("documents"))
+        #db.commit()
+        db.rollback()
+        p(db.rowsNumber("documents"))
+
+        db.encrypte("new")
+        # #db.lazy_writer("documents", "v", values= ["hjk","h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
+        
+        # #db.update("documents", ["text"], ["xxx"], "docs_id=3")
+        # #db.commit()
+        
+        # # p(db.lazy_getter("documents", size_to_get=6))
+
+        # # for item in db.lazy_getter("documents"):
+        # #     p(item)
 
 
+        # # for item in db.getlimit(3,"documents"):
+        # #     p(item)
+
+        # # #db.drop_table("info", "stats")
+        # # p(db.tables(,"stats"))
+        # # p(db.tables("stats"))
+        # # p(db.rowsNumber("info"))
+        # # p(db.rowsNumber("info", "stats"))
+        # # p(db.tableColumnsTypes("info"))
+        # # p(db.tableColumnsTypes("info", "stats"))
+        # # p(db.tableColumns("info"))
+        # # p(db.tableColumns("info","stats"))
+        # # p(db.path("main"))
+        # # p(db.fname("stats"))
+        # # p(db.fname())
+        # # p(db.path())
+        # # p(db.attachedDBs())
+        # # p(db.attachedDBs())
+        # # p(db.fnameAttachedDBs())
+        # # p(db.pathAttachedDBs())
+        # # p(db.dbsNames())
+
+
+
+
+    # #@wipd
+    # def test_initialisation_stats_001(self):
+    #     db = DB( developingMode = True)
+    #     #p(db.tables())
+    #     db.init_stats(self.path_to_temp_prjFolder, "fghj", "twitter_streamed", "intern", "de")
+    #     p(db.get_all_attributs(), c="m")
+    #     p(db.tableColumns("baseline"), c="r")
+    #     p(db.tableColumns("reduplications"), c="r")
+    #     db.commit()
 
 
 
