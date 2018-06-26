@@ -25,8 +25,6 @@ import sys
 import signal
 import platform
 
-
-import curses
 import shutil
 import io
 import inspect
@@ -619,7 +617,10 @@ class CustomStreamListener(tweepy.StreamListener):
         self._num_original_tweets = 0
         self._language = language
         self._ignore_retweets = ignore_retweets
-        self.t = Terminal()
+        if platform.uname()[0].lower() !="windows":
+            self.t = Terminal()
+        else:
+            self.t =False
 
 
         if self._ignore_retweets:
