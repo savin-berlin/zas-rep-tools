@@ -18,6 +18,7 @@ import codecs
 import ast
 import re
 import json
+import sys
 
 
 from zas_rep_tools.src.classes.Corpus import Corpus
@@ -26,6 +27,7 @@ from zas_rep_tools.src.utils.debugger import p
 path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Corpus))))
 path_to_file_with_twitter_creditials = "user-config/twitter_api_credentials.json"
 path_to_file_with_user_agreements = "user-config/user_agreement.json"
+path_to_file_with_db_settings = "user-config/db_settings.json"
 
 def logger_initialisation(logger_name,use_logger, save_logs, logs_dir):
     # ##### Logger Initialisation: #######
@@ -225,4 +227,129 @@ def get_api_data():
 
     return False
 
+
+
+
+def ask_user_for_projects_folder():
+    print "\n\n----------------------------------------\n"
+    print "----------------------------------------\n"
+    print "Before you can start to use this tool, you need to give an project folder."
+    status = True
+
+    while status:
+        projects_folder = raw_input("\nEnter projects_folder: ")
+        if os.path.isdir(projects_folder):
+
+            settings = {}
+            settings.update({'projects_folder': projects_folder})
+            #file = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "w")
+            #file.write("{} 'consumer_key':'{}','consumer_secret':'{}', 'access_token':'{}', 'access_token_secret':'{}' {}".format("{", consumer_key,consumer_secret,access_token,access_token_secret, "}") )
+            #file.close()
+            #p(api_data)
+            json_file = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings), "w", encoding="utf-8")
+            json_file.write(unicode(json.dumps(settings,
+                                indent=4, sort_keys=True,
+                                separators=(',', ': '), ensure_ascii=False)))
+            json_file.close()
+            msg = "\nYour Answer was saved in the following file:\n'{}'.\n Every time in the future you can re-speak this agreement and delete all saved user data.\nJust use following command 'zas-rep-tools deleteAllUserData'"
+            print msg.format(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings))
+            status=False
+        else:
+            print "ERROR: Given Project-folder is not exist. Please give the right one. Or use 'ctrl+c' to close the program."
+            #sys.exit()
+    #return consumer_key, consumer_secret, access_token, access_token_secret 
+
+def change_projects_folder():
+    print "\n\n----------------------------------------\n"
+    print "----------------------------------------\n"
+    print "You want to change your project folder. Notice: after this changing, possibly all old projects will be not reachable to the zas-rep-tools."
+    status = True
+
+    while status:
+        projects_folder = raw_input("\nEnter new projects folder: ")
+        if os.path.isdir(projects_folder):
+
+            settings = {}
+            settings.update({'projects_folder': projects_folder})
+            #file = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "w")
+            #file.write("{} 'consumer_key':'{}','consumer_secret':'{}', 'access_token':'{}', 'access_token_secret':'{}' {}".format("{", consumer_key,consumer_secret,access_token,access_token_secret, "}") )
+            #file.close()
+            #p(api_data)
+            json_file = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings), "r", encoding="utf-8")
+            try:
+                data = json.load(json_file)
+                data['projects_folder'] = projects_folder
+                json_file.close()
+
+
+                json_file = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings), "w", encoding="utf-8")
+                json_file.write(unicode(json.dumps(data,
+                        indent=4, sort_keys=True,
+                        separators=(',', ': '), ensure_ascii=False)))
+            except:
+                print "Error: There is nothing to change. Project Folder wasn't saved before."
+                sys.exit()
+            
+            json_file.close()
+            msg = "\nYour Answer was saved in the following file:\n'{}'.\n Every time in the future you can re-speak this agreement and delete all saved user data.\nJust use following command 'zas-rep-tools deleteAllUserData'"
+            print msg.format(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings))
+            status=False
+        else:
+            print "ERROR: Given Project-folder is not exist. Please give the right one. Or use 'ctrl+c' to close the program."
+            #sys.exit()
+    #return consumer_key, consumer_secret, access_token, access_token_secret 
+
+
+def is_project_folder_still_exist():
+    if os.path.isfile(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings)):
+        #api_data = ast.literal_eval(codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "r").read().strip() )
+        f = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings), "r", encoding="utf-8")
+
+        settings = json.load(f)
+        try:
+            p_folder = settings['projects_folder']
+            if  os.path.isdir(p_folder):
+                return True
+            else:
+                print "ERROR: Saved Project folder is not exist. Please re-create or change the project folder. \n     Following Project Folder was given: '{}'\n     For changing the project folder, please use the following command: 'zas-rep-tools changeProjectsFolder' ".format(p_folder)
+                return False
+        except:
+            pass
+
+
+
+def was_user_asked_for_path_to_projects_folder():
+    if os.path.isfile(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings)):
+        #api_data = ast.literal_eval(codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "r").read().strip() )
+        f = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings), "r", encoding="utf-8")
+
+        settings = json.load(f)
+        try:
+            p_folder = settings['projects_folder']
+        except:
+            return False
+
+        return True
+    else:
+        return False
+
+
+
+def get_db_settings():
+    if os.path.isfile(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings)):
+        #api_data = ast.literal_eval(codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "r").read().strip() )
+        f = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings), "r", encoding="utf-8")
+        settings = json.load(f)
+        #return api_data
+        return settings
+
+    return False
+
+def check_projects_folder():
+    #### projects folder
+    if not  was_user_asked_for_path_to_projects_folder():
+        ask_user_for_projects_folder()
+
+    global db_settings
+    db_settings = get_db_settings()
 

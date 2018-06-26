@@ -94,6 +94,33 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
 
+
+    ###### xxx: 000 ######
+    @attr(status='stable')
+    #@wipd
+    def test_dbhandler_initialisation_000(self):
+        db = DBHandler()
+        assert not db.get_db()
+        #assert db._attachedDBs_config is False
+        assert not db._attachedDBs_config 
+        assert not db._tables_dict 
+        assert not db._attributs_dict 
+        assert not db.dbnames 
+
+
+
+    ###### xxx: 000 ######
+    #@attr(status='stable')
+    @wipd
+    def test_dbhandler_initialisation_of__corpus__001(self):
+        stats = DBHandler().init("corpus",
+                            self.path_to_temp_prjFolder, "streamed", "de",
+                            "intern", "twitter")
+
+
+
+
+
     # ###### xxx: 000 ######
     # #@attr(status='stable')True
     # #@wipd
@@ -131,39 +158,39 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
  
-    @wipd
-    def test_initialisation_corpus_001(self):
-        db = DBHandler(developingMode = True)
-        #db = DBHandler()
-        #p(self.path_to_temp_test_corpus)
+    # @wipd
+    # def test_initialisation_corpus_001(self):
+    #     db = DBHandler(developingMode = True)
+    #     #db = DBHandler()
+    #     #p(self.path_to_temp_test_corpus)
         
-        #db.connect(self.path_to_temp_test_corpus)
-        #p(db.tables())
-        #p(db.tables())
-        #db.connect(self.path_to_temp_test_fakeDB)
-        db.init_corpus(self.path_to_temp_testFolder, "twitter_streamed", "de", "intern", "twitter" )
-        #db.init_corpus(self.path_to_temp_prjFolder, "twitter_streamed", "de", "intern", "twitter", template_name="twitter")
+    #     #db.connect(self.path_to_temp_test_corpus)
+    #     #p(db.tables())
+    #     #p(db.tables())
+    #     #db.connect(self.path_to_temp_test_fakeDB)
+    #     db.init_corpus(self.path_to_temp_testFolder, "twitter_streamed", "de", "intern", "twitter" )
+    #     #db.init_corpus(self.path_to_temp_prjFolder, "twitter_streamed", "de", "intern", "twitter", template_name="twitter")
         
 
-        #db.init_corpus(self.path_to_temp_prjFolder, "twitter_streamed_de",
-        #    "de", "intern", "twitter",
-        #    template_name="twitter",
-        #    additional_columns_with_types_for_documents=[("kaka","TEXT"), ("koko","BLOB")])
-        #additional_columns_with_types
-        p(db.dbnames)
-        db.attach(self.path_to_temp_test_stats)
-        #db.attach(self.path_to_temp_test_stats_encrypted, "stats")
-        p(db.dbnames)
-        db.attach(self.path_to_temp_test_stats_plain_text)
-        p(db.dbnames)
-        #db.detach()
-        db.reattach()
-        #p(db.dbnames)
-        p(db._attributs_dict)
-        p(db.get_attribut("name"))
-        db.update_attribut("name", "4567890")
-        p(db.get_attribut("name"))
-        p(db.get_all_attributs("main"), "567890")
+    #     #db.init_corpus(self.path_to_temp_prjFolder, "twitter_streamed_de",
+    #     #    "de", "intern", "twitter",
+    #     #    template_name="twitter",
+    #     #    additional_columns_with_types_for_documents=[("kaka","TEXT"), ("koko","BLOB")])
+    #     #additional_columns_with_types
+    #     p(db.dbnames)
+    #     db.attach(self.path_to_temp_test_stats)
+    #     #db.attach(self.path_to_temp_test_stats_encrypted, "stats")
+    #     p(db.dbnames)
+    #     db.attach(self.path_to_temp_test_stats_plain_text)
+    #     p(db.dbnames)
+    #     #db.detach()
+    #     db.reattach()
+    #     #p(db.dbnames)
+    #     p(db._attributs_dict)
+    #     p(db.get_attribut("name"))
+    #     db.update_attribut("name", "4567890")
+    #     p(db.get_attribut("name"))
+    #     p(db.get_all_attributs("main"), "567890")
 
         #db._validation_DBfile(self.path_to_temp_test_stats_plain_text)
         #db._validation_DBfile(self.path_to_temp_test_stats_encrypted, "stats")

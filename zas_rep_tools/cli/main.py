@@ -19,7 +19,7 @@ import sys
 #from zas_rep_tools.src.utils.logger import Logger
 from zas_rep_tools.src.utils.cli_helper import *
 from zas_rep_tools.src.classes.Reader import  Reader
-from zas_rep_tools.src.classes.DB import  DB
+from zas_rep_tools.src.classes.DBHandler import DBHandler
 from zas_rep_tools.src.classes.Streamer import Streamer
 from zas_rep_tools.src.utils.debugger import p
 
@@ -88,9 +88,25 @@ def test(path, logs_dir, use_logger_for_classes, use_logger_for_script, save_log
     #db = DB(developingMode = True)
     db = DB()
     #p(path)
-    db.connect_corpus(path)
+    #db.init_corpus(path, "twitter_streamed_de", "de", "twitter", "intern")
+    db.connect(path)
+
+    # db.insert_row("documents", [u'docs_id', u'text'], ["1","hjk"])
+    # db.insert_row("documents", [u'docs_id', u'text'], ["2","hjk"])
+    # db.insert_row("documents", [u'docs_id', u'text'], ["3","hjk"])
+    # db.insert_row("documents", [u'docs_id', u'text'], ["4","hjk"])
+    # db.insert_row("documents", [u'docs_id', u'text'], ["5","hjk"])
+    # db.insert_row("documents", [u'docs_id', u'text'], ["6","hjk"])
 
 
+
+    for item in db.lazy_getter("documents", size_to_get=4):
+        p(item)
+    #db.getone("documents")
+    db.commit()
+
+    # for item in db.lazy_getter("documents"):
+    #     p(item)
 
 
 

@@ -9,13 +9,155 @@
 
 ###Programm Info######
 
+from __future__ import generators 
+
 import os
 import sys
 import regex
+import sqlite3
+
+import functools
 
 from zas_rep_tools.src.utils.debugger import p
+from zas_rep_tools.src.utils.logger import Logger
 
-attributs_order_corpus = ["id","name","platform_name","template_name","version","language","created_at","source","license","visibility","typ"]
+
+########################################################################################
+#########################Exception- Handling#############################################
+########################################################################################
+
+
+
+#__metaclass__ = ErrorCatcher
+class DBErrorCatcher(type):
+
+
+    # @classmethod
+    # def __prepare__(metacls, name, bases, **kargs):
+    # #kargs = {"myArg1": 1, "myArg2": 2}
+    #     return super().__prepare__(name, bases, **kargs)
+
+
+    def __new__(cls, name, bases, dct):
+        #p(dct)
+        if 'DBErrorCatcher' in dct:
+            #p(dct['DBErrorCatcher'])
+            if dct['DBErrorCatcher']:
+                logger = Logger()
+                logger = logger.errorLogger("DBErrorCatcher")
+                for m in dct:
+                    if hasattr(dct[m], '__call__'):
+                        dct[m] = catch_exception(dct[m],logger)
+
+        return type.__new__(cls, name, bases, dct)
+
+
+
+
+
+
+
+
+# #__metaclass__ = ErrorCatcher
+# class DBErrorCatcher(type):
+
+
+#     @classmethod
+#     def __prepare__(metacls, name, bases, **kargs):
+#     #kargs = {"myArg1": 1, "myArg2": 2}
+#         return super().__prepare__(name, bases, **kargs)
+
+
+#     def __new__(cls, name, bases, dct, **kargs):
+#         logger = Logger()
+#         logger = logger.errorLogger("DBErrorCatcher")
+
+#         for m in dct:
+#             if hasattr(dct[m], '__call__'):
+#                 dct[m] = catch_exception(dct[m],logger)
+#         return type.__new__(cls, name, bases, dct)
+
+
+
+#@catch_exception
+
+def catch_exception(f,logger):
+    @functools.wraps(f)
+    def func(*args, **kwargs):
+        #p(type(args[0]), c="r")
+        #p(args[0].__dict__)
+        #args[0].close()
+        #args.__dict__
+        #sys.exit()
+        try:
+
+            return f(*args, **kwargs)
+
+
+        except sqlite3.DataError as e:
+            msg = "sqlite3.DataError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
+            logger.error(msg)
+            sys.exit()
+         
+        except sqlite3.InternalError as e:
+            msg = "sqlite3.InternalError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
+            logger.error(msg)
+            sys.exit()
+
+         
+        except sqlite3.IntegrityError as e:
+            msg = "sqlite3.IntegrityError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
+            logger.error(msg)
+            sys.exit()
+
+         
+        except sqlite3.OperationalError as e:
+            msg = "sqlite3.OperationalError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
+            logger.error(msg)
+            sys.exit()
+
+         
+        except sqlite3.NotSupportedError as e:
+            msg = "sqlite3.NotSupportedError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
+            logger.error(msg)
+            sys.exit()
+
+         
+        except sqlite3.ProgrammingError as e:
+            msg = "sqlite3.ProgrammingError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
+            logger.error(msg)
+            sys.exit()
+         
+        except Exception as e:
+            msg = "OtherExceptions: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
+            #logger.error(msg)
+            #p(logger, c="m")
+            logger.error(msg)
+            sys.exit()
+    
+    return func
+
+
+
+
+
+
+
+
+
+
+########################################################################################
+########################################################################################
+########################################################################################
+########################################################################################
+
+
+########################################################################
+##########################corpus#######################################
+########################################################################
+
+
+
 
 attributs_names_corpus = [
                             ("id", "INTEGER NOT NULL"),
@@ -33,6 +175,73 @@ attributs_names_corpus = [
 
 
 
+### Documnets_Table (default)
+
+default_columns_and_types_for_corpus_documents = [
+                                ('docs_id','INTEGER PRIMARY KEY'),
+                                ('text','BLOB NOT NULL'),
+                                ]
+
+
+default_constraints_for_corpus_documents = [
+                        'CONSTRAINT "Uniq_Blogger_ID" UNIQUE ("docs_id")',
+
+                        ]
+
+
+default_index_for_corpus_documents = [
+                        'CREATE INDEX "ix_doc_id" ON "documents" ("docs_id");',
+
+                            ]
+
+
+
+### Documnets_Table (special)
+
+extended_columns_and_types_for_corpus_documents_twitter = [
+                                ('t_created_at','TEXT NOT NULL'),
+                                ('t_language','TEXT'),
+                                ('t_used_client','TEXT'),
+                                ('u_created_at','TEXT NOT NULL'),
+                                ('u_description','TEXT'),
+                                ('u_favourites','INTEGER'),
+                                ('u_followers','INTEGER'),
+                                ('u_friends','TEXT'),
+                                ('u_id','INTEGER NOT NULL'),
+                                ('u_lang','TEXT'),
+                                ('u_given_name','TEXT NOT NULL'),
+                                ('u_username','TEXT NOT NULL'),
+                                ('u_verified','TEXT NOT NULL'),
+                                ('u_location','TEXT'),
+                                ]
+
+
+
+
+
+extended_columns_and_types_for_corpus_documents_blogger =[
+                                ('gender','TEXT NOT NULL'),
+                                ('age','INTEGER NOT NULL'),
+                                ('working_area','TEXT NOT NULL'),
+                                ('star-constellation','TEXT NOT NULL'),
+                                ]
+
+
+
+
+
+
+
+
+
+
+
+########################################################################
+##############################Stats#####################################
+########################################################################
+
+
+### Info_Table
 
 attributs_names_stats = [
                             ("id", "INTEGER NOT NULL"),
@@ -45,7 +254,147 @@ attributs_names_stats = [
                         ]
 
 
-def attributs_and_types_to_str(attributs_names):
+
+
+
+
+
+### Baseline_Table (default)
+
+default_columns_and_types_for_stats_baseline = [
+                                ('word','TEXT PRIMARY KEY'),
+                                ('redu_counts','INTEGER NOT NULL'),
+                                ('repl_counts','INTEGER NOT NULL'),
+                                ('all_counts','INTEGER NOT NULL'),
+                                ('repl_IDs','BLOB NOT NULL'),
+                                ('redu_IDs','BLOB NOT NULL'),
+                                ]
+
+
+
+default_indexes_for_stats_baseline = [
+                                'CREATE INDEX "ix_word" ON "baseline" ("word");',
+                                'CREATE INDEX "ix_all_counts" ON "baseline" ("all_counts");',                            
+                                ]
+
+
+
+### Replications_Table (default)
+
+default_columns_and_types_for_stats_replications = [
+                                ('repl_id','INTEGER PRIMARY KEY'),
+                                ('docs_id','INTEGER NOT NULL'),
+                                ('token_nr','INTEGER NOT NULL'),
+                                ('word','TEXT NOT NULL'),
+                                ('rle',' TEXT'),
+                                ('repl_letter','TEXT NOT NULL'),
+                                ('nr_of_repl','INTEGER NOT NULL'),
+                                ('index_of_repl','INTEGER NOT NULL'),
+                                ]
+
+
+default_constrains_for_stats_replications = [
+                                'CONSTRAINT "Uniq_Repl_ID" UNIQUE ("repl_id")',
+                                ]
+
+
+default_indexes_for_stats_replications = [
+                                'CREATE INDEX "ix_replID" ON "stats.replications" ("repl_id");',
+                                ]
+
+### Reduplications_Table (default)
+
+
+
+default_columns_and_types_for_stats_reduplications = [
+                                ('redu_id','INTEGER PRIMARY KEY'),
+                                ('docs_id','INTEGER NOT NULL'),
+                                ('token_nr','INTEGER NOT NULL'),
+                                ('word','TEXT NOT NULL'),
+                                ('nr_of_redu','INTEGER NOT NULL'),
+                                ('scopus','BLOB'),
+                                ]
+
+
+default_constrains_for_stats_reduplications = [
+                                    'CONSTRAINT "Uniq_Redu-ID" UNIQUE ("redu_id")',
+                                    ]
+
+
+default_indexes_for_stats_reduplications = [
+                                    'CREATE INDEX "ix_reduID" ON "stats.reduplications" ("redu-id");',
+                                    ]
+
+
+
+
+
+
+
+########################################################################
+#########################Other  Helpers##################################
+########################################################################
+
+def ResultIter(cursor, arraysize=1000):
+    'An iterator that uses fetchmany to keep memory usage down'
+    while True:
+        results = cursor.fetchmany(arraysize)
+        if not results:
+            break
+        for result in results:
+            yield result
+
+
+
+def columns_and_values_to_str(columns_names,values):
+    '''
+    without Datatypes
+    '''
+
+
+    if isinstance(columns_names, list) and isinstance(values, list):
+        str_columns_and_values = ""
+        i=1
+        for column, value in zip(columns_names,values):
+            if value is None:
+                value = "NULL"
+
+            if value == "NULL":
+                if len(columns_names) > 1:
+                    if i < len(columns_names):
+                        str_columns_and_values += "\n{}={}, ".format(column,value)
+                    else:
+                        str_columns_and_values += "\n{}={} ".format(column,value)
+
+                    i+=1
+                elif len(columns_names) == 1:
+                    str_columns_and_values += "{}={}".format(column,value)
+
+                else:
+                    return False
+            else:
+
+                if len(columns_names) > 1:
+                    if i < len(columns_names):
+                        str_columns_and_values += "\n{}='{}', ".format(column,value)
+                    else:
+                        str_columns_and_values += "\n{}='{}' ".format(column,value)
+
+                    i+=1
+                elif len(columns_names) == 1:
+                    str_columns_and_values += "{}='{}'".format(column,value)
+
+                else:
+                    return False
+    else:
+        return False
+
+    return str_columns_and_values
+
+
+
+
+def columns_and_types_in_tuples_to_str(attributs_names):
     '''
     use by table initialisation (with Datatypes)
     '''
@@ -73,6 +422,7 @@ def attributs_and_types_to_str(attributs_names):
 
 
     return str_attributs_names
+
 
 
 
@@ -106,24 +456,99 @@ def attributs_to_str(attributs_names):
     return str_attributs_names
 
 
+
+
+def columns_list_to_str(attributs_names):
+    '''
+    without Datatypes
+    '''
+    if isinstance(attributs_names, list):
+        str_attributs_names = ""
+        i=1
+        for attribut in attributs_names:
+
+            if len(attributs_names) > 1:
+                if i < len(attributs_names):
+                    str_attributs_names += "\n{}, ".format(attribut)
+                else:
+                    str_attributs_names += "\n{} ".format(attribut)
+
+                i+=1
+            elif len(attributs_names) == 1:
+                str_attributs_names += "{}".format(attribut)
+
+            else:
+                return False
+    else:
+        return False
+
+    return str_attributs_names
+
+
+
+def constrains_list_to_str(constrains):
+    '''
+    without Datatypes
+    '''
+    #p(constrains)
+    if isinstance(constrains, list):
+        str_constrains = ""
+        i=0
+        for constrain in constrains:
+            if len(constrains) > 1:
+                if i == 0:
+                    str_constrains += ",\n{} ".format(constrain)
+                elif i<0 and  i < len(constrains):
+                    str_constrains += "\n{}, ".format(constrain)
+                else:
+                    str_constrains += "\n{} ".format(constrain)
+
+                i+=1
+            elif len(constrains) == 1:
+                str_constrains += ",\n{}".format(constrain)
+
+            else:
+                return False
+    else:
+        return False
+
+    #p(str_constrains, c="m")
+    return str_constrains
+
+
+
 def values_list_to_str(values):
     '''
     without Datatypes
     '''
     if isinstance(values, list):
         str_values = ""
-        if len(values) > 1:
-            i=1
-            for attribut in values:
-                if i < len(values):
-                    str_values += "\n'{}', ".format(attribut)
+        i=1
+        for value in values:
+            if value is None:
+                value = "NULL"
+            if value == "NULL":
+                if len(values) > 1:
+                    if i < len(values):
+                        str_values += "\n{}, ".format(value)
+                    else:
+                        str_values += "\n{} ".format(value)
+                    i+=1
+                elif len(values) == 1:
+                    str_values += "{}".format(value)
                 else:
-                    str_values += "\n'{}' ".format(attribut)
-                i+=1
-        elif len(values) == 1:
-            str_values += "'{}'".format(attribut[0])
-        else:
-            return False
+                    return False
+            else:
+                if len(values) > 1:
+                    if i < len(values):
+                        str_values += "\n'{}', ".format(value)
+                    else:
+                        str_values += "\n'{}' ".format(value)
+                    i+=1
+                elif len(values) == 1:
+                    str_values += "'{}'".format(value)
+                else:
+                    return False
     else:
         return False
 
@@ -215,4 +640,14 @@ def make_acronyme(full_name):
 
 
     return acronyme
+
+
+
+
+
+
+
+
+
+
 
