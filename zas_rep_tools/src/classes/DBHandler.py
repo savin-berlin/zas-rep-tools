@@ -43,7 +43,7 @@ from zas_rep_tools.src.utils.sql_helper import *
 from zas_rep_tools.src.utils.db_helper import *
 from zas_rep_tools.src.utils.debugger import p
 from zas_rep_tools.src.utils.sql_qearies import * 
-from zas_rep_tools.src.utils.encryption import Encryptor, AESCipher
+#from zas_rep_tools.src.utils.encryption import Encryptor, AESCipher
 from zas_rep_tools.src.utils.helpers import path_to_zas_rep_tools
 from zas_rep_tools.src.utils.error_tracking import initialisation
 
