@@ -42,6 +42,13 @@ from cached_property import cached_property
 from encodings.aliases import aliases
 from nltk.corpus import stopwords
 
+try:
+    nltk.data.find('corpora/stopwords')
+except:
+    import nltk
+    nltk.download("stopwords")
+
+
 if platform.uname()[0].lower() !="windows":
     from blessings import Terminal
 
