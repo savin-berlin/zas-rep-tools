@@ -89,7 +89,7 @@ class Logger :
                     self.logger.addHandler(handler)
 
                     # create debug file handler and set level to debug
-                    fname_all = "all_logs"+ now.strftime("%Y:%m:%d_%H-%M-%S-%f") +'.log'
+                    fname_all = "all_logs"+ now.strftime("%Y_%m_%d__%H-%M-%S") +'.log'
                     handler = logging.FileHandler(os.path.join(folder_for_log, fname_all),"w")
                     handler.setLevel(logging.DEBUG)
                     formatter = logging.Formatter("%(asctime)s %(name)-12s %(levelname)-8s %(message)s")
@@ -98,7 +98,7 @@ class Logger :
                     self.logger.propagate = False
 
                     # create debug file handler and set level to debug
-                    fname_all = "INFO_"+ now.strftime("%Y:%m:%d_%H-%M-%S-%f") +'.log'
+                    fname_all = "INFO_"+ now.strftime("%Y_%m_%d__%H-%M-%S") +'.log'
                     handler = logging.FileHandler(os.path.join(folder_for_log, fname_all),"w")
                     handler.setLevel(logging.INFO)
                     formatter = logging.Formatter("%(asctime)s %(name)-12s %(levelname)-8s %(message)s")
