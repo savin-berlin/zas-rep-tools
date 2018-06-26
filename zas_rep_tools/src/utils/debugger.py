@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from blessings import Terminal
+import platform
+
+if platform.uname()[0].lower() !="windows":
+    from blessings import Terminal
 
 from nose.plugins.attrib import attr
 from cached_property import cached_property
@@ -12,13 +15,15 @@ def p(func, func_name='DEBUGING', c='w'):
 	'''
 	Functionality: Print-Function for Debigging 
 	'''
-	t = Terminal()
-	colores = {'b':'t.bold_on_bright_blue', 'r':'t.bold_on_bright_red', 'g':'t.bold_on_bright_green', 'w':'t.bold_black_on_bright_white', 'm':'t.bold_white_on_bright_magenta'}
-	#colores = {'b':'t.bold_blue', 'r':'t.bold_red', 'g':'t.bold_green', 'w':'t.bold', 'm':'t.bold_magenta'}
+	if platform.uname()[0].lower() !="windows":
+		t = Terminal()
+		colores = {'b':'t.bold_on_bright_blue', 'r':'t.bold_on_bright_red', 'g':'t.bold_on_bright_green', 'w':'t.bold_black_on_bright_white', 'm':'t.bold_white_on_bright_magenta'}
+		#colores = {'b':'t.bold_blue', 'r':'t.bold_red', 'g':'t.bold_green', 'w':'t.bold', 'm':'t.bold_magenta'}
 
-	print "\n\n{start} <{0}>{stop} \n  {1} \n   {start} </{0}>{stop}\n".format(  func_name,  func, t=t, start=eval(colores[c]), stop=t.normal   )
-	#print "\n\n{start} <{0}>{stop}   {1}    {start} </{0}>{stop}\n".format(  func_name,  func, t=t, start=eval(colores[c]), stop=t.normal   )
-
+		print "\n\n{start} <{0}>{stop} \n  {1} \n   {start} </{0}>{stop}\n".format(  func_name,  func, t=t, start=eval(colores[c]), stop=t.normal   )
+		#print "\n\n{start} <{0}>{stop}   {1}    {start} </{0}>{stop}\n".format(  func_name,  func, t=t, start=eval(colores[c]), stop=t.normal   )
+	else:
+		print "p() is not supported for 'Windows'-OS."
 
 
 def wipd(f):

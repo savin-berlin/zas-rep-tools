@@ -23,8 +23,9 @@ import regex
 import logging
 import sys
 import signal
+import platform
 
-from blessings import Terminal
+
 import curses
 import shutil
 import io
@@ -42,6 +43,10 @@ from raven import Client
 from cached_property import cached_property
 from encodings.aliases import aliases
 from nltk.corpus import stopwords
+
+if platform.uname()[0].lower() !="windows":
+    from blessings import Terminal
+
 
 
 from zas_rep_tools.src.utils.logger import Logger
@@ -124,9 +129,12 @@ class Streamer(object):
         
         # p(self._streamer_settings)
 
-        # make Variable global for tweepy
-        self.t = Terminal()
 
+        # make Variable global for tweepy
+        if platform.uname()[0].lower() !="windows":
+            self.t = Terminal()
+        else:
+            self.t = False
         #p(inpdata)
         #p(email_addresse)
         #InstanceAttributes: Initialization
@@ -425,13 +433,21 @@ class Streamer(object):
         return msg_to_log
 
     def _initialize_status_bar(self):
-        if self._language:
-            sys.stdout.write("\n Status: {startW} totalSaved  {stop} = {startW}{selected:^8}{stop} + {startW}{retweets:^8}{stop} + {startW}other_lang{stop}    {startW}|undelivered|{stop} \n".format(selected=self._name_in_the_status_bar_original_tweets, retweets= self._name_in_the_status_bar_retweets, startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
-            print "         {startW}{total:^13d}{stop}   {startW}{original:^8d}{stop}   {startW}{retweets:^8}{stop}   {startW}{outsorted:^10d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=0, original=0, retweets= 0, outsorted=0, undelivered=0 ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal)
+        if platform.uname()[0].lower() !="windows":
+            if self._language:
+                sys.stdout.write("\n Status: {startW} totalSaved  {stop} = {startW}{selected:^8}{stop} + {startW}{retweets:^8}{stop} + {startW}other_lang{stop}    {startW}|undelivered|{stop} \n".format(selected=self._name_in_the_status_bar_original_tweets, retweets= self._name_in_the_status_bar_retweets, startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
+                print "         {startW}{total:^13d}{stop}   {startW}{original:^8d}{stop}   {startW}{retweets:^8}{stop}   {startW}{outsorted:^10d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=0, original=0, retweets= 0, outsorted=0, undelivered=0 ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal)
+            else:
+                sys.stdout.write("\n Status: {startW} totalSaved  {stop}    {startW}|undelivered|{stop} \n".format( startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
+                print "         {startW}{total:^13d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=0,  undelivered=0 ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal)
         else:
-            sys.stdout.write("\n Status: {startW} totalSaved  {stop}    {startW}|undelivered|{stop} \n".format( startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
-            print "         {startW}{total:^13d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=0,  undelivered=0 ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal)
-
+            if self._language:
+                sys.stdout.write("\n Status:  totalSaved   = {selected:^8} + {retweets:^8} + other_lang    |undelivered| \n".format(selected=self._name_in_the_status_bar_original_tweets, retweets= self._name_in_the_status_bar_retweets))
+                print "         {total:^13d}   {original:^8d}   {retweets:^8}   {outsorted:^10d}    |{undelivered:^11d}|  ".format(total=0, original=0, retweets= 0, outsorted=0, undelivered=0 )
+            else:
+                sys.stdout.write("\n Status:  totalSaved      |undelivered| \n")
+                print "         {total:^13d}    |{undelivered:^11d}|  ".format(total=0,  undelivered=0)
+ 
 
     def stream_twitter(self):
         global old_date
@@ -445,6 +461,9 @@ class Streamer(object):
         global path_to_the_jsons
         global last_error
         #global last_error
+
+        # initialize it once
+        langid.classify("test")
 
 
         email_addresse= self._email_addresse
@@ -671,7 +690,7 @@ class CustomStreamListener(tweepy.StreamListener):
 
 
             # filter out all retweets
-            lang = langid.classify(text)[0];
+            lang = langid.classify(text)[0]
             if lang == self._language:
                 self._num_tweets_selected += 1
                 if self._ignore_retweets:
@@ -736,12 +755,22 @@ class CustomStreamListener(tweepy.StreamListener):
 
 
     def _update_status_bar(self):
-        if self._language:
-            sys.stdout.write("\r         {startW}{total:^13d}{stop}   {startW}{original:^8d}{stop}   {startW}{retweets:^8}{stop}   {startW}{outsorted:^10d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=self._num_tweets_saved_on_the_disk, original=self._num_original_tweets, retweets= self._num_retweets, outsorted=self._num_tweets_outsorted, undelivered=self._num_tweets_undelivered ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
-            sys.stdout.flush()
+        if platform.uname()[0].lower() !="windows":
+            if self._language:
+                sys.stdout.write("\r         {startW}{total:^13d}{stop}   {startW}{original:^8d}{stop}   {startW}{retweets:^8}{stop}   {startW}{outsorted:^10d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=self._num_tweets_saved_on_the_disk, original=self._num_original_tweets, retweets= self._num_retweets, outsorted=self._num_tweets_outsorted, undelivered=self._num_tweets_undelivered ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
+                sys.stdout.flush()
+            else:
+                sys.stdout.write("\r         {startW}{total:^13d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=self._num_tweets_saved_on_the_disk,  undelivered=self._num_tweets_undelivered ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
+                sys.stdout.flush()
+
         else:
-            sys.stdout.write("\r         {startW}{total:^13d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=self._num_tweets_saved_on_the_disk,  undelivered=self._num_tweets_undelivered ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
-            sys.stdout.flush()
+            if self._language:
+                sys.stdout.write("\r         {total:^13d}   {original:^8d}   {retweets:^8}   {outsorted:^10d}    |{undelivered:^11d}|  ".format(total=self._num_tweets_saved_on_the_disk, original=self._num_original_tweets, retweets= self._num_retweets, outsorted=self._num_tweets_outsorted, undelivered=self._num_tweets_undelivered ))
+                sys.stdout.flush()
+            else:
+                sys.stdout.write("\r         {total:^13d}    |{undelivered:^11d}|  ".format(total=self._num_tweets_saved_on_the_disk,  undelivered=self._num_tweets_undelivered ))
+                sys.stdout.flush()
+
 
     def on_error(self, status_code):
         """Called when a non-200 status code is returned"""
