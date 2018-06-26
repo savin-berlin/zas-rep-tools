@@ -29,7 +29,7 @@ from testfixtures import tempdir, TempDirectory
 from distutils.dir_util import copy_tree 
 import glob
 
-from zas_rep_tools.src.classes.DB import DB
+from zas_rep_tools.src.classes.DBHandler import DBHandler
 
 from zas_rep_tools.src.utils.debugger import p, wipd, wipdn, wipdl, wipdo
 from zas_rep_tools.src.utils.logger import Logger
@@ -38,14 +38,14 @@ from zas_rep_tools.src.utils.logger import Logger
 
 
 
-class TestZAScorpusDBDB(unittest.TestCase):
+class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     def setUp(self):
 
 
 
         ######## Folders Creation ##############
         ########### Begin ######################
-        abs_path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(DB))))
+        abs_path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Logger))))
         #p(abs_path_to_zas_rep_tools)
         relativ_path_to_test_prjFolder = "data/tests_data/testDBs/prjFolder"
         self.abs_path_to_test_prjFolder = os.path.join(abs_path_to_zas_rep_tools,relativ_path_to_test_prjFolder)
@@ -70,6 +70,8 @@ class TestZAScorpusDBDB(unittest.TestCase):
         self.path_to_temp_test_corpus = os.path.join(self.path_to_temp_testFolder, "corpus.db")
         self.path_to_temp_test_stats = os.path.join(self.path_to_temp_testFolder, "stats.db")
         self.path_to_temp_test_fakeDB = os.path.join(self.path_to_temp_testFolder, "fakeDB.db")
+        self.path_to_temp_test_stats_encrypted = os.path.join(self.path_to_temp_testFolder, "stats_encrypted.db")
+        self.path_to_temp_test_stats_plain_text = os.path.join(self.path_to_temp_testFolder, "stats_plain_text.db")
         ######## Folders Creation ##############
         ########### End #####################
         
@@ -96,8 +98,8 @@ class TestZAScorpusDBDB(unittest.TestCase):
     # #@attr(status='stable')True
     # #@wipd
     # def test_initialisation_000(self):
-    #     db = DB( developingMode = True)
-    #     #db = DB()
+    #     db = DBHandler( developingMode = True)
+    #     #db = DBHandler()
     #     #db.init_corpus(self.path_to_temp_prjFolder, "twitter_streamed_de", "de", "twitter", "intern")
     #     #db.init_corpus(self.abs_path_to_test_prjFolder, "twitter_streamed_de", "de", "twitter", "intern")
     #     #p(db.rowsNumber("info"))
@@ -109,8 +111,8 @@ class TestZAScorpusDBDB(unittest.TestCase):
     #     # p(db.rowsNumber("info"))
 
         
-    #     #db = DB( )
-    #     db = DB( developingMode = True)
+    #     #db = DBHandler( )
+    #     db = DBHandler( developingMode = True)
     #     db.init_stats(self.path_to_temp_prjFolder,  "twitter_streamed", "de", "intern","twrd")
     #     #db.init_stats(self.abs_path_to_test_prjFolder,  "twitter_streamed", "de", "intern","twrd")
     #     #p(db.tables())
@@ -120,11 +122,19 @@ class TestZAScorpusDBDB(unittest.TestCase):
     #     #p(db.get_all_attributs())
 
 
+
+#encoding problem
+        # p(db.get_attribut("name"),c="r")
+        # db.update_attribut("name", "4567890ß")
+        # p(db.get_attribut("name"),c="r")
+
+
+
  
     @wipd
     def test_initialisation_corpus_001(self):
-        db = DB(developingMode = True)
-        #db = DB()
+        db = DBHandler(developingMode = True)
+        #db = DBHandler()
         #p(self.path_to_temp_test_corpus)
         
         #db.connect(self.path_to_temp_test_corpus)
@@ -133,74 +143,104 @@ class TestZAScorpusDBDB(unittest.TestCase):
         #db.connect(self.path_to_temp_test_fakeDB)
         db.init_corpus(self.path_to_temp_testFolder, "twitter_streamed", "de", "intern", "twitter" )
         #db.init_corpus(self.path_to_temp_prjFolder, "twitter_streamed", "de", "intern", "twitter", template_name="twitter")
+        
+
         #db.init_corpus(self.path_to_temp_prjFolder, "twitter_streamed_de",
         #    "de", "intern", "twitter",
         #    template_name="twitter",
         #    additional_columns_with_types_for_documents=[("kaka","TEXT"), ("koko","BLOB")])
         #additional_columns_with_types
+        p(db.dbnames)
         db.attach(self.path_to_temp_test_stats)
-        # p(db.tables("stats"))
-        #p(db.tables())
-        # p(db.tableColumns("documents"))
-        # # p(db.get_all_attributs(), c="m")
-        # # p(db.tableColumns("documents"), c="r")
-        # db.insertCV("documents", [u'docs_id', u'text'], ["1","h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
-        # # db.insert_row("documents", [u'docs_id', u'text'], ["2","hjk"])
-        # # db.insert_row("documents", [u'docs_id', u'text'], ["3","hj😀😀😀😀😀😀k"])
-        # # db.insert_row("documents", [u'docs_id', u'text'], ["4","h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
-        # #db.insert_values("documents", [None,"ghj"])
-        # #db.insert_values("documents", [None,"ghj"])
-        # p(db.rowsNumber("documents"))
-        p(db.rowsNumber("documents"))
-        db.lazy_writer("documents", "cv", [ u'text'], ["h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
-        db.lazy_writer("documents", "v", values= [None,"h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
-        db.lazy_writer("documents", "v", values= [None,"h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
-        db.lazy_writer("documents", "v", values= [None,"h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
-        p(db.rowsNumber("documents"))
-        #db.commit()
-        db.rollback()
-        p(db.rowsNumber("documents"))
+        #db.attach(self.path_to_temp_test_stats_encrypted, "stats")
+        p(db.dbnames)
+        db.attach(self.path_to_temp_test_stats_plain_text)
+        p(db.dbnames)
+        #db.detach()
+        db.reattach()
+        #p(db.dbnames)
+        p(db._attributs_dict)
+        p(db.get_attribut("name"))
+        db.update_attribut("name", "4567890")
+        p(db.get_attribut("name"))
+        p(db.get_all_attributs("main"), "567890")
 
-        db.encrypte("new")
-        # #db.lazy_writer("documents", "v", values= ["hjk","h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
-        
-        # #db.update("documents", ["text"], ["xxx"], "docs_id=3")
-        # #db.commit()
-        
-        # # p(db.lazy_getter("documents", size_to_get=6))
+        #db._validation_DBfile(self.path_to_temp_test_stats_plain_text)
+        #db._validation_DBfile(self.path_to_temp_test_stats_encrypted, "stats")
+        #db._validation_DBfile(self.path_to_temp_test_corpus)
 
-        # # for item in db.lazy_getter("documents"):
-        # #     p(item)
-
-
-        # # for item in db.getlimit(3,"documents"):
-        # #     p(item)
-
-        # # #db.drop_table("info", "stats")
-        # # p(db.tables(,"stats"))
         # # p(db.tables("stats"))
-        # # p(db.rowsNumber("info"))
-        # # p(db.rowsNumber("info", "stats"))
-        # # p(db.tableColumnsTypes("info"))
-        # # p(db.tableColumnsTypes("info", "stats"))
-        # # p(db.tableColumns("info"))
-        # # p(db.tableColumns("info","stats"))
-        # # p(db.path("main"))
-        # # p(db.fname("stats"))
-        # # p(db.fname())
-        # # p(db.path())
-        # # p(db.attachedDBs())
-        # # p(db.attachedDBs())
-        # # p(db.fnameAttachedDBs())
-        # # p(db.pathAttachedDBs())
-        # # p(db.dbsNames())
+        # #p(db.tables())
+        # # p(db.tableColumns("documents"))
+        # # # p(db.get_all_attributs(), c="m")
+        # # # p(db.tableColumns("documents"), c="r")
+        # # db.insertCV("documents", [u'docs_id', u'text'], ["1","h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
+        # # # db.insert_row("documents", [u'docs_id', u'text'], ["2","hjk"])
+        # # # db.insert_row("documents", [u'docs_id', u'text'], ["3","hj😀😀😀😀😀😀k"])
+        # # # db.insert_row("documents", [u'docs_id', u'text'], ["4","h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
+        # # #db.insert_values("documents", [None,"ghj"])
+        # # #db.insert_values("documents", [None,"ghj"])
+        # # p(db.rowsNumber("documents"))
+        # p(db.rowsNumber("documents"))
+        # db.lazy_writer("documents", "cv", [ u'text'], ["h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
+        # db.lazy_writer("documents", "v", values= [None,"h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
+        # db.lazy_writer("documents", "v", values= [None,"h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
+        # db.lazy_writer("documents", "v", values= [None,"h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
+        # p(db.rowsNumber("documents"))
+        # #db.commit()
+        # db.rollback()
+        # p(db.rowsNumber("documents"))
+
+        # p(db._attachedDBs, c="r")
+        # p(db.dbnames)
+        # p(db.tables("stats"))
+        # #db.encrypte("new")
+        # # p(db._attachedDBs, c="m")
+        # # p(db.dbnames)
+        # # db.decrypte()
+        # # p(db._attachedDBs, c="b")
+        # # p(db.dbnames)
+        # # #db.lazy_writer("documents", "v", values= ["hjk","h😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀jk"])
+        # #db._reattach_dbs()
+        # # #db.update("documents", ["text"], ["xxx"], "docs_id=3")
+        # # #db.commit()
+        
+        # # # p(db.lazy_getter("documents", size_to_get=6))
+
+        # # # for item in db.lazy_getter("documents"):
+        # # #     p(item)
+
+
+        # # # for item in db.getlimit(3,"documents"):
+        # # #     p(item)
+
+        # # # #db.drop_table("info", "stats")
+        # # # p(db.tables(,"stats"))
+        # # # p(db.tables("stats"))
+        # # # p(db.rowsNumber("info"))
+        # # # p(db.rowsNumber("info", "stats"))
+        # # # p(db.tableColumnsTypes("info"))
+        # # # p(db.tableColumnsTypes("info", "stats"))
+        # # # p(db.tableColumns("info"))
+        # # # p(db.tableColumns("info","stats"))
+        # # # p(db.path("main"))
+        # # # p(db.fname("stats"))
+        # # # p(db.fname())
+        # # # p(db.path())
+        # # # p(db.attachedDBs())
+        # # # p(db.attachedDBs())
+        # # # p(db.fnameAttachedDBs())
+        # # # p(db.pathAttachedDBs())
+        # # # p(db.dbsNames())
+
+        # #p(db.id())
 
 
 
 
     # #@wipd
     # def test_initialisation_stats_001(self):
-    #     db = DB( developingMode = True)
+    #     db = DBHandler( developingMode = True)
     #     #p(db.tables())
     #     db.init_stats(self.path_to_temp_prjFolder, "fghj", "twitter_streamed", "intern", "de")
     #     p(db.get_all_attributs(), c="m")
@@ -304,58 +344,6 @@ class TestZAScorpusDBDB(unittest.TestCase):
 ###################### START WORK_IN_PROGRESS (wipd) TESTS #########################################
 ####################################################################################################
 ####################################################################################################
-
-
-    # #@attr(status='stable')True
-    # @oldwipd
-    # def test_025(self):
-    #     additional_dbs = [
-
-    #             "/Users/egoruni/Desktop/BA/Code/zas-rep-tools/zas_rep_tools/data/DB/testDBs/additionalDBs/bloggerDB.db", 
-    #             "/Users/egoruni/Desktop/BA/Code/zas-rep-tools/zas_rep_tools/data/DB/testDBs/additionalDBs/twitterDB.db",
-    #             "/Users/egoruni/Desktop/BA/Code/zas-rep-tools/zas_rep_tools/data/DB/testDBs/additionalDBs/facebookDB.db",
-    #             "/Users/egoruni/Desktop/BA/Code/zas-rep-tools/zas_rep_tools/data/DB/testDBs/additionalDBs/fakeDB.db",
-    #             ]
-
-    #     #database = DB("/Users/egoruni/Desktop/BA/Code/test/PrjData", developingMode = True)
-    #     database = DB("/Users/egoruni/Desktop/BA/Code/test/PrjData", additional_DBs=additional_dbs,  developingMode = True)
-    #     #database.del_mainDB()
-    #     database.create_project("twitter", "/Users/egoruni/Desktop/BA/Code/test/PrjData")
-    #     database.create_project("blogger", "/Users/egoruni/Desktop/BA/Code/test/PrjData")
-    #     database.create_project("facebook", "/Users/egoruni/Desktop/BA/Code/test/PrjData",
-    #             documents_columns={
-    #                 "age":"INTEGER",
-    #                 "gender":"TEXT",
-    #                 "post_data":"TEXT",
-    #             })
-    #     # p(database.get_attached_dbs("paths"), c="m")
-    #     # p(database.get_attached_dbs("names"), c="m")
-    #     # p(database.tables("main"), c="r")
-    #     # p(database.tables("twitter"), c="r")
-    #     # p(database.tables("blogger"), c="r")
-    #     # #p(database.get_tableInfo("Projects"), c="r")
-    #     # #p(database.get_tableInfo("Corpora", "blogger"), c="r") 
-    #     # #p(database.get_fk("Corpora", "blogger"), c="r")
-    #     # #p(database.get_ix_list("Corpora", "blogger"), c="r")
-    #     # #p(database.get_ix_info("ix_corpora_template_corpus", "blogger"), c="r")
-    #     # p(database._get_all_prjDBs_paths(), c="m")
-        
-
-    #     database._attach_all_existing_prjDBs()
-    #     # p(database.get_tableInfo("Projects"), c="r")
-    #     # p(database.supported_projects())
-    #     # p(database.supported_projects_with_ids())
-    #     # database.add_language_into_mainDB("german", "de")
-    #     # database.add_language_into_mainDB("english", "en")
-    #     # p(database.supported_lang())
-    #     # p(database.supported_lang_with_ids())
-    # ##### throws_exceptions:050  ######
-
-
-
-
-
-
 
 
 
