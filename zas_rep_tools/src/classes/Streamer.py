@@ -57,7 +57,7 @@ if platform.uname()[0].lower() !="windows":
 from zas_rep_tools.src.utils.logger import Logger
 from zas_rep_tools.src.utils.debugger import p
 from zas_rep_tools.src.utils.error_tracking import initialisation
-from zas_rep_tools.src.utils.helpers import send_email, paste_new_line, write_data_to_json
+from zas_rep_tools.src.utils.helpers import *
 
 
 abs_path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Logger))))
@@ -66,6 +66,17 @@ abs_paths_to_stop_words = os.path.join(abs_path_to_zas_rep_tools, "data/stop_wor
 
 global last_error
 last_error = ""
+
+
+#### initialize all counters
+num_tweets_all_saved_for_this_session = 0
+num_tweets_all_getted_for_one_day = 0
+num_tweets_saved_on_the_disk_for_one_day = 0
+num_tweets_selected_for_one_day = 0 # selected language, contain tweets and retweets
+num_tweets_outsorted_for_one_day = 0
+num_tweets_undelivered_for_one_day = 0
+num_retweets_for_one_day = 0
+num_original_tweets_for_one_day = 0
 
 
 
@@ -98,6 +109,16 @@ class Streamer(object):
 
         ## Logger Initialisation 
         global global_logger
+
+        global num_tweets_all_saved_for_this_session
+        global num_tweets_all_getted_for_one_day 
+        global num_tweets_saved_on_the_disk_for_one_day
+        global num_tweets_selected_for_one_day 
+        global num_tweets_outsorted_for_one_day 
+        global num_tweets_undelivered_for_one_day 
+        global num_retweets_for_one_day 
+        global num_original_tweets_for_one_day 
+
         logger = Logger()
         self._folder_for_log_files = folder_for_log_files
         self._use_logger = use_logger
@@ -127,7 +148,7 @@ class Streamer(object):
         self._ignore_retweets = ignore_rt
         self._save_used_terms = save_used_terms
         self._filterStrat = filterStrat
-        self._streamer_settings = {"language":True if self._language else False, 
+        self._streamer_settings = {"language":self._language, 
                      "terms":True if self._terms else False,
                      "stop_words":True if self._stop_words else False ,
                      "filter":self._filterStrat  }
@@ -465,6 +486,8 @@ class Streamer(object):
         global file_retweets
         global path_to_the_jsons
         global last_error
+        global num_tweets_all_saved_for_this_session
+        global num_tweets_saved_on_the_disk_for_one_day
         #global last_error
 
         # initialize it once
@@ -483,13 +506,14 @@ class Streamer(object):
         auth = tweepy.OAuthHandler(self._consumer_key, self._consumer_secret)
         auth.set_access_token(self._access_token, self._access_token_secret)
         api = tweepy.API(auth, parser=tweepy.parsers.JSONParser(),timeout=5)
+        global logfile
         logfile = codecs.open(os.path.join(self._storage_path,"streaming.log"), 'a', encoding="utf-8")
         #localtime = time.asctime( time.localtime(time.time()) )
         
 
 
         # longer timeout to keep SSL connection open even when few tweets are coming in
-        stream = tweepy.streaming.Stream(auth, CustomStreamListener(language=self._language, ignore_retweets=self._ignore_retweets), timeout=1000.0)
+        stream = tweepy.streaming.Stream(auth, CustomStreamListener(streamer_settings=self._streamer_settings,language=self._language, ignore_retweets=self._ignore_retweets), timeout=1000.0)
         terms = self.get_track_terms()
         self.logger.info("{} terms/stop_words used for tacking.".format(len(terms)))
         #p(terms)
@@ -548,6 +572,13 @@ class Streamer(object):
 
                 stream.disconnect() # that should wait until next tweet, so let's delete it
                 del stream
+
+                num_tweets_all_saved_for_this_session += num_tweets_saved_on_the_disk_for_one_day
+                stats_cli = generate_status_msg_after_one_day(self._language,cl=True)
+                stats_logfile = generate_status_msg_after_one_day(self._language)
+                msg = "Short Conclusion:\n {}".format( stats_cli)
+                self.logger.info(msg)
+                logfile.write("    Short Conclusion for the last day ({}):\n{}".format(old_date, stats_logfile))
                 logfile.close()
                 file_selected.close()
                 file_outsorted.close()
@@ -557,50 +588,55 @@ class Streamer(object):
                 sys.exit(1)
                 #os._exit(1)
 
-            except Exception, e:
+            # except Exception, e:
+            #     if "Failed to establish a new connection" in str(e):
+            #         log_msg = "     {} No Internet Connection. Wait 15 sec.....  \n" 
+            #         logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())))  )
+            #         paste_new_line()
+            #         global_logger.critical("No Internet Connection. Wait 15 sec.....")
+            #         time.sleep(15)
+            #     else:
+            #         log_msg = "     {} Stream get an Error: '{}' \n" 
+            #         logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())),e)  )
+            #         paste_new_line()
+            #         global_logger.critical("Streaming get an Error......‘{}‘".format(e))
+
+            #     last_5_error.append(str(e))
+
+            #     if len(last_5_error) >= 5:
+            #         if len(set(last_5_error)) ==1 :
+            #             log_msg = "     {} Stream was stopped after 5 same errors in stack: '{}' \n" 
+            #             logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())),e)  )
+            #             msg = 'Hey,</br></br> Something was Wrong!  Streamer throw the following error-message and the Streaming Process was stopped:</br> <p style="margin-left: 50px;"><strong><font color="red">{}</strong> </font> </p> Please  check if everything is fine with this Process. </br></br> Greeting, </br>Your Streamer'.format(e)
+            #             last_error = str(e)
+            #             subject = "TwitterStreamer was stopped (Reason: last 5 errors are same)"
+            #             paste_new_line()
+            #             send_email(email_addresse, subject, msg)
+            #             global_logger.error("Stream was stopped after 5 same errors in stack")
+            #             #os._exit(1)
+            #             sys.exit()
+            #         else:
+            #             last_5_error = []
 
 
-                if "Failed to establish a new connection" in str(e):
-                    log_msg = "     {} No Internet Connection. Wait 15 sec.....  \n" 
-                    logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())))  )
-                    paste_new_line()
-                    global_logger.critical("No Internet Connection. Wait 15 sec.....")
-                    time.sleep(15)
-                else:
-                    log_msg = "     {} Stream get an Error: '{}' \n" 
-                    logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())),e)  )
-                    paste_new_line()
-                    global_logger.critical("Streaming get an Error......‘{}‘".format(e))
 
-                last_5_error.append(str(e))
-
-                if len(last_5_error) >= 5:
-                    if len(set(last_5_error)) ==1 :
-                        log_msg = "     {} Stream was stopped after 5 same errors in stack: '{}' \n" 
-                        logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())),e)  )
-                        msg = 'Hey,</br></br> Something was Wrong!  Streamer throw the following error-message and the Streaming Process was stopped:</br> <p style="margin-left: 50px;"><strong><font color="red">{}</strong> </font> </p> Please  check if everything is fine with this Process. </br></br> Greeting, </br>Your Streamer'.format(e)
-                        last_error = str(e)
-                        subject = "TwitterStreamer was stopped (Reason: last 5 errors are same)"
-                        paste_new_line()
-                        send_email(email_addresse, subject, msg)
-                        global_logger.error("Stream was stopped after 5 same errors in stack")
-                        os._exit(1)
-                    else:
-                        last_5_error = []
+            #     if last_error != str(e):
+            #         msg = "Hey,</br></br> Something was Wrong!  Streamer throw the following error-message:</br> <p style='margin-left: 50px;''><strong><font color='red'>{}</strong> </font> </p> Please  check if everything is fine with this Process. </br></br> Greeting, </br>Your Streamer".format(e)
+            #         last_error = str(e)
+            #         paste_new_line()
+            #         send_email(email_addresse, 'Error: '+str(e), msg)
 
 
 
-                if last_error != str(e):
-                    msg = "Hey,</br></br> Something was Wrong!  Streamer throw the following error-message:</br> <p style='margin-left: 50px;''><strong><font color='red'>{}</strong> </font> </p> Please  check if everything is fine with this Process. </br></br> Greeting, </br>Your Streamer".format(e)
-                    last_error = str(e)
-                    paste_new_line()
-                    send_email(email_addresse, 'Error: '+str(e), msg)
 
-            except tweepy.TweepError, e:
-                paste_new_line()
-                global_logger.info("Streaming geted an error: '{}'".format(e))
-                log_msg = "    Streaming geted an error: {} \n" 
-                logfile.write(  log_msg.format(e) )
+
+
+
+            # except tweepy.TweepError, e:
+            #     paste_new_line()
+            #     global_logger.info("Streaming geted an error: '{}'".format(e))
+            #     log_msg = "    Streaming geted an error: {} \n" 
+            #     logfile.write(  log_msg.format(e) )
 
 
                 
@@ -610,19 +646,24 @@ class Streamer(object):
 
 class CustomStreamListener(tweepy.StreamListener):
 
-    def __init__(self, language=False, ignore_retweets = False):
-
+    def __init__(self, streamer_settings=False, language=False, ignore_retweets = False):
+        global logfile
+        global num_tweets_all_saved_for_this_session
+        global num_tweets_saved_on_the_disk_for_one_day
+        global num_tweets_all_getted_for_one_day 
+        global num_tweets_selected_for_one_day 
+        global num_tweets_outsorted_for_one_day 
+        global num_tweets_undelivered_for_one_day 
+        global num_retweets_for_one_day 
+        global num_original_tweets_for_one_day 
 
         logger = Logger()
         self.logger = Logger().myLogger("CustomStreamListener")
-        self._num_tweets_all = 0
-        self._num_tweets_saved_on_the_disk = 0
-        self._num_tweets_selected = 0 # selected language, contain tweets and retweets
-        self._num_tweets_outsorted = 0
-        self._num_tweets_undelivered = 0
-        self._num_retweets = ">ignore<" if ignore_retweets else 0
-        self._num_original_tweets = 0
+        self._ignore_retweets = ignore_retweets
+
+        self.restart_all_counters()
         self._language = language
+        self._streamer_settings = streamer_settings
         self._ignore_retweets = ignore_retweets
         if platform.uname()[0].lower() !="windows":
             self.t = Terminal()
@@ -631,14 +672,54 @@ class CustomStreamListener(tweepy.StreamListener):
 
 
         if self._ignore_retweets:
-            self._num_retweets = ">ignore<"
+            num_retweets_for_one_day = ">ignore<"
 
-        #sys.stdout.write("\r         {startW}{total:^13d}{stop}   {startW}{original:^8d}{stop}   {startW}{retweets:^8}{stop}   {startW}{outsorted:^9d}{stop}  {startW}{undelivered:^11d}{stop}  ".format(total=self._num_tweets_all, original=self._num_original_tweets, retweets= self._num_retweets, outsorted=self._num_tweets_outsorted, undelivered=self._num_tweets_undelivered ,startW=self.t.bold_black_on_bright_white, startG=self.t.bold_black_on_bright_green, startY=self.t.bold_black_on_bright_yellow, startB=self.t.bold_black_on_bright_blue, startR=self.t.bold_black_on_bright_red, stop=self.t.normal))
+        #sys.stdout.write("\r         {startW}{total:^13d}{stop}   {startW}{original:^8d}{stop}   {startW}{retweets:^8}{stop}   {startW}{outsorted:^9d}{stop}  {startW}{undelivered:^11d}{stop}  ".format(total=num_tweets_all_getted_for_one_day, original=num_original_tweets_for_one_day, retweets= num_retweets_for_one_day, outsorted=num_tweets_outsorted_for_one_day, undelivered=num_tweets_undelivered_for_one_day ,startW=self.t.bold_black_on_bright_white, startG=self.t.bold_black_on_bright_green, startY=self.t.bold_black_on_bright_yellow, startB=self.t.bold_black_on_bright_blue, startR=self.t.bold_black_on_bright_red, stop=self.t.normal))
 
 
     def on_connect(self):
         sys.stdout.write("\033[A") # “Move the cursor up (1 line up)”
         #pass
+
+
+
+    def archive_jsons(self,path_to_the_jsons):
+        ## Step 1: Find the best right name 
+        f_base_name = "jsons"
+        extenstion = ".zip"
+        full_fname = f_base_name+extenstion
+        i=0
+        while True:
+            i+=1
+            if os.path.isfile(os.path.join(os.path.dirname(path_to_the_jsons),full_fname)):
+                f_base_name = f_base_name + "_"+ str(i)
+                full_fname = f_base_name+extenstion
+            else:
+                break
+
+        # Step 2: if in the current folder alredy exist an Archive, than remove it
+        if os.path.isfile(os.path.join(os.getcwd(),full_fname)):
+            os.remove(os.path.join(os.getcwd(),full_fname)) 
+        #sys.exit()
+        make_zipfile(full_fname, path_to_the_jsons)
+        self.logger.info("All JSONS was archived")
+        #p(ziparch)
+        shutil.move(os.path.join(os.getcwd(),full_fname), os.path.dirname(path_to_the_jsons))
+        shutil.rmtree(path_to_the_jsons, ignore_errors=True)
+        self.logger.debug("All JSONS was moved and orig (not archived) folder was deleted.")
+
+
+
+
+    def restart_all_counters(self):
+        num_tweets_all_getted_for_one_day = 0
+        num_tweets_saved_on_the_disk_for_one_day = 0
+        num_tweets_selected_for_one_day = 0 # selected language, contain tweets and retweets
+        num_tweets_outsorted_for_one_day = 0
+        num_tweets_undelivered_for_one_day = 0
+        num_retweets_for_one_day = ">ignore<" if self._ignore_retweets else 0
+        num_original_tweets_for_one_day = 0
+
 
     def on_data(self, data):
 
@@ -649,30 +730,58 @@ class CustomStreamListener(tweepy.StreamListener):
         global file_retweets
         global logfile
         global path_to_the_jsons
+        global email_addresse
+        global num_tweets_all_saved_for_this_session
+        global num_tweets_all_getted_for_one_day 
+        global num_tweets_saved_on_the_disk_for_one_day
+        global num_tweets_selected_for_one_day 
+        global num_tweets_outsorted_for_one_day 
+        global num_tweets_undelivered_for_one_day 
+        global num_retweets_for_one_day 
+        global num_original_tweets_for_one_day
       
-        self._language  
+          
         new_date = date.today()
 
+        # new day was started
         if not new_date == old_date:
+
+            # Preparation for the last day
             file_selected.close()
             file_outsorted.close()
             file_undelivered.close()
             file_retweets.close()
-            #p(path_to_the_jsons)
-            ziparch = shutil.make_archive("jsons", 'zip', path_to_the_jsons)
-        
-            shutil.move(ziparch, os.path.dirname(path_to_the_jsons))
-            shutil.rmtree(path_to_the_jsons, ignore_errors=True)
-            self.logger.info("All JSONS was archived")
-            #p(ziparch)
+            paste_new_line()
+            self.archive_jsons(path_to_the_jsons)
 
             file_selected, file_outsorted, file_undelivered, file_retweets, path_to_the_jsons =  create_new_files_for_new_day(str(new_date), storage_path, self._language)
             # file_selected.write('[\n') # start a new json array
             # file_outsorted.write('[\n') # start a new json array
             
-            old_date = new_date
+            num_tweets_all_saved_for_this_session += num_tweets_saved_on_the_disk_for_one_day
+            
             paste_new_line()
-            self.logger.info("New day was started!")
+            stats_cli = generate_status_msg_after_one_day(self._language,cl=True)
+            stats_logfile = generate_status_msg_after_one_day(self._language)
+            msg = "Short Conclusion for day ({}):\n {}".format(old_date, stats_cli)
+            self.logger.info(msg)
+            logfile.write("    End of The day -> {}\n".format(old_date))
+            logfile.write("    Short Conclusion for the day ({}):\n{}".format(old_date, stats_logfile))
+
+            # Send Email
+            streamer_settings_str_html = streamer_settings_to_str(self._streamer_settings).replace("\n", "</br>")
+            stats_cli_to_html = stats_cli.replace("\n", "</br>")
+            p(stats_cli_to_html, c="m")
+            msg = 'Hey,</br></br>  Yeeeeeap, News Day was started!  </br></br>See Stats for the last Day "{}" below: </br> <p style="margin-left: 50px;"><strong><font color="green">{}</strong> </font> </p>  </br></br> </br> Streamer Settings: <p style="margin-left: 50px;"><strong><font color="blue">{}</strong> </font> </p>  With love, </br>Your Streamer'.format(old_date, stats_cli.replace("\n", "</br>"), streamer_settings_str_html)
+            subject = "TwitterStreamer started New Day ({})".format(new_date)
+            send_email(email_addresse, subject, msg)
+
+            # Start new day 
+            old_date = new_date
+            self.restart_all_counters()
+            self.logger.info("New day was started! ({})".format(old_date))
+            logfile.write("    New day was started! -> {}\n".format(new_date))
+
 
 
 
@@ -680,12 +789,8 @@ class CustomStreamListener(tweepy.StreamListener):
         
 
         ### Print Status of downloaded Tweets
-        self._num_tweets_all += 1
+        num_tweets_all_getted_for_one_day += 1
         
-        #sys.stdout.write("\r Status: {start}{}{stop} ".format(self._num_tweets_all,  start=self.t.bold_black_on_bright_white, stop=self.t.normal))
-        #print "\n\r Status: totalDownload = selected + retweets + outsorted (undelivered)" 
-        
-
         try:
             tId = data["id"]
 
@@ -700,39 +805,39 @@ class CustomStreamListener(tweepy.StreamListener):
             # filter out all retweets
             lang = langid.classify(text)[0]
             if lang == self._language:
-                self._num_tweets_selected += 1
+                num_tweets_selected_for_one_day += 1
                 if self._ignore_retweets:
                     if "retweeted_status" not in data:
-                        self._num_original_tweets += 1
+                        num_original_tweets_for_one_day += 1
                         file_selected.write(u"{} <t>{}</t>\n".format(unicode(tId),  text))
                         write_data_to_json(os.path.join(path_to_the_jsons, "{}.json".format(tId)), data)
-                        self._num_tweets_saved_on_the_disk += 1
+                        num_tweets_saved_on_the_disk_for_one_day += 1
 
                 else:
                     if "retweeted_status" in data:
-                        self._num_retweets += 1
+                        num_retweets_for_one_day += 1
                         file_retweets.write(u"{} \n".format(unicode(tId)))
                     else:
-                        self._num_original_tweets += 1
+                        num_original_tweets_for_one_day += 1
                         file_selected.write(u"{} <t>{}</t>\n".format(unicode(tId),  text))
                     
 
                     write_data_to_json(os.path.join(path_to_the_jsons, "{}.json".format(tId)), data)
-                    self._num_tweets_saved_on_the_disk += 1
+                    num_tweets_saved_on_the_disk_for_one_day += 1
 
 
             else:
                 if self._ignore_retweets:
                     if "retweeted_status" not in data:
-                        self._num_tweets_outsorted +=1
+                        num_tweets_outsorted_for_one_day +=1
                         file_outsorted.write(u"{} <t>{}</t> <l>{}</l>\n".format(unicode(tId),  text, lang))
                         write_data_to_json(os.path.join(path_to_the_jsons, "{}.json".format(tId)), data)
-                        self._num_tweets_saved_on_the_disk += 1
+                        num_tweets_saved_on_the_disk_for_one_day += 1
                 else:  
-                    self._num_tweets_outsorted +=1
+                    num_tweets_outsorted_for_one_day +=1
                     file_outsorted.write(u"{} <t>{}</t> <l>{}</l>\n".format(unicode(tId),  text, lang))
                     write_data_to_json(os.path.join(path_to_the_jsons, "{}.json".format(tId)), data)
-                    self._num_tweets_saved_on_the_disk += 1
+                    num_tweets_saved_on_the_disk_for_one_day += 1
 
 
 
@@ -745,8 +850,8 @@ class CustomStreamListener(tweepy.StreamListener):
             if "limit" in str(data):
                 #{u'limit': {u'track': 233, u'timestamp_ms': u'1527958183844'}}
                 #p(data)
-                if data["limit"]["track"] > self._num_tweets_undelivered:
-                    self._num_tweets_undelivered = data["limit"]["track"]
+                if data["limit"]["track"] > num_tweets_undelivered_for_one_day:
+                    num_tweets_undelivered_for_one_day = data["limit"]["track"]
                 
                 #pattern = r""
                 time_now = time.asctime( time.localtime(time.time()) )
@@ -756,27 +861,28 @@ class CustomStreamListener(tweepy.StreamListener):
                 self.logger.critical(str(repr(ke)))
         except Exception, e:
 
-            log_msg = "     {} Encountered error with status code (Streamer still be on): '{}' \n"
+            log_msg = "Encountered error with status code: '{}' \n"
             logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())),e)  )
             paste_new_line()
-            self.logger.critical(log_msg)
+            self.logger.critical(log_msg.format(e))
+
 
 
     def _update_status_bar(self):
         if platform.uname()[0].lower() !="windows":
             if self._language:
-                sys.stdout.write("\r         {startW}{total:^13d}{stop}   {startW}{original:^8d}{stop}   {startW}{retweets:^8}{stop}   {startW}{outsorted:^10d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=self._num_tweets_saved_on_the_disk, original=self._num_original_tweets, retweets= self._num_retweets, outsorted=self._num_tweets_outsorted, undelivered=self._num_tweets_undelivered ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
+                sys.stdout.write("\r         {startW}{total:^13d}{stop}   {startW}{original:^8d}{stop}   {startW}{retweets:^8}{stop}   {startW}{outsorted:^10d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=num_tweets_saved_on_the_disk_for_one_day, original=num_original_tweets_for_one_day, retweets= num_retweets_for_one_day, outsorted=num_tweets_outsorted_for_one_day, undelivered=num_tweets_undelivered_for_one_day ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
                 sys.stdout.flush()
             else:
-                sys.stdout.write("\r         {startW}{total:^13d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=self._num_tweets_saved_on_the_disk,  undelivered=self._num_tweets_undelivered ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
+                sys.stdout.write("\r         {startW}{total:^13d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=num_tweets_saved_on_the_disk_for_one_day,  undelivered=num_tweets_undelivered_for_one_day ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
                 sys.stdout.flush()
 
         else:
             if self._language:
-                sys.stdout.write("\r         {total:^13d}   {original:^8d}   {retweets:^8}   {outsorted:^10d}    |{undelivered:^11d}|  ".format(total=self._num_tweets_saved_on_the_disk, original=self._num_original_tweets, retweets= self._num_retweets, outsorted=self._num_tweets_outsorted, undelivered=self._num_tweets_undelivered ))
+                sys.stdout.write("\r         {total:^13d}   {original:^8d}   {retweets:^8}   {outsorted:^10d}    |{undelivered:^11d}|  ".format(total=num_tweets_saved_on_the_disk_for_one_day, original=num_original_tweets_for_one_day, retweets= num_retweets_for_one_day, outsorted=num_tweets_outsorted_for_one_day, undelivered=num_tweets_undelivered_for_one_day ))
                 sys.stdout.flush()
             else:
-                sys.stdout.write("\r         {total:^13d}    |{undelivered:^11d}|  ".format(total=self._num_tweets_saved_on_the_disk,  undelivered=self._num_tweets_undelivered ))
+                sys.stdout.write("\r         {total:^13d}    |{undelivered:^11d}|  ".format(total=num_tweets_saved_on_the_disk_for_one_day,  undelivered=num_tweets_undelivered_for_one_day ))
                 sys.stdout.flush()
 
 
@@ -795,7 +901,13 @@ class CustomStreamListener(tweepy.StreamListener):
             paste_new_line()
             self.logger.error(logger_msg)
             #return False
-            os._exit(1)
+            #os._exit(1)
+
+            msg = 'Hey,</br></br> Something was Wrong!  Streamer throw the following error-message and the Streaming Process was stopped:</br> <p style="margin-left: 50px;"><strong><font color="red">{}</strong> </font> </p> Please  check if everything is fine with this Process. </br></br> Greeting, </br>Your Streamer'.format(logger_msg)
+            subject = "TwitterStreamer was stopped (Reason: UnauthorizedError401)"
+            send_email(email_addresse, subject, msg)
+            sys.exit()
+
         else:
             paste_new_line()
             self.logger.critical(log_msg)
@@ -870,6 +982,28 @@ def create_new_files_for_new_day(current_data, storage_path, language):
 
 
 
+def generate_status_msg_after_one_day(language, cl=False):
+    #p(self._language)
+    if cl:
+        if language:
+            msg = "TotalSavedThisSession: {session}\n    TotalSavedThisDay: {total}\n    Original-{lang}-Tweets: {original}\n    Original-{lang}-Retweets: {retweets}\n    Other languages: {outsorted}\n    Undelivered: {undelivered} ".format(session=num_tweets_all_saved_for_this_session, total=num_tweets_saved_on_the_disk_for_one_day, original=num_original_tweets_for_one_day, retweets= num_retweets_for_one_day, outsorted=num_tweets_outsorted_for_one_day, undelivered=num_tweets_undelivered_for_one_day, lang=language )
+
+        else:
+            msg = "TotalSavedThisSession: {session}\n    TotalSavedThisDay: {total}\n    Undelivered: {undelivered}".format(session=num_tweets_all_saved_for_this_session,total=num_tweets_saved_on_the_disk_for_one_day,  undelivered=num_tweets_undelivered_for_one_day )
+    else:
+        if language:
+            msg = "     TotalSavedThisSession: {session}\n     TotalSavedThisDay: {total}\n     Original-{lang}-Tweets: {original}\n     Original-{lang}-Retweets: {retweets}\n     Other languages: {outsorted}\n     Undelivered: {undelivered} \n".format(session=num_tweets_all_saved_for_this_session, total=num_tweets_saved_on_the_disk_for_one_day, original=num_original_tweets_for_one_day, retweets= num_retweets_for_one_day, outsorted=num_tweets_outsorted_for_one_day, undelivered=num_tweets_undelivered_for_one_day, lang=language )
+
+        else:
+            msg = "     TotalSavedThisSession: {session}\n     TotalSavedThisDay: {total}\n     Undelivered: {undelivered}\n".format(session=num_tweets_all_saved_for_this_session,total=num_tweets_saved_on_the_disk_for_one_day,  undelivered=num_tweets_undelivered_for_one_day )
+    
+    #p(msg)
+    return msg
 
 
+def streamer_settings_to_str(settings):
+    output = ""
+    for setting_name, value in settings.iteritems():
+        output += "'{}' = '{}'\n".format(setting_name,value)
+    return output 
 
