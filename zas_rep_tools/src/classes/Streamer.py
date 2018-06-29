@@ -588,43 +588,44 @@ class Streamer(object):
                 sys.exit(1)
                 #os._exit(1)
 
-            # except Exception, e:
-            #     if "Failed to establish a new connection" in str(e):
-            #         log_msg = "     {} No Internet Connection. Wait 15 sec.....  \n" 
-            #         logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())))  )
-            #         paste_new_line()
-            #         global_logger.critical("No Internet Connection. Wait 15 sec.....")
-            #         time.sleep(15)
-            #     else:
-            #         log_msg = "     {} Stream get an Error: '{}' \n" 
-            #         logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())),e)  )
-            #         paste_new_line()
-            #         global_logger.critical("Streaming get an Error......‘{}‘".format(e))
+            except Exception, e:
+                if "Failed to establish a new connection" in str(e):
+                    log_msg = "     {} No Internet Connection. Wait 15 sec.....  \n" 
+                    logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())))  )
+                    paste_new_line()
+                    global_logger.critical("No Internet Connection. Wait 15 sec.....")
+                    time.sleep(15)
+                else:
+                    log_msg = "     {} Stream get an Error: '{}' \n" 
+                    logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())),e)  )
+                    paste_new_line()
+                    global_logger.critical("Streaming get an Error......‘{}‘".format(e))
 
-            #     last_5_error.append(str(e))
+                if "IncompleteRead" not in str(e):
+                    last_5_error.append(str(e))
 
-            #     if len(last_5_error) >= 5:
-            #         if len(set(last_5_error)) ==1 :
-            #             log_msg = "     {} Stream was stopped after 5 same errors in stack: '{}' \n" 
-            #             logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())),e)  )
-            #             msg = 'Hey,</br></br> Something was Wrong!  Streamer throw the following error-message and the Streaming Process was stopped:</br> <p style="margin-left: 50px;"><strong><font color="red">{}</strong> </font> </p> Please  check if everything is fine with this Process. </br></br> Greeting, </br>Your Streamer'.format(e)
-            #             last_error = str(e)
-            #             subject = "TwitterStreamer was stopped (Reason: last 5 errors are same)"
-            #             paste_new_line()
-            #             send_email(email_addresse, subject, msg)
-            #             global_logger.error("Stream was stopped after 5 same errors in stack")
-            #             #os._exit(1)
-            #             sys.exit()
-            #         else:
-            #             last_5_error = []
+                if len(last_5_error) >= 5:
+                    if len(set(last_5_error)) ==1 :
+                        log_msg = "     {} Stream was stopped after 5 same errors in stack: '{}' \n" 
+                        logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())),e)  )
+                        msg = 'Hey,</br></br> Something was Wrong!  Streamer throw the following error-message and the Streaming Process was stopped:</br> <p style="margin-left: 50px;"><strong><font color="red">{}</strong> </font> </p> Please  check if everything is fine with this Process. </br></br> Greeting, </br>Your Streamer'.format(e)
+                        last_error = str(e)
+                        subject = "TwitterStreamer was stopped (Reason: last 5 errors are same)"
+                        paste_new_line()
+                        send_email(email_addresse, subject, msg)
+                        global_logger.error("Stream was stopped after 5 same errors in stack")
+                        #os._exit(1)
+                        sys.exit()
+                    else:
+                        last_5_error = []
 
 
 
-            #     if last_error != str(e):
-            #         msg = "Hey,</br></br> Something was Wrong!  Streamer throw the following error-message:</br> <p style='margin-left: 50px;''><strong><font color='red'>{}</strong> </font> </p> Please  check if everything is fine with this Process. </br></br> Greeting, </br>Your Streamer".format(e)
-            #         last_error = str(e)
-            #         paste_new_line()
-            #         send_email(email_addresse, 'Error: '+str(e), msg)
+                if last_error != str(e):
+                    msg = "Hey,</br></br> Something was Wrong!  Streamer throw the following error-message:</br> <p style='margin-left: 50px;''><strong><font color='red'>{}</strong> </font> </p> Please  check if everything is fine with this Process. </br></br> Greeting, </br>Your Streamer".format(e)
+                    last_error = str(e)
+                    paste_new_line()
+                    send_email(email_addresse, 'Error: '+str(e), msg)
 
 
 
