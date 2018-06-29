@@ -604,7 +604,7 @@ class Streamer(object):
                     logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())))  )
                     paste_new_line()
                     global_logger.critical("No Internet Connection. Wait 15 sec.....")
-                    time.sleep(15)
+                    time.sleep(5)
                 else:
                     log_msg = "     {} Stream get an Error: '{}' \n" 
                     logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())),e)  )
@@ -978,7 +978,7 @@ class CustomStreamListener(tweepy.StreamListener):
         logfile.write("    "+str(time.asctime( time.localtime(time.time()) )) + ' Timeout...' + "\n")
         paste_new_line()
         self.logger.warning(" Timeout...")
-        time.sleep(30)
+        time.sleep(5)
         return True # Don't kill the stream
 
 
@@ -991,7 +991,7 @@ class CustomStreamListener(tweepy.StreamListener):
         logfile.write("    "+str(time.asctime( time.localtime(time.time()) )) + ' Disconnected from twitter...' + "\n")
         paste_new_line()
         self.logger.warning("OnDisconnect: Twitter sends a disconnect notice ('{}')".format(notice))
-        time.sleep(30)
+        time.sleep(5)
         return True
 
     def on_limit(self, track):
@@ -999,7 +999,7 @@ class CustomStreamListener(tweepy.StreamListener):
         logfile.write("    "+str(time.asctime( time.localtime(time.time()) )) + ' Disconnected from twitter...' + "\n")
         paste_new_line()
         self.logger.warning("OnLimit: Limitation notice arrives ('{}')".format(track))
-        time.sleep(30)
+        time.sleep(5)
         return True
 
     def on_warning(self, notice):
@@ -1007,7 +1007,7 @@ class CustomStreamListener(tweepy.StreamListener):
         logfile.write("    "+str(time.asctime( time.localtime(time.time()) )) + ' Disconnected from twitter...' + "\n")
         paste_new_line()
         self.logger.warning("OnWarning: disconnection warning message arrives ('{}')".format(notice))
-        time.sleep(30)
+        time.sleep(5)
         return True
 
 
