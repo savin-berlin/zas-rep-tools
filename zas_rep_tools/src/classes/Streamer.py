@@ -41,6 +41,8 @@ from raven import Client
 from cached_property import cached_property
 from encodings.aliases import aliases
 from nltk.corpus import stopwords
+import threading
+import multiprocessing
 
 try:
     nltk.data.find('corpora/stopwords')
@@ -77,7 +79,7 @@ num_tweets_outsorted_for_one_day = 0
 num_tweets_undelivered_for_one_day = 0
 num_retweets_for_one_day = 0
 num_original_tweets_for_one_day = 0
-
+#runing_theards = []
 
 
 
@@ -488,6 +490,7 @@ class Streamer(object):
         global last_error
         global num_tweets_all_saved_for_this_session
         global num_tweets_saved_on_the_disk_for_one_day
+        #global runing_theards
         #global last_error
 
         # initialize it once
@@ -584,6 +587,13 @@ class Streamer(object):
                 file_outsorted.close()
                 file_undelivered.close()
                 file_retweets.close()
+
+                # for theard in runing_theards:
+                #     if theard.isAlive():
+                #         theard.do_run = False
+                #         theard.daemon = True
+                #         self.logger.info("'{}'-Theard was stopped!!!".format(theard.name))
+
                 global_logger.info("All processes was correctly closed.")
                 sys.exit(1)
                 #os._exit(1)
@@ -657,10 +667,12 @@ class CustomStreamListener(tweepy.StreamListener):
         global num_tweets_undelivered_for_one_day 
         global num_retweets_for_one_day 
         global num_original_tweets_for_one_day 
+        #global runing_theards
 
         logger = Logger()
         self.logger = Logger().myLogger("CustomStreamListener")
         self._ignore_retweets = ignore_retweets
+
 
         self.restart_all_counters()
         self._language = language
@@ -703,16 +715,46 @@ class CustomStreamListener(tweepy.StreamListener):
             os.remove(os.path.join(os.getcwd(),full_fname)) 
         #sys.exit()
         make_zipfile(full_fname, path_to_the_jsons)
-        self.logger.info("All JSONS was archived")
+
         #p(ziparch)
         shutil.move(os.path.join(os.getcwd(),full_fname), os.path.dirname(path_to_the_jsons))
         shutil.rmtree(path_to_the_jsons, ignore_errors=True)
         self.logger.debug("All JSONS was moved and orig (not archived) folder was deleted.")
+        paste_new_line()
+        self.logger.info("All JSONS was archived and moved.")
+        paste_new_line()
+        self._initialize_status_bar()
 
 
+    def _initialize_status_bar(self):
+        self._name_in_the_status_bar_original_tweets = "orig_{}".format(self._language) if self._language else "original"
+        self._name_in_the_status_bar_retweets = "rt_{}".format(self._language) if self._language else "retweets"
+        if platform.uname()[0].lower() !="windows":
+            if self._language:
+                sys.stdout.write("\n Status: {startW} totalSaved  {stop} = {startW}{selected:^8}{stop} + {startW}{retweets:^8}{stop} + {startW}other_lang{stop}    {startW}|undelivered|{stop} \n".format(selected=self._name_in_the_status_bar_original_tweets, retweets= self._name_in_the_status_bar_retweets, startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
+                #print "         {startW}{total:^13d}{stop}   {startW}{original:^8d}{stop}   {startW}{retweets:^8}{stop}   {startW}{outsorted:^10d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=0, original=0, retweets= 0, outsorted=0, undelivered=0 ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal)
+            else:
+                sys.stdout.write("\n Status: {startW} totalSaved  {stop}    {startW}|undelivered|{stop} \n".format( startW=self.t.bold_black_on_bright_white,  stop=self.t.normal))
+                #print "         {startW}{total:^13d}{stop}    {startW}|{undelivered:^11d}|{stop}  ".format(total=0,  undelivered=0 ,startW=self.t.bold_black_on_bright_white,  stop=self.t.normal)
+        else:
+            if self._language:
+                sys.stdout.write("\n Status:  totalSaved   = {selected:^8} + {retweets:^8} + other_lang    |undelivered| \n".format(selected=self._name_in_the_status_bar_original_tweets, retweets= self._name_in_the_status_bar_retweets))
+                #print "         {total:^13d}   {original:^8d}   {retweets:^8}   {outsorted:^10d}    |{undelivered:^11d}|  ".format(total=0, original=0, retweets= 0, outsorted=0, undelivered=0 )
+            else:
+                sys.stdout.write("\n Status:  totalSaved      |undelivered| \n")
+                #print "         {total:^13d}    |{undelivered:^11d}|  ".format(total=0,  undelivered=0)
+ 
 
 
     def restart_all_counters(self):
+        global num_tweets_all_saved_for_this_session
+        global num_tweets_all_getted_for_one_day 
+        global num_tweets_saved_on_the_disk_for_one_day
+        global num_tweets_selected_for_one_day 
+        global num_tweets_outsorted_for_one_day 
+        global num_tweets_undelivered_for_one_day 
+        global num_retweets_for_one_day 
+        global num_original_tweets_for_one_day
         num_tweets_all_getted_for_one_day = 0
         num_tweets_saved_on_the_disk_for_one_day = 0
         num_tweets_selected_for_one_day = 0 # selected language, contain tweets and retweets
@@ -740,6 +782,7 @@ class CustomStreamListener(tweepy.StreamListener):
         global num_tweets_undelivered_for_one_day 
         global num_retweets_for_one_day 
         global num_original_tweets_for_one_day
+        #global runing_theards
       
           
         new_date = date.today()
@@ -753,7 +796,19 @@ class CustomStreamListener(tweepy.StreamListener):
             file_undelivered.close()
             file_retweets.close()
             paste_new_line()
-            self.archive_jsons(path_to_the_jsons)
+
+            # #clean closed theards
+            # for theard in runing_theards:
+            #     if not theard.isAlive():
+            #         self.runing_theards.remove(theard)
+
+            processThread = threading.Thread(target=self.archive_jsons, args=(path_to_the_jsons,), name="archive_jsons")
+            processThread.setDaemon(True)
+            processThread.start()
+            #runing_theards.append(processThread)
+
+
+            # self.archive_jsons(path_to_the_jsons)
 
             file_selected, file_outsorted, file_undelivered, file_retweets, path_to_the_jsons =  create_new_files_for_new_day(str(new_date), storage_path, self._language)
             # file_selected.write('[\n') # start a new json array
@@ -772,7 +827,7 @@ class CustomStreamListener(tweepy.StreamListener):
             # Send Email
             streamer_settings_str_html = streamer_settings_to_str(self._streamer_settings).replace("\n", "</br>")
             stats_cli_to_html = stats_cli.replace("\n", "</br>")
-            p(stats_cli_to_html, c="m")
+            #p(stats_cli_to_html, c="m")
             msg = 'Hey,</br></br>  Yeeeeeap, News Day was started!  </br></br>See Stats for the last Day "{}" below: </br> <p style="margin-left: 50px;"><strong><font color="green">{}</strong> </font> </p>  </br></br> </br> Streamer Settings: <p style="margin-left: 50px;"><strong><font color="blue">{}</strong> </font> </p>  With love, </br>Your Streamer'.format(old_date, stats_cli.replace("\n", "</br>"), streamer_settings_str_html)
             subject = "TwitterStreamer started New Day ({})".format(new_date)
             send_email(email_addresse, subject, msg)
@@ -780,8 +835,11 @@ class CustomStreamListener(tweepy.StreamListener):
             # Start new day 
             old_date = new_date
             self.restart_all_counters()
+            #p(num_tweets_saved_on_the_disk_for_one_day)
             self.logger.info("New day was started! ({})".format(old_date))
             logfile.write("    New day was started! -> {}\n".format(new_date))
+            paste_new_line()
+            self._initialize_status_bar()
 
 
 
@@ -980,6 +1038,8 @@ def create_new_files_for_new_day(current_data, storage_path, language):
     output_file_outsorted_tweets = codecs.open(os.path.join(path_to_the_day,other_outfile_name), "a", encoding="utf-8")
     output_file_undelivered_tweets = codecs.open(os.path.join(path_to_the_day,"undelivered_"+outfile_name+ ".log"), "a", encoding="utf-8")
     return output_file_selected_tweets, output_file_outsorted_tweets, output_file_undelivered_tweets , file_retweets, path_to_the_jsons
+
+
 
 
 
