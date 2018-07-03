@@ -40,6 +40,7 @@ from collections import defaultdict
 from raven import Client
 from cached_property import cached_property
 from encodings.aliases import aliases
+import nltk
 from nltk.corpus import stopwords
 import threading
 import multiprocessing
@@ -47,7 +48,6 @@ import multiprocessing
 try:
     nltk.data.find('corpora/stopwords')
 except:
-    import nltk
     nltk.download("stopwords")
 
 
