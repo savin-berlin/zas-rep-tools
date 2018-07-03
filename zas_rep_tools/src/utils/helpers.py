@@ -112,5 +112,3 @@ def send_email(toaddr,Subject, text):
                 break
 
 #\033[1A
-  
-             
