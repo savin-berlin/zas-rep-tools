@@ -17,6 +17,8 @@ import regex
 import sqlite3
 
 import functools
+from pyhashxx import hashxx
+from datetime import datetime
 
 from zas_rep_tools.src.utils.debugger import p
 from zas_rep_tools.src.utils.logger import Logger
@@ -223,7 +225,7 @@ extended_columns_and_types_for_corpus_documents_blogger =[
                                 ('gender','TEXT NOT NULL'),
                                 ('age','INTEGER NOT NULL'),
                                 ('working_area','TEXT NOT NULL'),
-                                ('star-constellation','TEXT NOT NULL'),
+                                ('star_constellation','TEXT NOT NULL'),
                                 ]
 
 
@@ -435,6 +437,9 @@ def attributs_to_str(attributs_names):
         str_attributs_names = ""
         i=1
         for attribut in attributs_names:
+            
+            if isinstance(attribut, unicode):
+                attribut = attribut.encode('utf8')
             if not isinstance(attribut, tuple):
                 return False
 
@@ -466,7 +471,8 @@ def columns_list_to_str(attributs_names):
         str_attributs_names = ""
         i=1
         for attribut in attributs_names:
-
+            if isinstance(attribut, unicode):
+                attribut = attribut.encode('utf8')
             if len(attributs_names) > 1:
                 if i < len(attributs_names):
                     str_attributs_names += "\n{}, ".format(attribut)
@@ -516,6 +522,20 @@ def constrains_list_to_str(constrains):
     return str_constrains
 
 
+def clean_value(value):
+    #p(value, "value")
+    if isinstance(value, (str,unicode)):
+        #newval= value
+        newval = value.replace('\n', '\\n"')
+        newval = newval.replace('"', '\'')
+        newval = newval.replace('\r', '\\r"')
+        return newval
+
+    else:
+        return False
+
+     
+
 
 def values_list_to_str(values):
     '''
@@ -525,28 +545,39 @@ def values_list_to_str(values):
         str_values = ""
         i=1
         for value in values:
+            if isinstance(value, unicode):
+                value = value.encode('utf8')
             if value is None:
                 value = "NULL"
             if value == "NULL":
                 if len(values) > 1:
                     if i < len(values):
-                        str_values += "\n{}, ".format(value)
+                        str_values += "\n{}, ".format(clean_value(value))
                     else:
-                        str_values += "\n{} ".format(value)
+                        str_values += "\n{} ".format(clean_value(value))
                     i+=1
                 elif len(values) == 1:
-                    str_values += "{}".format(value)
+                    str_values += "{}".format(clean_value(value))
                 else:
                     return False
             else:
                 if len(values) > 1:
                     if i < len(values):
-                        str_values += "\n'{}', ".format(value)
+                        if isinstance(value, list):
+                            str_values += '\n"{}", '.format(unicode(clean_value(value)))
+                        else:
+                            str_values += '\n"{}", '.format(clean_value(value))
                     else:
-                        str_values += "\n'{}' ".format(value)
+                        if isinstance(value, list):
+                            str_values += '\n"{}" '.format(unicode(clean_value(value)))
+                        else:
+                            str_values += '\n"{}" '.format(clean_value(value))
                     i+=1
                 elif len(values) == 1:
-                    str_values += "'{}'".format(value)
+                    if isinstance(value, list):
+                        str_values += '"{}"'.format(unicode(clean_value(value)))
+                    else:
+                        str_values += '"{}"'.format(clean_value(value))
                 else:
                     return False
     else:
@@ -556,16 +587,56 @@ def values_list_to_str(values):
 
 
 
-def get_file_name(prjFolder,DBname, language,visibility, typ, fileName=False):
+def where_condition_to_str(inputobj,  connector="AND"):
+    outputstr = ""
+
+    i=0
+    if isinstance(inputobj, list):
+        for item in inputobj:
+            i+=1
+            if i < len(inputobj):
+                outputstr += " {} {}".format(item, connector)
+            else:
+                outputstr += " {} ".format(item)
+
+    elif isinstance(inputobj, str):
+        outputstr += " {}".format(inputobj)
+
+    else:
+        return False
+
+
+    return outputstr
+
+
+def get_file_name(prjFolder,given_id ,DBname, language,visibility, typ, fileName=False, platform_name=False, encrypted=False):
     status = True
     i=0
     while status:
         #Created FileName
         if not fileName:
-            if i==1:
-                fileName = "{}_{}_{}_{}_{}".format(typ,DBname,language,visibility,i)
+            if platform_name:
+                if encrypted:
+                    if i==1:
+                        fileName = "{}_{}_{}_{}_{}_{}_encrypted_{}".format(given_id,typ,platform_name,DBname,language,visibility,i)
+                    else:
+                        fileName = "{}_{}_{}_{}_{}_{}_encrypted".format(given_id,typ,platform_name,DBname,language,visibility)
+                else:
+                    if i==1:
+                        fileName = "{}_{}_{}_{}_{}_{}_plaintext_{}".format(given_id,typ,platform_name,DBname,language,visibility,i)
+                    else:
+                        fileName = "{}_{}_{}_{}_{}_{}_plaintext".format(given_id,typ,platform_name,DBname,language,visibility)
             else:
-                fileName = "{}_{}_{}_{}".format(typ,DBname,language,visibility)
+                if encrypted:
+                    if i==1:
+                        fileName = "{}_{}_{}_{}_{}_encrypted_{}".format(given_id,typ,DBname,language,visibility,i)
+                    else:
+                        fileName = "{}_{}_{}_{}_{}_encrypted".format(given_id,typ,DBname,language,visibility)
+                else:
+                    if i==1:
+                        fileName = "{}_{}_{}_{}_{}_plaintext_{}".format(given_id,typ,DBname,language,visibility,i)
+                    else:
+                        fileName = "{}_{}_{}_{}_{}_plaintext".format(given_id,typ,DBname,language,visibility)
         else:
             if i>0:
                 fileName_without_extension = os.path.splitext(fileName)[0]
@@ -594,21 +665,74 @@ def get_file_name(prjFolder,DBname, language,visibility, typ, fileName=False):
         if not os.path.isfile(path_to_db):
             status = False
             return fileName,path_to_db
+ 
 
 
 
+def get_file_name_for_empty_DB(prjFolder,DBname,  fileName=False, encrypted=False):
+    status = True
+    i=0
+    while status:
+        #Created FileName
+        if not fileName:
+            if encrypted:
+                if i==1:
+                    fileName = "{}_encrypted_{}".format(DBname,i)
+                else:
+                    fileName = "{}_encrypted".format(DBname)
+            else:
+                if i==1:
+                    fileName = "{}_plaintext_{}".format(DBname,i)
+                else:
+                    fileName = "{}_plaintext".format(DBname)
 
-def create_id(name,lang, typ, visibility, number=False, corpus_id=False):
-    if number:
-        if corpus_id:
-            return "{}.{}{}{}{}{}".format(corpus_id,name[0], lang[0], typ[0], visibility[0],number)
         else:
-            return "{}{}{}{}{}".format(name[0], lang[0], typ[0], visibility[0], number)
+            if i>0:
+                fileName_without_extension = os.path.splitext(fileName)[0]
+                pattern = r"^(.*?)(_[0-9]*)$"
+                matched = regex.findall(pattern,fileName_without_extension)
+                #sys.exit()
+                if matched:
+                    fileName_without_extension = matched[0][0]
+
+                fileName = fileName_without_extension+"_"+str(i)
+                
+
+        if i > 10000:
+            print "Aborting!!! To avoid never-ending loop"
+            sys.exit()
+
+        i+=1
+        #Add Extention
+        if ".db" not in fileName:
+            fileName = fileName+".db"
+
+        #Create path_to_db
+        path_to_db = os.path.join(prjFolder,fileName)
+
+        #Check if this file already exist. and if yes, than change the name
+        if not os.path.isfile(path_to_db):
+            status = False
+            return fileName,path_to_db
+ 
+
+
+
+
+#int(str(number)[2:5])
+def create_id(name,lang, typ, visibility, corpus_id=False, stats_id = False):
+    time_now = datetime.now().strftime('%H:%M:%S')
+    if stats_id:
+        if corpus_id:
+            return "{}_{}".format(corpus_id,stats_id)
+        else:
+            return False
     else:
         if corpus_id:
-            return "{}.{}{}{}{}".format(corpus_id,name[0], lang[0], typ[0], visibility[0])
+            hashfunc_as_str =  str(hashxx("{}{}{}{}{}".format(name[0], lang[0], typ[0], visibility[0],time_now)))[2:6]
+            return "{}_{}".format(corpus_id,hashfunc_as_str)
         else:
-            return "{}{}{}{}".format(name[0], lang[0], typ[0], visibility[0])
+            return str(hashxx("{}{}{}{}{}".format(name[0], lang[0], typ[0], visibility[0], time_now)))[2:6]
 
 
 def make_acronyme(full_name):
