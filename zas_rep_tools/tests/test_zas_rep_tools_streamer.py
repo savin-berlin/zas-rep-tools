@@ -167,6 +167,8 @@ class TestZASStreamerStreamer(unittest.TestCase):
             run_streamer()
         except SystemExit:
             assert  True
+        except Exception, e:
+            print "!!!!!!!!!\n!!!!!!!!!\n If you have problem with this Test, probably the test Twitter Credentials was changed. Try to reinstall this package or set your own Twitter initials in the following Test File: 'test_zas_rep_tools_streamer.py'."
 
         # try:
         #     run_streamer()
