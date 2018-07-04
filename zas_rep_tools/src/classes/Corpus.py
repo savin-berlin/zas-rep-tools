@@ -26,7 +26,8 @@ import logging
 from raven import Client
 from cached_property import cached_property
 
-
+from zas_rep_tools.src.classes.DBHandler import DBHandler
+from zas_rep_tools.src.classes.Reader import Reader
 from zas_rep_tools.src.utils.logger import Logger
 from zas_rep_tools.src.utils.debugger import p
 from zas_rep_tools.src.utils.error_tracking import initialisation
@@ -35,7 +36,7 @@ from zas_rep_tools.src.utils.error_tracking import initialisation
 
 class Corpus(object):
 
-    def __init__(self, inpdata, 
+    def __init__(self, 
                  folder_for_log_files=False,  use_logger=True, logger_level=logging.INFO, error_tracking=True):
 
 
@@ -44,22 +45,20 @@ class Corpus(object):
         logger = Logger()
         self._folder_for_log_files = folder_for_log_files
         self._use_logger = use_logger
-        self.logger = logger.myLogger("BloggerCorpus", self._folder_for_log_files, use_logger=self._use_logger, level=logger_level)
+        self._logger_level = logger_level
+        self.logger = logger.myLogger("Corpus", self._folder_for_log_files, use_logger=self._use_logger, level=self._logger_level)
 
-        self.logger.debug('Beginn of creating an instance of BloggerCorpus()')
+        self.logger.debug('Beginn of creating an instance of Corpus()')
 
 
 
         #Input: Incaplusation:
-        self._inpdata = inpdata
-
         self._error_tracking = error_tracking
 
         #p(inpdata)
 
         #InstanceAttributes: Initialization
-
-
+        self.db = False
 
 
         ## Error-Tracking:Initialization #1
@@ -71,181 +70,306 @@ class Corpus(object):
         self.logger.debug('Intern InstanceAttributes was initialized')
 
 
+        self.logger.debug('An instance of Corpus() was created ')
 
-        ### Error Tracking #2
-        if self._error_tracking:
-            self.client.context.merge({'tags': self.__dict__})
 
 
-        ### Error Tracking #3
-        if self._error_tracking:
-            self.client.context.merge({'tags': self.__dict__})
+        ############################################################
+        ####################__init__end#############################
+        ############################################################
 
 
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+######################################Extern########################################
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
 
 
-        self.logger.debug('An instance of BloggerCorpus() was created ')
 
+###########################+++++++++############################
 
 
-class BloggerCorpus(Corpus):
+    def init(self, prjFolder, DBname, language,  visibility, platform_name,
+                    encryption_key=False,fileName=False, source=False, license=False,
+                    template_name=False, version=False,
+                    additional_columns_with_types_for_documents=False, corpus_id=False):
 
-    def __init__(self, inpdata, 
-                 folder_for_log_files=False,  use_logger=True, logger_level=logging.INFO, error_tracking=True):
+        if self.db:
+            self.logger.error("CorpusInitError: An active Corpus Instance was found. Please close already initialized/opened Corpus, before new initialization.")
+            return False
 
+        self.db = DBHandler(logger_level=self._logger_level)
+        self.db.init("corpus", prjFolder, DBname, language, visibility,
+            platform_name=platform_name,encryption_key=encryption_key, fileName=fileName,
+            source=source, license=license, template_name=template_name, version=version,
+            additional_columns_with_types_for_documents=additional_columns_with_types_for_documents,
+            corpus_id=corpus_id)
 
+        if self.db.exist():
+            self.logger.info("CorpusInit: '{}'-Corpus was successful initialized.".format(DBname))
+            return True
+        else:
+            self.logger.error("CorpusInit: '{}'-Corpus wasn't  initialized.".format(DBname))
+            return False
 
-        ## Logger Initialisation 
-        logger = Logger()
-        self._folder_for_log_files = folder_for_log_files
-        self._use_logger = use_logger
-        self.logger = logger.myLogger("BloggerCorpus", self._folder_for_log_files, use_logger=self._use_logger, level=logger_level)
 
-        self.logger.debug('Beginn of creating an instance of BloggerCorpus()')
 
+    def open(self, path_to_corp_db, encryption_key=False):
 
+        if self.db:
+            self.logger.error("CorpusInitError: An active Corpus Instance was found. Please close already initialized/opened Corpus, before new initialization.")
+            return False
 
-        #Input: Incaplusation:
-        self._inpdata = inpdata
+        self.db = DBHandler(logger_level=self._logger_level)
+        self.db.connect(path_to_corp_db, encryption_key=encryption_key)
 
-        self._error_tracking = error_tracking
 
-        #p(inpdata)
+        if self.db.exist():
+            self.logger.info("CorpusOpener: '{}'-Corpus was successful opened.".format(os.path.basename(path_to_corp_db)))
+            return True
+        else:
+            self.logger.error("CorpusOpener: Unfortunately '{}'-Corpus wasn't opened.".format(os.path.basename(path_to_corp_db)))
+            return False
 
-        #InstanceAttributes: Initialization
 
 
 
 
-        ## Error-Tracking:Initialization #1
-        if self._error_tracking:
-            self.client = initialisation()
-            self.client.context.merge({'tags': self.__dict__})
+    def exist(self):
+        return True if self.db else False
 
 
-        self.logger.debug('Intern InstanceAttributes was initialized')
 
 
+    def getdb(self):
+        self.logger.debug("DBConnection was passed.")
+        return self.db
 
-        ### Error Tracking #2
-        if self._error_tracking:
-            self.client.context.merge({'tags': self.__dict__})
 
 
-        ### Error Tracking #3
-        if self._error_tracking:
-            self.client.context.merge({'tags': self.__dict__})
 
 
 
 
-        self.logger.debug('An instance of BloggerCorpus() was created ')
 
 
-class TwitterCorpus(Corpus):
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+######################################INTERN########################################
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
 
-    def __init__(self, inpdata, 
-                 folder_for_log_files=False,  use_logger=True, logger_level=logging.INFO, error_tracking=True):
 
 
 
-        ## Logger Initialisation 
-        logger = Logger()
-        self._folder_for_log_files = folder_for_log_files
-        self._use_logger = use_logger
-        self.logger = logger.myLogger("BloggerCorpus", self._folder_for_log_files, use_logger=self._use_logger, level=logger_level)
 
-        self.logger.debug('Beginn of creating an instance of BloggerCorpus()')
 
 
 
-        #Input: Incaplusation:
-        self._inpdata = inpdata
 
-        self._error_tracking = error_tracking
 
-        #p(inpdata)
 
-        #InstanceAttributes: Initialization
 
 
 
 
-        ## Error-Tracking:Initialization #1
-        if self._error_tracking:
-            self.client = initialisation()
-            self.client.context.merge({'tags': self.__dict__})
 
 
-        self.logger.debug('Intern InstanceAttributes was initialized')
 
 
 
-        ### Error Tracking #2
-        if self._error_tracking:
-            self.client.context.merge({'tags': self.__dict__})
 
 
-        ### Error Tracking #3
-        if self._error_tracking:
-            self.client.context.merge({'tags': self.__dict__})
 
 
 
 
-        self.logger.debug('An instance of BloggerCorpus() was created ')
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+###################################Other Classes#####################################
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
 
+# class BloggerCorpus(Corpus):
 
-class Document(object):
-    def __init__(inpdata, 
-                 folder_for_log_files=False,  use_logger=True, logger_level=logging.INFO, error_tracking=False):
+#     def __init__(self, inpdata, 
+#                  folder_for_log_files=False,  use_logger=True, logger_level=logging.INFO, error_tracking=True):
 
 
 
-        ## Logger Initialisation 
-        logger = Logger()
-        self._folder_for_log_files = folder_for_log_files
-        self._use_logger = use_logger
-        self.logger = logger.myLogger("Document", self._folder_for_log_files, use_logger=self._use_logger, level=logger_level)
+#         ## Logger Initialisation 
+#         logger = Logger()
+#         self._folder_for_log_files = folder_for_log_files
+#         self._use_logger = use_logger
+#         self.logger = logger.myLogger("BloggerCorpus", self._folder_for_log_files, use_logger=self._use_logger, level=logger_level)
 
-        self.logger.debug('Beginn of creating an instance of Document()')
+#         self.logger.debug('Beginn of creating an instance of BloggerCorpus()')
 
 
 
-        #Input: Incaplusation:
-        self._error_tracking = error_tracking
+#         #Input: Incaplusation:
+#         self._inpdata = inpdata
 
+#         self._error_tracking = error_tracking
 
+#         #p(inpdata)
 
-        #InstanceAttributes: Initialization
+#         #InstanceAttributes: Initialization
 
 
 
 
-        ## Error-Tracking:Initialization #1
-        if self._error_tracking:
-            self.client = initialisation()
-            self.client.context.merge({'tags': self.__dict__})
+#         ## Error-Tracking:Initialization #1
+#         if self._error_tracking:
+#             self.client = initialisation()
+#             self.client.context.merge({'tags': self.__dict__})
 
 
+#         self.logger.debug('Intern InstanceAttributes was initialized')
 
-        self.logger.debug('Intern InstanceAttributes was initialized')
 
 
+#         ### Error Tracking #2
+#         if self._error_tracking:
+#             self.client.context.merge({'tags': self.__dict__})
 
-        ### Error Tracking #2
-        if self._error_tracking:
-            self.client.context.merge({'tags': self.__dict__})
 
+#         ### Error Tracking #3
+#         if self._error_tracking:
+#             self.client.context.merge({'tags': self.__dict__})
 
-        ### Error Tracking #3
-        if self._error_tracking:
-            self.client.context.merge({'tags': self.__dict__})
 
 
 
+#         self.logger.debug('An instance of BloggerCorpus() was created ')
 
-        self.logger.debug('An instance of BloggerCorpus() was created ')
+
+# class TwitterCorpus(Corpus):
+
+#     def __init__(self, inpdata, 
+#                  folder_for_log_files=False,  use_logger=True, logger_level=logging.INFO, error_tracking=True):
+
+
+
+#         ## Logger Initialisation 
+#         logger = Logger()
+#         self._folder_for_log_files = folder_for_log_files
+#         self._use_logger = use_logger
+#         self.logger = logger.myLogger("BloggerCorpus", self._folder_for_log_files, use_logger=self._use_logger, level=logger_level)
+
+#         self.logger.debug('Beginn of creating an instance of BloggerCorpus()')
+
+
+
+#         #Input: Incaplusation:
+#         self._inpdata = inpdata
+
+#         self._error_tracking = error_tracking
+
+#         #p(inpdata)
+
+#         #InstanceAttributes: Initialization
+
+
+
+
+#         ## Error-Tracking:Initialization #1
+#         if self._error_tracking:
+#             self.client = initialisation()
+#             self.client.context.merge({'tags': self.__dict__})
+
+
+#         self.logger.debug('Intern InstanceAttributes was initialized')
+
+
+
+#         ### Error Tracking #2
+#         if self._error_tracking:
+#             self.client.context.merge({'tags': self.__dict__})
+
+
+#         ### Error Tracking #3
+#         if self._error_tracking:
+#             self.client.context.merge({'tags': self.__dict__})
+
+
+
+
+#         self.logger.debug('An instance of BloggerCorpus() was created ')
+
+
+# class Document(object):
+#     def __init__(inpdata, 
+#                  folder_for_log_files=False,  use_logger=True, logger_level=logging.INFO, error_tracking=False):
+
+
+
+#         ## Logger Initialisation 
+#         logger = Logger()
+#         self._folder_for_log_files = folder_for_log_files
+#         self._use_logger = use_logger
+#         self.logger = logger.myLogger("Document", self._folder_for_log_files, use_logger=self._use_logger, level=logger_level)
+
+#         self.logger.debug('Beginn of creating an instance of Document()')
+
+
+
+#         #Input: Incaplusation:
+#         self._error_tracking = error_tracking
+
+
+
+#         #InstanceAttributes: Initialization
+
+
+
+
+#         ## Error-Tracking:Initialization #1
+#         if self._error_tracking:
+#             self.client = initialisation()
+#             self.client.context.merge({'tags': self.__dict__})
+
+
+
+#         self.logger.debug('Intern InstanceAttributes was initialized')
+
+
+
+#         ### Error Tracking #2
+#         if self._error_tracking:
+#             self.client.context.merge({'tags': self.__dict__})
+
+
+#         ### Error Tracking #3
+#         if self._error_tracking:
+#             self.client.context.merge({'tags': self.__dict__})
+
+
+
+
+#         self.logger.debug('An instance of BloggerCorpus() was created ')
 
 
 
