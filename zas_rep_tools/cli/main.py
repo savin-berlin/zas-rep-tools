@@ -156,18 +156,22 @@ def to_implement(corpus_name, rep_type, search_type, case, context, context_left
 
     #Step 2: Add or Import Corpus
 
-    #Add
-    corpus = Corpus(name, plattform_name, template_name, version, language, source, typ)
-    corpus.saveOnDisc(path) 
+    reader = Reader(path_to_files, file_format)
+
+    #Initialize new one
+    corpus = Corpus()
+    corpus.init(name, plattform_name, template_name, version, language, source, typ)
+    #corpus.saveOnDisc(path) 
     corpus.commit()
     corpus.export() 
-    corpus.addData(path_to_data, typ_of_data) # use reader on stream 
+    corpus.addData(reader, typ_of_data) # use reader on stream 
 
-    configs.addCorpus(name,path,corpus_id) 
+    configs.addCorpus(corpus) 
 
 
     #Open/Import
-    corpus = Corpus(path_to_corp) 
+    corpus = Corpus()
+    corpus.open(path_to_corpDB) 
 
     if corpus.id not in configs.corporaIDs:
         configs.addCorpus(name,path,corpus_id)
