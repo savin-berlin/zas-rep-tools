@@ -123,12 +123,14 @@ class Exporter(object):
         self.current_csvfile = False
         rows_was_exported = 0
         for row in self._inpdata:
+            #p(row)
             try:
                 self._write_to_csv_files(row, fieldnames, path_to_export_dir, fname, rows_limit_in_file=rows_limit_in_file, encoding=encoding)
                 rows_was_exported += 1
             except Exception, e:
                self.logger.error("CSVWriterError: Not possible to Export into CSV. Following Exception was throw: '{}'.".format(e))
                return False
+        self.current_csvfile.close()
         self.logger.info("CSVWriter: '{}' rows  was exported into CSV File(s) in '{}'.".format(rows_was_exported,path_to_export_dir))
 
 
@@ -184,8 +186,8 @@ class Exporter(object):
         rows_was_exported = 0
 
         if not  attributs_names_with_types_as_str:
-            attributs_names_with_types_as_str = self._create_list_with_colms_and_types_for_sqlite(fieldnames)
-
+            attributs_names_with_types_as_str = self._create_list_with_columns_and_types_for_sqlite(fieldnames)
+            #p(attributs_names_with_types_as_str)
 
         if not self.sqlite_db: 
             self.sqlite_db = DBHandler(logger_level=self._logger_level) 
@@ -285,9 +287,15 @@ class Exporter(object):
             self.current_csv_writer = csv.DictWriter(self.current_csvfile, fieldnames=fieldnames)
             self.current_csv_writer.writeheader()
 
-        #p(str(row_as_dict)[55])
-        #p(row_as_dict)
-        encoded_into_str = {k.encode(encoding): v.encode(encoding) for k,v in row_as_dict.iteritems()}
+
+        encoded_into_str = {}
+        for k,v in row_as_dict.iteritems():
+            if isinstance(k, unicode):
+                k = k.encode(encoding)
+            if isinstance(v, unicode):
+                v = v.encode(encoding)
+            encoded_into_str[k] = v
+        #encoded_into_str = {k.encode(encoding): v.encode(encoding) for k,v in row_as_dict.iteritems()}
         #p(encoded_into_str)
         self.current_csv_writer.writerow(encoded_into_str)
         #self.current_csv_writer.writerow(row_as_dict)
@@ -323,9 +331,9 @@ class Exporter(object):
             row_element = ET.SubElement(root_elem, row_elem_name)
             for col_name, value in row_as_dict.iteritems():
                 tag = ET.SubElement(row_element, col_name)
-                tag.text = value
-        except Exception, e:
-            self.logger.error("WriterRowIntoXMLError: Following Exception was throw: '{}'. ".format(e))
+                tag.text = unicode(value)
+        except Exception as e:
+            self.logger.error("WriterRowIntoXMLError: Following Exception was throw: '{}'. ".format(repr(e)))
             return False
 
 
@@ -380,7 +388,7 @@ class Exporter(object):
 
 
 
-    def _create_list_with_colms_and_types_for_sqlite(self, fieldnames):
+    def _create_list_with_columns_and_types_for_sqlite(self, fieldnames):
         outputlist = []
         if isinstance(fieldnames, list):
             for colname in fieldnames:

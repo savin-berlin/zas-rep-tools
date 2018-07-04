@@ -30,6 +30,7 @@ from distutils.dir_util import copy_tree
 import glob
 
 from zas_rep_tools.src.classes.Reader import Reader
+from zas_rep_tools.src.utils.recipes_test_db import *
 
 
 from zas_rep_tools.src.utils.debugger import p, wipd, wipdn, wipdl, wipdo
@@ -189,7 +190,7 @@ class TestZASreaderReader(unittest.TestCase):
 #################################Beginn##############################################
 ############################EXTERN METHODS###########################################
 #####################################################################################
-  #{'text': u"urlLink Drawing Game  It's PICTIONARY. It's very cool.", 'stern': 'Pisces', 'prof': 'indUnk', 'age': '24', 'number': '416465', 'sex': 'male'}
+  #{'text': u"urlLink Drawing Game  It's PICTIONARY. It's very cool.", 'stern': 'Pisces', 'working_area': 'indUnk', 'age': '24', 'number': '416465', 'gender': 'male'}
 
 ###################    :500############################################ 
     ###### TXT ######
@@ -201,11 +202,11 @@ class TestZASreaderReader(unittest.TestCase):
             assert isinstance(data, dict)
             assert len(data) == 6
             assert 'text' in data
-            assert 'star' in data
-            assert 'prof' in data
+            assert 'star_constellation' in data
+            assert 'working_area' in data
             assert 'age' in data
-            assert 'id' in data
-            assert 'sex' in data
+            assert 'blogger_id' in data
+            assert 'gender' in data
             #p(data)
 
 
@@ -213,12 +214,12 @@ class TestZASreaderReader(unittest.TestCase):
     #@wipd
     def test_lazyreader_from_txt_for_given_colnames_501(self):
         reader = Reader(self.txt_blogger_corpus_temp_abs_path_to_small_fake_subset, "txt", regex_template="blogger", logger_level=logging.ERROR)
-        for data in reader.getlazy(colnames=["text", "star", "sex"]):
+        for data in reader.getlazy(colnames=["text", 'star_constellation', 'gender']):
             assert isinstance(data, dict)
             assert len(data) == 3
             assert 'text' in data
-            assert 'star' in data
-            assert 'sex' in data
+            assert 'star_constellation' in data
+            assert 'gender' in data
             #p(data)
 
 
@@ -234,11 +235,11 @@ class TestZASreaderReader(unittest.TestCase):
             assert isinstance(data, dict)
             assert len(data) == 6
             assert 'text' in data
-            assert 'star' in data
-            assert 'prof' in data
+            assert 'star_constellation' in data
+            assert 'working_area' in data
             assert 'age' in data
-            assert 'id' in data
-            assert 'sex' in data
+            assert 'blogger_id' in data
+            assert 'gender' in data
 
     @attr(status='stable')
     #@wipd
@@ -248,24 +249,24 @@ class TestZASreaderReader(unittest.TestCase):
             assert isinstance(data, dict)
             assert len(data) == 6
             assert 'text' in data
-            assert 'star' in data
-            assert 'prof' in data
+            assert 'star_constellation' in data
+            assert 'working_area' in data
             assert 'age' in data
-            assert 'id' in data
-            assert 'sex' in data
+            assert 'blogger_id' in data
+            assert 'gender' in data
 
 
     @attr(status='stable')
     #@wipd
     def test_lazyreader_from_csv_for_given_colnames_504(self):
         reader = Reader(self.csv_blogger_corpus_temp_abs_path_to_small_fake_subset, "csv", logger_level=logging.ERROR)
-        for data in reader.getlazy(colnames=["text", "star", "sex"]):
+        for data in reader.getlazy(colnames=["text", 'star_constellation', 'gender']):
             #p(data)
             assert isinstance(data, dict)
             assert len(data) == 3
             assert 'text' in data
-            assert 'star' in data
-            assert 'sex' in data
+            assert 'star_constellation' in data
+            assert 'gender' in data
 
 
 
@@ -281,11 +282,11 @@ class TestZASreaderReader(unittest.TestCase):
             assert isinstance(data, dict)
             assert len(data) == 6
             assert 'text' in data
-            assert 'star' in data
-            assert 'prof' in data
+            assert 'star_constellation' in data
+            assert 'working_area' in data
             assert 'age' in data
-            assert 'id' in data
-            assert 'sex' in data
+            assert 'blogger_id' in data
+            assert 'gender' in data
 
     @attr(status='stable')
     #@wipd
@@ -295,44 +296,44 @@ class TestZASreaderReader(unittest.TestCase):
             assert isinstance(data, dict)
             assert len(data) == 6
             assert 'text' in data
-            assert 'star' in data
-            assert 'prof' in data
+            assert 'star_constellation' in data
+            assert 'working_area' in data
             assert 'age' in data
-            assert 'id' in data
-            assert 'sex' in data
+            assert 'blogger_id' in data
+            assert 'gender' in data
 
 
     @attr(status='stable')
     #@wipd
     def test_lazyreader_from_xml_for_given_colnames_507(self):
         reader = Reader(self.xml_blogger_corpus_temp_abs_path_to_small_fake_subset, "xml", logger_level=logging.ERROR)
-        for data in reader.getlazy(colnames=["text", "star", "sex"]):
+        for data in reader.getlazy(colnames=["text", 'star_constellation', 'gender']):
             assert isinstance(data, dict)
             assert len(data) == 3
             assert 'text' in data
-            assert 'star' in data
-            assert 'sex' in data
+            assert 'star_constellation' in data
+            assert 'gender' in data
 
 
 
     ###### JSON ######
 
-    #@attr(status='stable')
-    @wipd
+    @attr(status='stable')
+    #@wipd
     def test_lazyreader_from_json_with_ascii_508(self):
         reader = Reader(self.json_blogger_corpus_temp_abs_path_to_small_fake_subset, "json", logger_level=logging.ERROR)
         for data in reader.getlazy():
-            p(data)
-            # assert isinstance(data, dict)
-            # assert len(data) == 6
-            # assert 'text' in data
-            # assert 'star' in data
-            # assert 'prof' in data
-            # assert 'age' in data
-            # assert 'id' in data
-            # assert 'sex' in data
+            #p(data)
+            assert isinstance(data, dict)
+            assert len(data) == 6
+            assert 'text' in data
+            assert 'star_constellation' in data
+            assert 'working_area' in data
+            assert 'age' in data
+            assert 'blogger_id' in data
+            assert 'gender' in data
 
-    #@attr(status='stable')
+    @attr(status='stable')
     #@wipd
     def test_lazyreader_from_json_with_utf8_509(self):
         reader = Reader(self.json_blogger_corpus_abs_path_to_high_repetativ_subset, "json", logger_level=logging.ERROR)
@@ -340,23 +341,23 @@ class TestZASreaderReader(unittest.TestCase):
             assert isinstance(data, dict)
             assert len(data) == 6
             assert 'text' in data
-            assert 'star' in data
-            assert 'prof' in data
+            assert 'star_constellation' in data
+            assert 'working_area' in data
             assert 'age' in data
-            assert 'id' in data
-            assert 'sex' in data
+            assert 'blogger_id' in data
+            assert 'gender' in data
 
 
-    #@attr(status='stable')
+    @attr(status='stable')
     #@wipd
     def test_lazyreader_from_json_for_given_colnames_510(self):
         reader = Reader(self.json_blogger_corpus_temp_abs_path_to_small_fake_subset, "json", logger_level=logging.ERROR)
-        for data in reader.getlazy(colnames=["text", "star", "sex"]):
+        for data in reader.getlazy(colnames=["text", 'star_constellation', 'gender']):
             assert isinstance(data, dict)
             assert len(data) == 3
             assert 'text' in data
-            assert 'star' in data
-            assert 'sex' in data
+            assert 'star_constellation' in data
+            assert 'gender' in data
 
 
 

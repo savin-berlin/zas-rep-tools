@@ -47,7 +47,7 @@ class Reader(object):
     supported_file_types = ["txt", "json", "xml", "csv"]
 
     regex_templates = {
-                "blogger":r"(?P<id>[\d]*)\.(?P<sex>[\w]*)\.(?P<age>\d*)\.(?P<prof>.*)\.(?P<star>[\w]*)",
+                "blogger":r"(?P<blogger_id>[\d]*)\.(?P<gender>[\w]*)\.(?P<age>\d*)\.(?P<working_area>.*)\.(?P<star_constellation>[\w]*)",
                 }
 
     def __init__(self, inp_path, file_format, columns_source=False, regex_template=False, regex_for_fname=False,
@@ -210,25 +210,31 @@ class Reader(object):
 
     def _get_col_and_values_from_fname(self, fname, compiled_regex_for_fname):
         try:
-            #isinstance(name, bytes)
-            # for m in compiled_regex_for_fname.finditer(fname):
-            #     p(m.groupdict())
-            #     mydict = {unicode(k): unicode(v) for k,v in m.groupdict().iteritems()}
-            # sys.exit()
+            col_and_values_dicts = {}
             try:
-                col_and_values_dicts = [{unicode(k): unicode(v) for k,v in m.groupdict().iteritems()} for m in compiled_regex_for_fname.finditer(fname)]
+                for m in compiled_regex_for_fname.finditer(fname):
+                    for k,v in m.groupdict().iteritems():
+                        if v.isdigit():
+                            col_and_values_dicts[unicode(k)]= int(v)
+                        elif isinstance(v, (int, float)):
+                            col_and_values_dicts[unicode(k)]= v
+                        else:
+                            col_and_values_dicts[unicode(k)]= unicode(v)
+
+                #p(col_and_values_dicts)
+                #col_and_values_dicts = [{unicode(k): unicode(v) for k,v in m.groupdict().iteritems()} for m in compiled_regex_for_fname.finditer(fname)]
             except Exception, e:
                 self.logger.error("RegexError: RegexDictExtractor throw following Error: '{}'. ".format(e))
                 return False
             #col_and_values_dicts = [m.groupdict() for m in compiled_regex_for_fname.finditer(fname)]
             #p(col_and_values_dicts)
-            if  len(col_and_values_dicts)==0 or len(col_and_values_dicts[0])<5:
+            if  len(col_and_values_dicts)==0:
                 self.logger.critical("ColumnsExctractionFromFileNameError: Some of the columns in the given Fname '{}' wasn't detected. Following RegEx-Expression was used: '{}'. ".format(fname,self._regex_for_fname))
                 return False
 
-            return col_and_values_dicts[0]
-        except Exception, e:
-            self.logger.critical("ColumnsExctractionFromFileNameError: Following Error was raised: '{}'. ".format(e))
+            return col_and_values_dicts
+        except Exception as  exception:
+            self.logger.critical("ColumnsExctractionFromFileNameError: Following Error was raised: '{}'. ".format(repr(exception)))
             return False
 
 
@@ -398,10 +404,10 @@ class Reader(object):
     def _readJSON(self, path_to_file,encoding="utf_8", colnames=False):
         if os.path.isfile(path_to_file):
             try:
-                p(path_to_file)
+                #p(path_to_file)
                 f = open(path_to_file)
                 data = json.load(f)
-                p(data)
+                #p(data)
 
                 # if colnames:
                 #     yield self._get_data_from_dic_for_given_keys(colnames, row_dict)

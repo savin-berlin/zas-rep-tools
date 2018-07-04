@@ -180,19 +180,18 @@ attributs_names_corpus = [
 ### Documnets_Table (default)
 
 default_columns_and_types_for_corpus_documents = [
-                                ('docs_id','INTEGER PRIMARY KEY'),
-                                ('text','BLOB NOT NULL'),
+                                ('id','INTEGER PRIMARY KEY')
                                 ]
 
 
 default_constraints_for_corpus_documents = [
-                        'CONSTRAINT "Uniq_Blogger_ID" UNIQUE ("docs_id")',
+                        'CONSTRAINT "Uniq_Blogger_ID" UNIQUE ("id")',
 
                         ]
 
 
 default_index_for_corpus_documents = [
-                        'CREATE INDEX "ix_doc_id" ON "documents" ("docs_id");',
+                        'CREATE INDEX "ix_doc_id" ON "documents" ("id");',
 
                             ]
 
@@ -201,6 +200,7 @@ default_index_for_corpus_documents = [
 ### Documnets_Table (special)
 
 extended_columns_and_types_for_corpus_documents_twitter = [
+                                ('text','TEXT NOT NULL'),
                                 ('t_created_at','TEXT NOT NULL'),
                                 ('t_language','TEXT'),
                                 ('t_used_client','TEXT'),
@@ -222,6 +222,8 @@ extended_columns_and_types_for_corpus_documents_twitter = [
 
 
 extended_columns_and_types_for_corpus_documents_blogger =[
+                                ('blogger_id','INTEGER NOT NULL'),
+                                ('text','TEXT NOT NULL'),
                                 ('gender','TEXT NOT NULL'),
                                 ('age','INTEGER NOT NULL'),
                                 ('working_area','TEXT NOT NULL'),
@@ -285,7 +287,7 @@ default_indexes_for_stats_baseline = [
 
 default_columns_and_types_for_stats_replications = [
                                 ('repl_id','INTEGER PRIMARY KEY'),
-                                ('docs_id','INTEGER NOT NULL'),
+                                ('id','INTEGER NOT NULL'),
                                 ('token_nr','INTEGER NOT NULL'),
                                 ('word','TEXT NOT NULL'),
                                 ('rle',' TEXT'),
@@ -310,7 +312,7 @@ default_indexes_for_stats_replications = [
 
 default_columns_and_types_for_stats_reduplications = [
                                 ('redu_id','INTEGER PRIMARY KEY'),
-                                ('docs_id','INTEGER NOT NULL'),
+                                ('id','INTEGER NOT NULL'),
                                 ('token_nr','INTEGER NOT NULL'),
                                 ('word','TEXT NOT NULL'),
                                 ('nr_of_redu','INTEGER NOT NULL'),
@@ -393,7 +395,14 @@ def columns_and_values_to_str(columns_names,values):
 
     return str_columns_and_values
 
-
+def values_to_placeholder(number):
+    output = ""
+    for i in range(number):
+        if i < number-1:
+            output += "?,"
+        elif i== number-1:
+            output += "?"
+    return output
 
 
 def columns_and_types_in_tuples_to_str(attributs_names):
@@ -437,7 +446,7 @@ def attributs_to_str(attributs_names):
         str_attributs_names = ""
         i=1
         for attribut in attributs_names:
-            
+
             if isinstance(attribut, unicode):
                 attribut = attribut.encode('utf8')
             if not isinstance(attribut, tuple):
@@ -536,6 +545,23 @@ def clean_value(value):
 
      
 
+def values_to_tuple(values):
+    values_as_list = list()
+    if isinstance(values, list):
+        for value in values:
+            if isinstance(value, (str, unicode)):
+                values_as_list.append(clean_value(value))
+            elif isinstance(value, list):
+                values_as_list.append(clean_value(str(value)))
+            else:
+                values_as_list.append(value)
+
+
+    else:
+        return False
+
+    return tuple(values_as_list)
+
 
 def values_list_to_str(values):
     '''
@@ -609,7 +635,7 @@ def where_condition_to_str(inputobj,  connector="AND"):
     return outputstr
 
 
-def get_file_name(prjFolder,given_id ,DBname, language,visibility, typ, fileName=False, platform_name=False, encrypted=False):
+def get_file_name(prjFolder,first_id ,DBname, language,visibility, typ,  fileName=False, platform_name=False, second_id=False,encrypted=False):
     status = True
     i=0
     while status:
@@ -618,25 +644,49 @@ def get_file_name(prjFolder,given_id ,DBname, language,visibility, typ, fileName
             if platform_name:
                 if encrypted:
                     if i==1:
-                        fileName = "{}_{}_{}_{}_{}_{}_encrypted_{}".format(given_id,typ,platform_name,DBname,language,visibility,i)
+                        if second_id:
+                            fileName = "{}_{}_{}_{}_{}_{}_{}_encrypted_{}".format(first_id,second_id,typ,platform_name,DBname,language,visibility,i)
+                        else:
+                            fileName = "{}_{}_{}_{}_{}_{}_encrypted_{}".format(first_id,typ,platform_name,DBname,language,visibility,i)
                     else:
-                        fileName = "{}_{}_{}_{}_{}_{}_encrypted".format(given_id,typ,platform_name,DBname,language,visibility)
+                        if second_id:
+                            fileName = "{}_{}_{}_{}_{}_{}_{}_encrypted".format(first_id,second_id,typ,platform_name,DBname,language,visibility)
+                        else:
+                            fileName = "{}_{}_{}_{}_{}_{}_encrypted".format(first_id,typ,platform_name,DBname,language,visibility)
                 else:
                     if i==1:
-                        fileName = "{}_{}_{}_{}_{}_{}_plaintext_{}".format(given_id,typ,platform_name,DBname,language,visibility,i)
+                        if second_id:
+                            fileName = "{}_{}_{}_{}_{}_{}_{}_plaintext_{}".format(first_id,second_id,typ,platform_name,DBname,language,visibility,i)
+                        else: 
+                            fileName = "{}_{}_{}_{}_{}_{}_plaintext_{}".format(first_id,typ,platform_name,DBname,language,visibility,i)
                     else:
-                        fileName = "{}_{}_{}_{}_{}_{}_plaintext".format(given_id,typ,platform_name,DBname,language,visibility)
+                        if second_id:
+                            fileName = "{}_{}_{}_{}_{}_{}_{}_plaintext".format(first_id,second_id,ttyp,platform_name,DBname,language,visibility)
+                        else:
+                            fileName = "{}_{}_{}_{}_{}_{}_plaintext".format(first_id,typ,platform_name,DBname,language,visibility)
             else:
                 if encrypted:
                     if i==1:
-                        fileName = "{}_{}_{}_{}_{}_encrypted_{}".format(given_id,typ,DBname,language,visibility,i)
+                        if second_id:
+                            fileName = "{}_{}_{}_{}_{}_{}_encrypted_{}".format(first_id,second_id,typ,DBname,language,visibility,i)
+                        else:
+                            fileName = "{}_{}_{}_{}_{}_encrypted_{}".format(first_id,typ,DBname,language,visibility,i)
                     else:
-                        fileName = "{}_{}_{}_{}_{}_encrypted".format(given_id,typ,DBname,language,visibility)
+                        if second_id:
+                            fileName = "{}_{}_{}_{}_{}_{}_encrypted".format(first_id,second_id,typ,DBname,language,visibility)
+                        else:
+                            fileName = "{}_{}_{}_{}_{}_encrypted".format(first_id,typ,DBname,language,visibility)
                 else:
                     if i==1:
-                        fileName = "{}_{}_{}_{}_{}_plaintext_{}".format(given_id,typ,DBname,language,visibility,i)
+                        if second_id:
+                            fileName = "{}_{}_{}_{}_{}_{}_plaintext_{}".format(first_id,second_id,typ,DBname,language,visibility,i)
+                        else:
+                            fileName = "{}_{}_{}_{}_{}_plaintext_{}".format(first_id,typ,DBname,language,visibility,i)
                     else:
-                        fileName = "{}_{}_{}_{}_{}_plaintext".format(given_id,typ,DBname,language,visibility)
+                        if second_id:
+                            fileName = "{}_{}_{}_{}_{}_{}_plaintext".format(first_id,second_id,typ,DBname,language,visibility)
+                        else:
+                            fileName = "{}_{}_{}_{}_{}_plaintext".format(first_id,typ,DBname,language,visibility)
         else:
             if i>0:
                 fileName_without_extension = os.path.splitext(fileName)[0]
@@ -715,24 +765,27 @@ def get_file_name_for_empty_DB(prjFolder,DBname,  fileName=False, encrypted=Fals
             status = False
             return fileName,path_to_db
  
-
-
-
-
 #int(str(number)[2:5])
-def create_id(name,lang, typ, visibility, corpus_id=False, stats_id = False):
+def create_id(name,lang, typ, visibility):
     time_now = datetime.now().strftime('%H:%M:%S')
-    if stats_id:
-        if corpus_id:
-            return "{}_{}".format(corpus_id,stats_id)
-        else:
-            return False
-    else:
-        if corpus_id:
-            hashfunc_as_str =  str(hashxx("{}{}{}{}{}".format(name[0], lang[0], typ[0], visibility[0],time_now)))[2:6]
-            return "{}_{}".format(corpus_id,hashfunc_as_str)
-        else:
-            return str(hashxx("{}{}{}{}{}".format(name[0], lang[0], typ[0], visibility[0], time_now)))[2:6]
+    return str(hashxx("{}{}{}{}{}".format(name[0], lang[0], typ[0], visibility[0], time_now)))[2:6]
+
+
+
+# #int(str(number)[2:5])
+# def create_id(name,lang, typ, visibility, corpus_id=False, stats_id = False):
+#     time_now = datetime.now().strftime('%H:%M:%S')
+#     if stats_id:
+#         if corpus_id:
+#             return "{}_{}".format(corpus_id,stats_id)
+#         else:
+#             return False
+#     else:
+#         if corpus_id:
+#             hashfunc_as_str =  str(hashxx("{}{}{}{}{}".format(name[0], lang[0], typ[0], visibility[0],time_now)))[2:6]
+#             return "{}_{}".format(corpus_id,hashfunc_as_str)
+#         else:
+#             return str(hashxx("{}{}{}{}{}".format(name[0], lang[0], typ[0], visibility[0], time_now)))[2:6]
 
 
 def make_acronyme(full_name):

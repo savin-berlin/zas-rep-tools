@@ -39,10 +39,10 @@ import coloredlogs
 
 
 from zas_rep_tools.src.utils.logger import Logger
-from zas_rep_tools.src.utils.sql_helper import *
+#from zas_rep_tools.src.utils.sql_helper import *
 from zas_rep_tools.src.utils.db_helper import *
 from zas_rep_tools.src.utils.debugger import p
-from zas_rep_tools.src.utils.sql_qearies import * 
+#from zas_rep_tools.src.utils.sql_qearies import * 
 #from zas_rep_tools.src.utils.encryption import Encryptor, AESCipher
 from zas_rep_tools.src.utils.helpers import path_to_zas_rep_tools
 from zas_rep_tools.src.utils.error_tracking import initialisation
@@ -307,10 +307,8 @@ class DBHandler(object):
         version = "NULL" if not version else version
         typ= "stats"
 
-        if stats_id:
-            stats_id= create_id(DBname,language, typ, visibility,corpus_id=corpus_id, stats_id=stats_id)
-        else:
-            stats_id= create_id(DBname,language, typ, visibility,corpus_id=corpus_id )
+        if not stats_id:
+            stats_id= create_id(DBname,language, typ, visibility)
 
         
         if not stats_id:
@@ -318,8 +316,8 @@ class DBHandler(object):
             return False
 
 
-        fileName,path_to_db = get_file_name(prjFolder,stats_id,DBname,
-                        language,visibility, typ, fileName,
+        fileName,path_to_db = get_file_name(prjFolder,corpus_id,DBname,
+                        language,visibility, typ, fileName, second_id=stats_id,
                         encrypted= True if encryption_key else False)
 
 
@@ -1419,29 +1417,34 @@ class DBHandler(object):
 
 
         columnsName_as_str = columns_list_to_str(columns_names)
-        values_as_str = values_list_to_str(values)
-        #p(values_as_str, c="r")
-        if not columnsName_as_str or not values_as_str:
+        values_as_tuple = values_to_tuple(values)
+        # p(columns_names, c="r")
+        # p([type(value) for value in values], "value_in_Handler", c="m")
+        # p(values, "value_in_Handler", c="m")
+        # p(values_as_tuple,  "value_tuple_in_Handler", c="m")
+        number  = len(values)
+
+        if not columnsName_as_str or not values_as_tuple:
             self.logger.error("Given Columns or Values wasn't packed into the list.")
             return False
-        #p(columnsName_as_str, c="m")
-        #p(values_as_str, c="m")
-        ### Add Attributes
+
 
         if dbname:
             if dbname  in self.dbnames:
-                qeary = 'INSERT INTO {dbname}.{tableName} ({columns}) \nVALUES ({values});'.format(columns=columnsName_as_str,values=values_as_str, tableName=table_name, dbname=dbname)
+                qeary = 'INSERT INTO {dbname}.{tableName} ({columns}) \nVALUES ({values})'.format(columns=columnsName_as_str,values=values_to_placeholder(number), tableName=table_name, dbname=dbname)
             else:
                 self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
                 return None
         else:
-            qeary = 'INSERT INTO {tableName} ({columns}) \nVALUES ({values});'.format(columns=columnsName_as_str,values=values_as_str, tableName=table_name)
+            qeary = 'INSERT INTO {tableName} ({columns}) \nVALUES ({values});'.format(columns=columnsName_as_str,values=values_to_placeholder(number), tableName=table_name)
+
 
         #p(qeary)
+
         if table_name in self.tables(dbname=dbname):
             try:
                 cursor = self._db.cursor()
-                cursor.execute(qeary)
+                cursor.execute(qeary, values_as_tuple)
                 if table_name != "info":
                     self.all_inserts_counter +=1
                     self.number_of_new_inserts_after_last_commit += 1
@@ -1449,9 +1452,9 @@ class DBHandler(object):
                 self.logger.debug("Following Qeary could have an Error: '{}'.".format(qeary))
 
                 if "has no column named" in str(exception):
-                    self.logger.error("One of the columns is not in the Table. See Exception:  '{}'. Current Insertion is not done.".format( repr(exception) ))
+                    self.logger.error("insertCVError: One of the columns is not in the Table. See Exception:  '{}'. Current Insertion is not done.".format( repr(exception) ))
                 else:
-                    self.logger.error("Something happens at the InsertCV-Method:  '{}'. Current Insertion is not done.".format( repr(exception) ))
+                    self.logger.error("insertCVError: Something happens at the InsertCV-Method:  '{}'. Current Insertion is not done.".format( repr(exception) ))
                 return False
 
             if dbname:
@@ -1460,7 +1463,7 @@ class DBHandler(object):
                 self.logger.debug("Insertion: One row was inserted into '{}'-Table. ".format(table_name))
             return True
         else:
-            self.logger.error("Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name))
+            self.logger.error("insertCVError: Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name))
             return False
 
 
@@ -1478,35 +1481,38 @@ class DBHandler(object):
             return False
         # Check if attributes and values have the same length
 
-        values_as_str = values_list_to_str(values)
-
-        if  not values_as_str:
+        # values_as_str = values_list_to_str(values)
+        values_as_tuple = values_to_tuple(values)
+        number  = len(values)
+        #p(self.colt("documents"))
+        if  not values_as_tuple:
             self.logger.error("Given  Values wasn't packet into the list.")
             return False
         #p(columnsName_as_str, c="m")
         #p(values_as_str, c="m")
         ### Add Attributes
 
+
         if dbname:
             if dbname  in self.dbnames:
-                qeary = 'INSERT INTO {dbname}.{tableName}  \nVALUES ({values});'.format(values=values_as_str, tableName=table_name, dbname=dbname)
+                qeary = 'INSERT INTO {dbname}.{tableName}  \nVALUES ({values});'.format(values=values_to_placeholder(number), tableName=table_name, dbname=dbname)
             else:
                 self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
                 return None
         else:
-            qeary = 'INSERT INTO {tableName}  \nVALUES ({values});'.format(values=values_as_str, tableName=table_name)
+            qeary = 'INSERT INTO {tableName}  \nVALUES ({values});'.format(values=values_to_placeholder(number), tableName=table_name)
 
         #p(qeary, c="m")
         if table_name in self.tables(dbname=dbname):
             try:
                 cursor = self._db.cursor()
-                cursor.execute(qeary)
+                cursor.execute(qeary, values_as_tuple)
                 if table_name != "info":
                     self.all_inserts_counter +=1
                     self.number_of_new_inserts_after_last_commit += 1
             except Exception as  exception:
                 self.logger.debug("Following Qeary could have an Error: '{}'.".format(qeary))
-                self.logger.error("Something happens at the InsertV-Method:  '{}'. Current Insertion is not done.".format( repr(exception) ))
+                self.logger.error("Something happens in the InsertV-Method:  '{}'. Item wasn't inserted.".format( repr(exception) ))
                 return False
 
             if dbname:
@@ -1518,6 +1524,127 @@ class DBHandler(object):
         else:
             self.logger.error("Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name))
             return False
+
+
+
+
+
+
+    # def insertCV(self,table_name,columns_names,values, dbname=False):
+    #     # INSERT INTO users (email, user_name, create_date)
+    #     # VALUES ("foo@bar.com", "foobar", "2009-12-16");
+
+
+    #     if not self._check_db_should_exist():
+    #         return False
+    #     # Check if attributes and values have the same length
+    #     if len(columns_names) != len(values):
+    #         self.logger.error("Length of given columns_names and values is not equal.")
+    #         return False
+
+
+    #     columnsName_as_str = columns_list_to_str(columns_names)
+    #     values_as_str = values_list_to_str(values)
+    #     #p(values_as_str, c="r")
+    #     if not columnsName_as_str or not values_as_str:
+    #         self.logger.error("Given Columns or Values wasn't packed into the list.")
+    #         return False
+    #     #p(columnsName_as_str, c="m")
+    #     #p(values_as_str, c="m")
+    #     ### Add Attributes
+
+    #     if dbname:
+    #         if dbname  in self.dbnames:
+    #             qeary = 'INSERT INTO {dbname}.{tableName} ({columns}) \nVALUES ({values});'.format(columns=columnsName_as_str,values=values_as_str, tableName=table_name, dbname=dbname)
+    #         else:
+    #             self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+    #             return None
+    #     else:
+    #         qeary = 'INSERT INTO {tableName} ({columns}) \nVALUES ({values});'.format(columns=columnsName_as_str,values=values_as_str, tableName=table_name)
+
+    #     #p(qeary)
+    #     if table_name in self.tables(dbname=dbname):
+    #         try:
+    #             cursor = self._db.cursor()
+    #             cursor.execute(qeary)
+    #             if table_name != "info":
+    #                 self.all_inserts_counter +=1
+    #                 self.number_of_new_inserts_after_last_commit += 1
+    #         except Exception as  exception:
+    #             self.logger.debug("Following Qeary could have an Error: '{}'.".format(qeary))
+
+    #             if "has no column named" in str(exception):
+    #                 self.logger.error("One of the columns is not in the Table. See Exception:  '{}'. Current Insertion is not done.".format( repr(exception) ))
+    #             else:
+    #                 self.logger.error("Something happens at the InsertCV-Method:  '{}'. Current Insertion is not done.".format( repr(exception) ))
+    #             return False
+
+    #         if dbname:
+    #             self.logger.debug("Insertion: One row was inserted into '{}.{}'-Table. ".format(table_name, dbname))
+    #         else:
+    #             self.logger.debug("Insertion: One row was inserted into '{}'-Table. ".format(table_name))
+    #         return True
+    #     else:
+    #         self.logger.error("Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name))
+    #         return False
+
+
+
+
+
+    # def insertV(self,table_name,values, dbname=False):
+    #     # INSERT INTO users VALUES (
+    #     # NULL,
+    #     # "johndoe",
+    #     # "john@doe.com",
+    #     # "2009.12.14"
+    #     # );
+    #     if not self._check_db_should_exist():
+    #         return False
+    #     # Check if attributes and values have the same length
+
+    #     values_as_str = values_list_to_str(values)
+
+    #     if  not values_as_str:
+    #         self.logger.error("Given  Values wasn't packet into the list.")
+    #         return False
+    #     #p(columnsName_as_str, c="m")
+    #     #p(values_as_str, c="m")
+    #     ### Add Attributes
+
+    #     if dbname:
+    #         if dbname  in self.dbnames:
+    #             qeary = 'INSERT INTO {dbname}.{tableName}  \nVALUES ({values});'.format(values=values_as_str, tableName=table_name, dbname=dbname)
+    #         else:
+    #             self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+    #             return None
+    #     else:
+    #         qeary = 'INSERT INTO {tableName}  \nVALUES ({values});'.format(values=values_as_str, tableName=table_name)
+
+    #     #p(qeary, c="m")
+    #     if table_name in self.tables(dbname=dbname):
+    #         try:
+    #             cursor = self._db.cursor()
+    #             cursor.execute(qeary)
+    #             if table_name != "info":
+    #                 self.all_inserts_counter +=1
+    #                 self.number_of_new_inserts_after_last_commit += 1
+    #         except Exception as  exception:
+    #             self.logger.debug("Following Qeary could have an Error: '{}'.".format(qeary))
+    #             self.logger.error("Something happens at the InsertV-Method:  '{}'. Current Insertion is not done.".format( repr(exception) ))
+    #             return False
+
+    #         if dbname:
+    #             self.logger.debug("Insertion: One row was inserted into '{}.{}'-Table. ".format(table_name, dbname))
+    #         else:
+    #             self.logger.debug("Insertion: One row was inserted into '{}'-Table. ".format(table_name))
+
+    #         return True
+    #     else:
+    #         self.logger.error("Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name))
+    #         return False
+
+
 
 
 
@@ -1972,7 +2099,7 @@ class DBHandler(object):
 
     def _check_db_should_exist(self):
         if not self._db: 
-            self.logger.error("No active DB was found. You need to connect or initialize a DB first, before you can make some operation on the DB.")
+            self.logger.error("No active DB was found. You need to connect or initialize a DB first, before you can make any operation on the DB.")
             return False
         else:
             return True
