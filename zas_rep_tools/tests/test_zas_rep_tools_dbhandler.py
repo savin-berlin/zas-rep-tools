@@ -18,7 +18,7 @@ import unittest
 import os
 import logging
 
-
+#import json
 import codecs
 import sure
 import inspect
@@ -336,7 +336,7 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
         col_and_types_of_docs_tabel_in_the_current_db = db.colt("documents")
-        default_col_and_typ_for_docs = [(u'docs_id', u'INTEGER'), (u'text', u'BLOB')]
+        default_col_and_typ_for_docs = [(u'blogger_id', u'INTEGER'), (u'text', u'BLOB')]
         input_col_and_types = col_and_types_for_twitter_docs + new_additional_columns + default_col_and_typ_for_docs
 
         copy_of_db_data = copy.deepcopy(col_and_types_of_docs_tabel_in_the_current_db)
@@ -389,7 +389,7 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
         col_and_types_of_docs_tabel_in_the_current_db = db.colt("documents")
-        default_col_and_typ_for_docs = [(u'docs_id', u'INTEGER'), (u'text', u'BLOB')]
+        default_col_and_typ_for_docs = [(u'blogger_id', u'INTEGER'), (u'text', u'BLOB')]
         input_col_and_types = new_additional_columns + default_col_and_typ_for_docs
 
         copy_of_db_data = copy.deepcopy(col_and_types_of_docs_tabel_in_the_current_db)
@@ -743,7 +743,7 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
         name= "testDB"
 
 
-        db.init_emptyDB(self.tempdir_project_folder, name)
+        db.initempty(self.tempdir_project_folder, name)
 
         db._db.should.be.a("pysqlcipher.dbapi2.Connection")
         db.get_db().should.be.a("pysqlcipher.dbapi2.Connection")
@@ -769,7 +769,7 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
         encryption_key= "testDB"
 
 
-        db.init_emptyDB(self.tempdir_project_folder, name, encryption_key=encryption_key)
+        db.initempty(self.tempdir_project_folder, name, encryption_key=encryption_key)
 
         db._db.should.be.a("pysqlcipher.dbapi2.Connection")
         db.get_db().should.be.a("pysqlcipher.dbapi2.Connection")
@@ -789,7 +789,7 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
     ###### Connection of DBs: 515 ######
 
-    #@attr(status='stable')
+    @attr(status='stable')
     #@wipd
     def test_connection_with_plain_text_blogger_corpus_plaintext_515(self): 
         #db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
@@ -1402,15 +1402,15 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
 
-    ###### Inserts of DBs: 570 ######
+    ###### Inserts of DBs: 560 ######
     @attr(status='stable')
     #@wipd
-    def test_insertCV_into_db_570(self):
+    def test_insertCV_into_db_560(self):
         #db = DBHandler(developingMode=True)
         db = DBHandler(logger_level=logging.ERROR)
         db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
         #p(db.col("documents"))
-        #[u'docs_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
+        #[u'blogger_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
         columns = [ u'blogger_id',u'text', u'gender', u'age', u'working_area', u'star_constellation']
         values = [322624,['schöööööönen',"taaaaaag", "dirrrrrr"], 'm', '27', 'IT', 'lion' ]
         
@@ -1426,14 +1426,14 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
             assert False
 
 
-    #@attr(status='stable')
+    @attr(status='stable')
     #@wipd
-    def test_insertV_into_db_571(self):
+    def test_insertV_into_db_561(self):
         #db = DBHandler(developingMode=True)
         db = DBHandler(logger_level=logging.ERROR)
         db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
         #p(db.col("documents"))
-        #[u'docs_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
+        #[u'blogger_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
         values = [None, 322624, ['schöööööönen',"taaaaaag", "dirrrrrr"], 'm', '27', 'IT', 'lion' ]
         num_of_insertions = 10
         rowNum_bevore = db.rownum("documents")
@@ -1449,14 +1449,230 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
 
+
     @attr(status='stable')
     #@wipd
-    def test_lazy_writer_cv_572(self):
+    def test_insert_with_insert_many_rows_as_dict_CV_562(self):
+        #db = DBHandler(developingMode=True)
+        db = DBHandler(logger_level=logging.ERROR)
+        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+
+
+        inp_dict = {
+                "blogger_id":("1111", "2222"),
+                "text":('json(["sch","taaaaaag", "dirrrrrr"])', 'json(["!!!!",""])'),
+                "gender":("m","w"),
+                "age":("27", "67"),
+                "working_area":("IT","care"),
+                "star_constellation":("lion","fish")
+                }
+
+
+        num_of_insertions = 2
+
+        db.insertCV_many_rows_as_dict("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        output= [(1, 1111, u'json(["sch","taaaaaag", "dirrrrrr"])', u'm', 27, u'IT', u'lion'), (2, 2222, u'json(["!!!!",""])', u'w', 67, u'care', u'fish')]
+        db.getall("documents").should.be.equal(output)
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_insert_with_insertCV_one_row_as_dict_563(self):
+        #db = DBHandler(developingMode=True)
+        db = DBHandler(logger_level=logging.ERROR)
+        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+
+
+        inp_dict = {
+                "blogger_id": "2222",
+                "text":'json(["!!!!",""])',
+                "gender":"m",
+                "age": "67",
+                "working_area":"care",
+                "star_constellation":"fish"
+                }
+
+        num_of_insertions = 1
+
+        db.insertCV_one_row_as_dict("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        output= [(1, 2222, u'json(["!!!!",""])', u'm', 67, u'care', u'fish')]
+        #p(db.getall("documents"))
+        db.getall("documents").should.be.equal(output)
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_insert_many_values_with_insertdict_564(self):
+        #db = DBHandler(developingMode=True)
+        db = DBHandler(logger_level=logging.ERROR)
+        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+
+        inp_dict = {
+                "blogger_id":("1111", "2222"),
+                "text":('json(["sch","taaaaaag", "dirrrrrr"])', 'json(["!!!!",""])'),
+                "gender":("m","w"),
+                "age":("27", "67"),
+                "working_area":("IT","care"),
+                "star_constellation":("lion","fish")
+                }
+
+        num_of_insertions = 2
+
+        db.insertdict("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        output= [(1, 1111, u'json(["sch","taaaaaag", "dirrrrrr"])', u'm', 27, u'IT', u'lion'), (2, 2222, u'json(["!!!!",""])', u'w', 67, u'care', u'fish')]
+        db.getall("documents").should.be.equal(output)
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_insert_one_value_with_insertdict_565(self):
+        #db = DBHandler(developingMode=True)
+        db = DBHandler(logger_level=logging.ERROR)
+        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+        inp_dict = {
+                "blogger_id": "2222",
+                "text":'json(["!!!!",""])',
+                "gender":"m",
+                "age": "67",
+                "working_area":"care",
+                "star_constellation":"fish"
+                }
+        num_of_insertions = 1
+        db.insertdict("documents", inp_dict)
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+
+        output= [(1, 2222, u'json(["!!!!",""])', u'm', 67, u'care', u'fish')]
+        #p(db.getall("documents"))
+        db.getall("documents").should.be.equal(output)
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_insert_one_row_with_insertV_rows_as_list_566(self):
+        #db = DBHandler(developingMode=True)
+        db = DBHandler(logger_level=logging.ERROR)
+        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+
+
+        inp_list = [
+                    (None,"2222", 'json(["!!!!",""])', "m", "67", "care", "fish"),
+                    
+                    ]
+
+
+
+        num_of_insertions = 1
+
+        db.insertV_rows_as_list("documents", inp_list)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+        
+        output= [(1, 2222, u'json(["!!!!",""])', u'm', 67, u'care', u'fish')]
+        #p(db.getall("documents"))
+        db.getall("documents").should.be.equal(output)
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_insert_many_rows_with_insertV_rows_as_list_567(self):
+        #db = DBHandler(developingMode=True)
+        db = DBHandler(logger_level=logging.ERROR)
+        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+
+
+        inp_list = [
+                    (None,"1111", 'json(["sch","taaaaaag", "dirrrrrr"])', "m", "27", "IT", "lion"),
+                    (None,"2222", 'json(["!!!!",""])', "w", "67", "care", "fish")
+                    ]
+
+        num_of_insertions = 2
+
+        db.insertV_rows_as_list("documents", inp_list)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        output= [(1, 1111, u'json(["sch","taaaaaag", "dirrrrrr"])', u'm', 27, u'IT', u'lion'), (2, 2222, u'json(["!!!!",""])', u'w', 67, u'care', u'fish')]
+        db.getall("documents").should.be.equal(output)
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_insert_one_row_with_insert_list_568(self):
+        #db = DBHandler(developingMode=True)
+        db = DBHandler(logger_level=logging.ERROR)
+        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+
+
+        inp_list = [
+                    (None,"2222", 'json(["!!!!",""])', "m", "67", "care", "fish")
+                    ]
+
+        num_of_insertions = 1
+        #p(db.col("documents"))
+        db.insertlist("documents", inp_list)
+
+        if num_of_insertions != db.rownum("documents"):
+           assert False
+        output= [(1, 2222, u'json(["!!!!",""])', u'm', 67, u'care', u'fish')]
+        #p(db.getall("documents"))
+        db.getall("documents").should.be.equal(output)
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_insert_many_rows_with_insertlist_569(self):
+        #db = DBHandler(developingMode=True)
+        db = DBHandler(logger_level=logging.ERROR)
+        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+
+        inp_list = [
+                    (None,"1111", 'json(["sch","taaaaaag", "dirrrrrr"])', "m", "27", "IT", "lion"),
+                    (None,"2222", 'json(["!!!!",""])', "w", "67", "care", "fish")
+                    ]
+
+        num_of_insertions = 2
+
+        db.insertlist("documents", inp_list)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        #p(db.getall("documents"))
+        output= [(1, 1111, u'json(["sch","taaaaaag", "dirrrrrr"])', u'm', 27, u'IT', u'lion'), (2, 2222, u'json(["!!!!",""])', u'w', 67, u'care', u'fish')]
+        db.getall("documents").should.be.equal(output)
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_lazyinsert_cv_570(self):
         #db = DBHandler(developingMode=True, lazyness_border=1000)
         db = DBHandler(logger_level=logging.ERROR, lazyness_border=1000)
         db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
         #p(db.col("documents"))
-        #[u'docs_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
+        #[u'blogger_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
         columns = [u'blogger_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
         values = [322624,['schöööööönen',"taaaaaag", "dirrrrrr"], 'm', '27', 'IT', 'lion' ]
         
@@ -1464,7 +1680,7 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
         rowNum_bevore = db.rownum("documents")
         #p(rowNum_bevore)
         for i in range(num_of_insertions):
-            db.insertlazy("documents", "cv", columns, values)
+            db.lazyinsert("cv", "documents", columns, values)
 
         if db.commit() != 2:
            assert False
@@ -1473,23 +1689,25 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
         #p(rowsNum_after)
         if (num_of_insertions + rowNum_bevore) != rowsNum_after:
             assert False
+
+
 
 
 
     @attr(status='stable')
     #@wipd
-    def test_lazy_writer_v_573(self):
+    def test_lazyinsert_v_571(self):
         #db = DBHandler(developingMode=True, lazyness_border=1000)
         db = DBHandler(logger_level=logging.ERROR, lazyness_border=1000)
         db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
         #p(db.col("documents"))
-        #[u'docs_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
+        #[u'blogger_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
         values = [None,322624, ['schöööööönen',"taaaaaag", "dirrrrrr"], 'm', '27', 'IT', 'lion' ]
         num_of_insertions = 1002
         rowNum_bevore = db.rownum("documents")
         #p(rowNum_bevore)
         for i in range(num_of_insertions):
-            db.insertlazy("documents", "v",  values=values)
+            db.lazyinsert("v", "documents", values)
 
         if db.commit() != 2:
            assert False
@@ -1498,6 +1716,62 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
         #p(rowsNum_after)
         if (num_of_insertions + rowNum_bevore) != rowsNum_after:
             assert False
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_insert_list_with_lazyinsert_572(self):
+        #db = DBHandler(developingMode=True)
+        db = DBHandler(logger_level=logging.ERROR)
+        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+
+        inp_list = [
+                    (None,"1111", 'json(["sch","taaaaaag", "dirrrrrr"])', "m", "27", "IT", "lion"),
+                    (None,"2222", 'json(["!!!!",""])', "w", "67", "care", "fish")
+                    ]
+
+        num_of_insertions = 2
+
+        db.lazyinsert("list","documents", inp_list)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        output= [(1, 1111, u'json(["sch","taaaaaag", "dirrrrrr"])', u'm', 27, u'IT', u'lion'), (2, 2222, u'json(["!!!!",""])', u'w', 67, u'care', u'fish')]
+        db.getall("documents").should.be.equal(output)
+
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_insert_dict_with_lazyinsert_573(self):
+        #db = DBHandler(developingMode=True)
+        db = DBHandler(logger_level=logging.ERROR)
+        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+
+        inp_dict = {
+                "blogger_id":("1111", "2222"),
+                "text":('json(["sch","taaaaaag", "dirrrrrr"])', 'json(["!!!!",""])'),
+                "gender":("m","w"),
+                "age":("27", "67"),
+                "working_area":("IT","care"),
+                "star_constellation":("lion","fish")
+                }
+
+        num_of_insertions = 2
+
+        db.lazyinsert("dict","documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        output= [(1, 1111, u'json(["sch","taaaaaag", "dirrrrrr"])', u'm', 27, u'IT', u'lion'), (2, 2222, u'json(["!!!!",""])', u'w', 67, u'care', u'fish')]
+        db.getall("documents").should.be.equal(output)
+
 
 
 
@@ -1758,7 +2032,7 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
 
-    #@attr(status='stable')
+    @attr(status='stable')
     #@wipd
     def test_get_all_with_limit_591(self):
         #db = DBHandler(developingMode=True)
@@ -1883,12 +2157,12 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
     @attr(status='stable')
     #@wipd
-    def test_getlazy_597(self):
+    def test_lazyget_list_597(self):
         #db = DBHandler(developingMode=True)
         db = DBHandler(logger_level=logging.ERROR)
         db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
         output_list_with_rows = [blog_value1,blog_value2,blog_value3,blog_value4,blog_value5, blog_value6]
-        for row_db, row_output in zip(db.getlazy("documents", size_to_get=3), output_list_with_rows):
+        for row_db, row_output in zip(db.lazyget("documents", size_to_get=3), output_list_with_rows):
             #p((row_db, row_output))
             row_db = list(row_db)
             row_db.pop(0)
@@ -1898,12 +2172,12 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
     @attr(status='stable')
     #@wipd
-    def test_getlazy_with_where_conditions_598(self):
+    def test_lazyget_list_with_where_conditions_598(self):
         #db = DBHandler(developingMode=True)
         db = DBHandler(logger_level=logging.ERROR)
         db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
         output_list_with_rows = [blog_value1]
-        for row_db, row_output in zip(db.getlazy("documents", where="rowid=1", size_to_get=3), output_list_with_rows):
+        for row_db, row_output in zip(db.lazyget("documents", where="rowid=1", size_to_get=3), output_list_with_rows):
             #p((row_db, row_output))
             row_db = list(row_db)
             row_db.pop(0)
@@ -1912,12 +2186,12 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
     @attr(status='stable')
     #@wipd
-    def test_getlazy_with_where_conditions_and_dbname_599(self):
+    def test_lazyget_list_with_where_conditions_and_dbname_599(self):
         #db = DBHandler(developingMode=True)
         db = DBHandler(logger_level=logging.ERROR)
         db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
         output_list_with_rows = [blog_value1]
-        for row_db, row_output in zip(db.getlazy("documents", where="rowid=1", dbname="main", size_to_get=3), output_list_with_rows):
+        for row_db, row_output in zip(db.lazyget("documents", where="rowid=1", dbname="main", size_to_get=3), output_list_with_rows):
             #p((row_db, row_output))
             #p((row_db, row_output))
             row_db = list(row_db)
@@ -1927,12 +2201,12 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
     @attr(status='stable')
     #@wipd
-    def test_getlazy_with_where_conditions_and_dbname_and_colnames_600(self):
+    def test_lazyget_list_with_where_conditions_and_dbname_and_colnames_600(self):
         #db = DBHandler(developingMode=True)
         db = DBHandler(logger_level=logging.ERROR)
         db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
         output_list_with_rows = [blog_value1]
-        for row_db, row_output in zip(db.getlazy("documents", where="rowid=1", dbname="main", columns=[ u'gender', u'age', u'working_area', u'star_constellation'], size_to_get=3), output_list_with_rows):
+        for row_db, row_output in zip(db.lazyget("documents", where="rowid=1", dbname="main", columns=[ u'gender', u'age', u'working_area', u'star_constellation'], size_to_get=3), output_list_with_rows):
             #p((row_db, row_output))
             row_db = list(row_db)
             row_output = [unicode(item) for item in row_output]
@@ -1945,12 +2219,12 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
     @attr(status='stable')
     #@wipd
-    def test_getlazy_with_where_conditions_and_colnames_601(self):
+    def test_lazyget_list_with_where_conditions_and_colnames_601(self):
         #db = DBHandler(developingMode=True)
         db = DBHandler(logger_level=logging.ERROR)
         db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
         output_list_with_rows = [blog_value1]
-        for row_db, row_output in zip(db.getlazy("documents", where="rowid=1", columns=[ u'gender', u'age', u'working_area', u'star_constellation']), output_list_with_rows):
+        for row_db, row_output in zip(db.lazyget("documents", where="rowid=1", columns=[ u'gender', u'age', u'working_area', u'star_constellation']), output_list_with_rows):
             #p((row_db, row_output))
             row_db = list(row_db)
             row_output = [unicode(item) for item in row_output]
@@ -1963,12 +2237,12 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
     @attr(status='stable')
     #@wipd
-    def test_getlazy_with_and_colnames_602(self):
+    def test_lazyget_list_with_and_colnames_602(self):
         #db = DBHandler(developingMode=True)
         db = DBHandler(logger_level=logging.ERROR)
         db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
         output_list_with_rows = [blog_value1,blog_value2,blog_value3,blog_value4,blog_value5, blog_value6]
-        for row_db, row_output in zip(db.getlazy("documents",  columns=[ u'gender', u'age', u'working_area', u'star_constellation'], size_to_get=2), output_list_with_rows):
+        for row_db, row_output in zip(db.lazyget("documents",  columns=[ u'gender', u'age', u'working_area', u'star_constellation'], size_to_get=2), output_list_with_rows):
             #p((row_db, row_output))
             row_db = list(row_db)
             row_output = [unicode(item) for item in row_output]
@@ -1976,6 +2250,62 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
             row_output.pop(0)
             #p((row_db, row_output))
             [unicode(item) for item in row_db].should.be.equal(row_output)
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_lazyget_dict_with_colnames_603(self):
+        #db = DBHandler(developingMode=True)
+        db = DBHandler(logger_level=logging.ERROR)
+        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
+        output_list_with_rows = [blog_value1,blog_value2,blog_value3,blog_value4,blog_value5, blog_value6]
+        for getted_dict, row_output in zip(db.lazyget("documents", output="dict"), output_list_with_rows ):
+            #p(getted_dict)
+            getted_dict["blogger_id"].should.be.equal(row_output[0])
+            getted_dict["text"].should.be.equal(unicode(row_output[1]))
+            getted_dict["gender"].should.be.equal(row_output[2])
+            getted_dict["age"].should.be.equal(row_output[3])
+            getted_dict["working_area"].should.be.equal(row_output[4])
+            getted_dict["star_constellation"].should.be.equal(row_output[5])
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_getdictlazy_with_colnames_604(self):
+        #db = DBHandler(developingMode=True)
+        db = DBHandler(logger_level=logging.ERROR)
+        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
+        output_list_with_rows = [blog_value1,blog_value2,blog_value3,blog_value4,blog_value5, blog_value6]
+        for getted_dict, row_output in zip(db.getdictlazy("documents",  columns=[ u'gender', u'age', u'working_area', u'star_constellation'], size_to_get=2), output_list_with_rows):
+            #p((getted_dict, row_output))
+            getted_dict["gender"].should.be.equal(row_output[2])
+            getted_dict["age"].should.be.equal(row_output[3])
+            getted_dict["working_area"].should.be.equal(row_output[4])
+            getted_dict["star_constellation"].should.be.equal(row_output[5])
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_getdictlazy_without_colnames_605(self):
+        #db = DBHandler(developingMode=True)
+        db = DBHandler(logger_level=logging.ERROR)
+        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
+        output_list_with_rows = [blog_value1,blog_value2,blog_value3,blog_value4,blog_value5, blog_value6]
+        for getted_dict, row_output in zip(db.getdictlazy("documents"), output_list_with_rows):
+            #p(getted_dict)
+            getted_dict["blogger_id"].should.be.equal(row_output[0])
+            getted_dict["text"].should.be.equal(unicode(row_output[1]))
+            getted_dict["gender"].should.be.equal(row_output[2])
+            getted_dict["age"].should.be.equal(row_output[3])
+            getted_dict["working_area"].should.be.equal(row_output[4])
+            getted_dict["star_constellation"].should.be.equal(row_output[5])
+
+
+
 
 
 
@@ -1987,7 +2317,7 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
         db = DBHandler(logger_level=logging.ERROR)
         db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
         #p(db.col("documents"))
-        #[u'docs_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
+        #[u'blogger_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
         columns = [ u'blogger_id',u'text', u'gender', u'age', u'working_area', u'star_constellation']
         values = [322624,['schöööööönen',"taaaaaag", "dirrrrrr"], 'm', '27', 'IT', 'lion' ]
         
@@ -2004,6 +2334,11 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
         if rowNum_bevore != rowsNum_after_rollback :
             assert False
+
+
+
+
+    ###### Role Back of DBs: 610 ######
 
 
 

@@ -15,6 +15,7 @@ import os
 import sys
 import regex
 import sqlite3
+import inspect
 
 import functools
 from pyhashxx import hashxx
@@ -22,6 +23,10 @@ from datetime import datetime
 
 from zas_rep_tools.src.utils.debugger import p
 from zas_rep_tools.src.utils.logger import Logger
+
+
+
+path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Logger))))
 
 
 ########################################################################################
@@ -52,32 +57,6 @@ class DBErrorCatcher(type):
                         dct[m] = catch_exception(dct[m],logger)
 
         return type.__new__(cls, name, bases, dct)
-
-
-
-
-
-
-
-
-# #__metaclass__ = ErrorCatcher
-# class DBErrorCatcher(type):
-
-
-#     @classmethod
-#     def __prepare__(metacls, name, bases, **kargs):
-#     #kargs = {"myArg1": 1, "myArg2": 2}
-#         return super().__prepare__(name, bases, **kargs)
-
-
-#     def __new__(cls, name, bases, dct, **kargs):
-#         logger = Logger()
-#         logger = logger.errorLogger("DBErrorCatcher")
-
-#         for m in dct:
-#             if hasattr(dct[m], '__call__'):
-#                 dct[m] = catch_exception(dct[m],logger)
-#         return type.__new__(cls, name, bases, dct)
 
 
 
@@ -200,7 +179,7 @@ default_index_for_corpus_documents = [
 ### Documnets_Table (special)
 
 extended_columns_and_types_for_corpus_documents_twitter = [
-                                ('text','TEXT NOT NULL'),
+                                ('text','JSON NOT NULL'),
                                 ('t_created_at','TEXT NOT NULL'),
                                 ('t_language','TEXT'),
                                 ('t_used_client','TEXT'),
@@ -223,7 +202,7 @@ extended_columns_and_types_for_corpus_documents_twitter = [
 
 extended_columns_and_types_for_corpus_documents_blogger =[
                                 ('blogger_id','INTEGER NOT NULL'),
-                                ('text','TEXT NOT NULL'),
+                                ('text','JSON NOT NULL'),
                                 ('gender','TEXT NOT NULL'),
                                 ('age','INTEGER NOT NULL'),
                                 ('working_area','TEXT NOT NULL'),
