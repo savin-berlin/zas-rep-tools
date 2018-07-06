@@ -11,10 +11,22 @@
     virtualenv 
 
 #### System Requirements (installation)
+    Linux
     sudo apt-get install python-pip
     pip install virtualenv 
 
+    Windows 10
+    - Install Windows Tools für Windows
+    - Install Ubuntu from App Store
+    - sudo apt-get update
+    - sudo apt-get upgrade
+    - install python ($ sudo apt install python )
+    - sudo apt-get install python-setuptools python-dev build-essential (https://www.saltycrane.com/blog/2010/02/how-install-pip-ubuntu/) 
+    - sudo apt-get install python-pip
+    - Install the Microsoft Visual C++ Compiler for Python 2.7
+    - install pysqlcipher https://stackoverflow.com/questions/27154476/how-to-compile-and-install-pysqlcipher-for-python-2-7-on-windows-7
 ---
+
 ---
 ---
 ---
@@ -25,6 +37,17 @@
 # Package level
 
 ### Installation 
+
+This guide assumes loadable sqlite extention `json1`. It is used to isolate the environment and dependences.
+1. go to download page:http://sqlite.org/download.html:
+    $ curl -O http://sqlite.org/2016/sqlite-src-3140100.zip # (swap '3140100' with latest version from downloads page)
+    $ unzip sqlite-src-3140100.zip
+2. than compile it 
+    mac osx: gcc -g -fPIC -dynamiclib sqlite-src-3140100/ext/misc/json1.c -o json1
+    windows: cl YourCode.c -link -dll -out:YourCode.dll
+    *nix (linux, BSD, etc): gcc -g -fPIC -shared YourCode.c -o YourCode.so
+
+
 
 This guide assumes `virtualenv`. It is used to isolate the environment and dependences.
 
@@ -131,6 +154,7 @@ DB
     -> ProjectDBs
         -> firstly they could be in the Project Folder or secondly  in other folder 
         -> PrjDBs should have in the name a part of the string wit the name of the Project and also have ".db" extension 
+        -> PrjDBs should have follwoing muster "prjName*.db" AND prjName should be in the main DB
 
 
 ##### __Descriptions:__   
