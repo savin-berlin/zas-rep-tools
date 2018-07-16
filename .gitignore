@@ -15,6 +15,9 @@ logs
 
 # sensitiv data
 user-config
+user_config
+*.fs
+user_data
 *.log
 user-config.zip
 *.config
