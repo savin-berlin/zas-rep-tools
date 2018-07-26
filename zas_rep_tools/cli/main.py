@@ -15,12 +15,13 @@ import shutil
 import os
 import inspect
 import sys
+import logging
 
-#from zas_rep_tools.src.utils.logger import Logger
+from zas_rep_tools.src.utils.logger import main_logger
 from zas_rep_tools.src.utils.cli_helper import *
-from zas_rep_tools.src.classes.Reader import  Reader
-from zas_rep_tools.src.classes.DBHandler import DBHandler
-from zas_rep_tools.src.classes.Streamer import Streamer
+from zas_rep_tools.src.classes.reader import  Reader
+from zas_rep_tools.src.classes.dbhandler import DBHandler
+from zas_rep_tools.src.classes.streamer import Streamer
 from zas_rep_tools.src.utils.debugger import p
 
 
@@ -57,7 +58,7 @@ def main():
 @click.argument('corpus_name')
 @click.argument('rep_type') #["rep","red","repinred"]
 @click.argument('search_type') # ["exact", "explor"]
-@click.option('--case', '-ca', default="senstitiv")
+@click.option('--case_sensitiv', '-ca', default=True)
 @click.option('--context', '-co', default=0)
 @click.option('--context_left', '-co', default=0)
 @click.option('--context_right', '-co', default=0)
@@ -68,7 +69,7 @@ def main():
 @click.option('--use_logger_for_script', '-ls', default=True)
 @click.option('--save_logs', '-sl', default=True)
 #@click.option('--logs_dir', '-l', default="logs")
-def implemented(corpus_name, rep_type, search_type, case, context, context_left, context_right, scopus, refer,
+def implemented(corpus_name, rep_type, search_type, case_sensitiv, context, context_left, context_right, scopus, refer,
             logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
     logger = logger_initialisation("implemented" ,use_logger_for_script, save_logs, logs_dir)
@@ -161,10 +162,11 @@ def to_implement(corpus_name, rep_type, search_type, case, context, context_left
     #Initialize new one
     corpus = Corpus()
     corpus.init(name, plattform_name, template_name, version, language, source, typ)
+    stats = stats.init(name, version, language, typ)
     #corpus.saveOnDisc(path) 
     corpus.commit()
     corpus.export() 
-    corpus.addData(reader, typ_of_data) # use reader on stream 
+    corpus.insert(reader, statsDB=stats) # use reader on stream 
 
     configs.addCorpus(corpus) 
 
@@ -256,9 +258,11 @@ def to_implement(corpus_name, rep_type, search_type, case, context, context_left
 
 
 
+
     # EXPORT
     db.export_corpus(corpus_name, output_type="JSON|XML|CSV|TXT")
     db.export_stats(stats_name, output_type="JSON|XML|CSV|TXT")
+
 
 
 
@@ -289,6 +293,62 @@ def findRep(corpus_name, rep_type, search_type, case, context, context_left, con
 
     if not is_project_folder_still_exist():
         sys.exit()
+
+
+
+
+
+
+@main.command('extractRep')
+@click.argument('corpus_name')
+@click.argument('rep_type') #["rep","red","repinred"]
+@click.argument('output_file_name') #["rep","red","repinred"]
+@click.option('--output_file_format', '-f', default=False)
+@click.option('--stats_name', '-s', default=False)
+@click.option('--stats_version', '-s', default=False)
+@click.option('--case_sensitiv', '-cs', default=False)
+@click.option('--search_pattern', '-p', default=False)
+@click.option('--meta_data', '-md', default=False)
+@click.option('--linguistic_data', '-ld', default=False)
+@click.option('--context', '-c', default=False)
+@click.option('--scope', '-c', default="*")
+@click.option('--baseline', '-b', default=True)
+@click.option('--syntagma_delimiter', '-sd', default=":")
+@click.option('--paradima_delimiter', '-pd', default=",")
+def extractRep(corpus_name, rep_type, output_file_name, output_file_format,stats_name, stats_version, case_sensitiv, search_pattern,meta_data,linguistic_data,context, scope,baseline, syntagma_delimiter, paradima_delimiter):
+    '''
+    syntagma_delimiter = ":"
+    paradima_delimiter = ","
+    '''
+    if corpus_need(rep_type, case_sensitiv, context, scope):
+        if corpus_name not in Configer.corpora():
+            self.logger.error("Given CorpusName '{}' is not exist".format(corpus_name))
+        corp = Configer.get_corp(corpus_name)
+
+    stats = Configer.get_stats(corpus_name, stats_name, stats_version)
+
+    splitted_rep_type = rep_type.split("+")
+    repl = True if "repl" in splitted_rep_type else False
+    redu = True if "redu" in splitted_rep_type else False
+    if search_pattern
+        splitted_search_pattern_syntagma = search_pattern.split(syntagma_delimiter)
+        splitted_search_pattern_paradigma = [syntagma.split(paradima_delimiter) for syntagma in splitted_search_pattern_syntagma]
+    scope = len(splitted_search_pattern_paradigma) if search_pattern else scope
+    splitted_context = context.split(syntagma_delimiter)
+    if len(splitted_context) > 2:
+        self.logger.error("Context expression can have max two borders. '{}'-borders are given. Check '{}'. ".format(len(splitted_context), splitted_context))
+    context_left=splitted_context[0] if len(splitted_context)==2 else splitted_context[0]
+    context_right = splitted_context[1] if len(splitted_context)==2 else splitted_context[0]
+    
+    if meta_data:
+        splitted_meta_data = meta_data.split(paradima_delimiter)
+
+    if linguistic_data:
+        splitted_linguistic_data = linguistic_data.split(paradima_delimiter)
+
+    stats.export(output_file_name, output_file_format=output_file_format,baseline=baseline, repl=repl, redu=redu, search_pattern=splitted_search_pattern_paradigma, scope=scope, context_left=context_left, context_right=context_right, meta_data=splitted_meta_data, linguistic_data=splitted_linguistic_data)
+
+
 
 
 
@@ -368,10 +428,13 @@ def corpInfo(corpname, logs_dir, use_logger_for_classes, use_logger_for_script, 
 @click.option('--use_logger_for_classes', '-lc', default=True,type=bool)
 @click.option('--use_logger_for_script', '-ls', default=True,type=bool)
 @click.option('--save_logs', '-sl', default=True,type=bool)
+@click.option('--logger_level', '-ll', default=logging.INFO)
 #@click.option('--logs_dir', '-l', default="logs")
-def streamTwitter( path_to_save,language,stop_words,terms,encoding,ignore_rt, filter_strategie, save_used_terms, logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
+def streamTwitter( path_to_save,language,stop_words,terms,encoding,ignore_rt, filter_strategie, save_used_terms, logs_dir, use_logger_for_classes, use_logger_for_script, save_logs, logger_level):
     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
-    logger = logger_initialisation("streamTwitter" ,use_logger_for_script, save_logs, logs_dir)
+    #logger = logger_initialisation("streamTwitter" ,use_logger_for_script, save_logs, logs_dir)
+    this_function_name = sys._getframe().f_code.co_name
+    logger = main_logger(this_function_name, level=logger_level, folder_for_log=logs_dir, use_logger=use_logger_for_script, save_logs=save_logs)
     #p(list(Streamer.supported_languages)+ [False,"False"])
     #p(type(ignore_rt))
     #ignore_rt = bool(ignore_rt)
@@ -398,7 +461,8 @@ def streamTwitter( path_to_save,language,stop_words,terms,encoding,ignore_rt, fi
 
     stream = Streamer(consumer_key, consumer_secret, access_token, access_token_secret, path_to_save, platfrom="twitter",
                     language=language, email_addresse=agreement_data['email'], stop_words=stop_words, terms=terms,
-                    encoding=encoding, ignore_rt=ignore_rt, save_used_terms=save_used_terms, filterStrat=filter_strategie)
+                    encoding=encoding, ignore_rt=ignore_rt, save_used_terms=save_used_terms, filterStrat=filter_strategie,
+                    logger_level=logger_level, logger_usage=use_logger_for_classes, logger_save_logs= save_logs)
     stream.stream_twitter()
 
 

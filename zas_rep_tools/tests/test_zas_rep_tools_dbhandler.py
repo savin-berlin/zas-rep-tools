@@ -19,32 +19,37 @@ import os
 import logging
 
 #import json
-import codecs
+#import codecs
 import sure
-import inspect
+#import inspect
 import copy
-from collections import defaultdict
+#from collections import defaultdict
 from nose.plugins.attrib import attr
 from testfixtures import tempdir, TempDirectory
 from distutils.dir_util import copy_tree 
-import glob
+#import glob
+import random
+import json
 
-from zas_rep_tools.src.classes.DBHandler import DBHandler
-from zas_rep_tools.src.utils.recipes_test_db import *
+from zas_rep_tools.src.classes.dbhandler import DBHandler
+from zas_rep_tools.src.classes.configer import Configer
+import  zas_rep_tools.src.utils.db_helper as db_helper
+#from zas_rep_tools.src.utils.recipes_test_db import *
 
 from zas_rep_tools.src.utils.debugger import p, wipd, wipdn, wipdl, wipdo
-from zas_rep_tools.src.utils.logger import Logger
-from zas_rep_tools.src.utils.db_helper import *
+from zas_rep_tools.src.utils.logger import *
+#from zas_rep_tools.src.utils.db_helper import *
 
-
-
-
+#logger_save_logs = True
 
 class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
+    #_multiprocess_can_split_ = True
+    _multiprocess_shared_  = True
+    @classmethod 
     def setUp(self):
-
-
-        create_all_test_dbs_if_not_exist()
+        #print "setup called" #called.append("setup")
+        Configer(mode="test", rewrite=False).create_test_data(use_original_classes=True, corp_status_bar=True, corp_log_ignored=True,  corp_lang_classification=True)
+        self.configer = Configer(mode="test")
         ######## Folders Creation ##############
 
         self.tempdir = TempDirectory()
@@ -54,12 +59,19 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
         #### Test DBs########
         #######Begin#########
 
-        self.path_to_zas_rep_tools = path_to_zas_rep_tools
-        self.path_to_testdbs  =  path_to_testdbs 
-        self.db_blogger_plaintext_corp = db_blogger_plaintext_corp
-        self.db_twitter_encrypted_corp = db_twitter_encrypted_corp
-        self.db_blogger_plaintext_stats = db_blogger_plaintext_stats
-        self.db_twitter_encrypted_stats = db_twitter_encrypted_stats 
+        self.path_to_zas_rep_tools = self.configer.path_to_zas_rep_tools
+        self.path_to_testdbs  =  self.configer.path_to_testdbs 
+        self.db_blogger_plaintext_corp_en = self.configer.test_dbs["plaintext"]["blogger"]["en"]["corpus"]
+        self.db_blogger_plaintext_corp_de = self.configer.test_dbs["plaintext"]["blogger"]["de"]["corpus"]
+        self.db_blogger_plaintext_corp_test = self.configer.test_dbs["plaintext"]["blogger"]["test"]["corpus"]
+        self.db_blogger_plaintext_stats_en = self.configer.test_dbs["plaintext"]["blogger"]["en"]["stats"]
+        self.db_blogger_plaintext_stats_de = self.configer.test_dbs["plaintext"]["blogger"]["de"]["stats"]
+        self.db_blogger_plaintext_stats_test = self.configer.test_dbs["plaintext"]["blogger"]["test"]["stats"]
+          
+
+        self.db_twitter_encrypted_corp_de = self.configer.test_dbs["encrypted"]["twitter"]["de"]["corpus"]
+        self.db_twitter_encrypted_stats_de = self.configer.test_dbs["encrypted"]["twitter"]["de"]["stats"]
+
 
         ## TempDir
         self.tempdir.makedir('TestDBs')
@@ -70,31 +82,33 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
         #### Test DBs########
         #####################
 
-        os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats)
-        os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats)
+
 
         #####################
         # Test Blogger Corpus#
         #######Begin#########
 
         self.path_to_test_sets_for_blogger_Corpus = "data/tests_data/Corpora/BloggerCorpus"
+        
+        #TXT
         self.txt_blogger_hightrepetativ_set = "txt/HighRepetativSubSet"
         self.txt_blogger_small_fake_set = "txt/SmallFakeSubset"
-        #self.txt_blogger_small_fake_set = "txt/SmallSubset"
+        #self.txt_blogger_small_sub_set = "txt/SmallSubset"
 
-        # self.csv_blogger_hightrepetativ_set = "csv/HighRepetativSubSet"
-        # self.csv_blogger_small_fake_set = "csv/SmallFakeSubset"
-        # #self.csv_blogger_small_fake_set = "csv/SmallSubset"
+        #CSV
+        self.csv_blogger_hightrepetativ_set = "csv/HighRepetativSubSet"
+        self.csv_blogger_small_fake_set = "csv/SmallFakeSubset"
+        # #self.csv_blogger_small_sub_set = "csv/SmallSubset"
 
+        #XML
+        self.xml_blogger_hightrepetativ_set = "xml/HighRepetativSubSet"
+        self.xml_blogger_small_fake_set = "xml/SmallFakeSubset"
+        #self.xml_blogger_small_sub_set = "xml/SmallSubset"
 
-        # self.xml_blogger_hightrepetativ_set = "xml/HighRepetativSubSet"
-        # self.xml_blogger_small_fake_set = "xml/SmallFakeSubset"
-        # #self.xml_blogger_small_fake_set = "xml/SmallSubset"
-
-
-        # self.json_blogger_hightrepetativ_set = "json/HighRepetativSubSet"
-        # self.json_blogger_small_fake_set = "json/SmallFakeSubset"
-        # #self.json_blogger_small_fake_set = "json/SmallSubset"
+        #JSON
+        self.json_blogger_hightrepetativ_set = "json/HighRepetativSubSet"
+        self.json_blogger_small_fake_set = "json/SmallFakeSubset"
+        # #self.json_blogger_small_sub_set = "json/SmallSubset"
 
 
         ## TempDir
@@ -109,15 +123,37 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
 
+        #####################
+        # Test Twitter Corpus#
+        #######Begin#########
+
+        self.path_to_test_sets_for_twitter_Corpus = "data/tests_data/Corpora/TwitterCorpus"
+        self.json_twitter_set = "JSON/zas-rep-tool/"
+        self.csv_twitter_set = "CSV/zas-rep-tool/"
+        self.xml_twitter_set = "XML/zas-rep-tool/"
+
+        ## TempDir
+        #self.path_to_test_corpora  = "data/tests_data/Corpora"
+        self.tempdir.makedir('TwitterCorpus')
+        self.tempdir_twitter_corp  = self.tempdir.getpath('TwitterCorpus')
+        copy_tree(os.path.join(self.path_to_zas_rep_tools,self.path_to_test_sets_for_twitter_Corpus),self.tempdir_twitter_corp)
+
+        #######End###########
+        # Test Twitter Corpus#
+        #####################
+
+
+
+
 
 
         #####################
         #### Test Blogger ####
         #######Begin#########
 
-        self.input_list_fake_blogger_corpus = [{'star_constellation': 'Capricorn', 'text': u'Well, the angel won. I went to work today....after alot of internal struggle with the facts. I calculated sick days left this year,', 'working_area': 'Consulting', 'age': '46', 'id': '324114', 'gender': 'female'}, {'star_constellation': 'Pisces', 'text': u"urlLink Drawing Game  It's PICTIONARY. It's very cool.", 'working_area': 'indUnk', 'age': '24', 'id': '416465', 'gender': 'male'}, {'star_constellation': 'Virgo', 'text': u'The mango said, "Hi there!!.... \n"Hi there!!.... \n"Hi there!!.... ', 'working_area': 'Non-Profit', 'age': '17', 'id': '322624', 'gender': 'female'}]
-        self.input_list_blogger_corpus_high_repetativ_subset = [{'star_constellation': 'Capricorn', 'text': u'Neeeeeeeeeeeeeeeeiiiiiiinnnnn!!!!! Bitte nicht \U0001f602\U0001f602\U0001f602 \nTest Version von einem Tweeeeeeeeet=)))))))\nnoch einen Tweeeeeeeeet=))))))) \U0001f605\U0001f605', 'working_area': 'Consulting', 'age': '46', 'id': '324114', 'gender': 'female'}, {'star_constellation': 'Pisces', 'text': u'Einen weiteren Thread eingef\xfcgt!!! juHuuuuuuuu=) \U0001f49b\U0001f49b\U0001f49b\nden vierten Threadddddd!!! wooooowwwwww!!! \u263a\ufe0f \U0001f61c\U0001f61c\U0001f61c\nDas ist einnnneeeen Teeeeest Tweeeets, das als "extended" klassifiziert werden sollte!!! Weil es bis 280 Zeichen beinhalten sollte. \U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c Das ist einnnneeeen Teeeeest Tweeeets, das als "extended" klassifiziert werden sollte!!! Weil es bis 280 Zeichen \U0001f61c\U0001f61c\U0001f61c\U0001f61c\nDas ist einnnneeeen Teeeeest Quoted Tweet, das als "extended" klassifiziert werden sollte!!! Weil es bis 280 Zeichen beinhalten sollte. \U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c Das ist einnnneeeen Teeeeest Tweeeets, das als "extended" klassifiziert werden sollte!!! Weil es bis 280 Zeichen \U0001f61c\U0001f61c h', 'working_area': 'indUnk', 'age': '24', 'id': '416465', 'gender': 'male'}, {'star_constellation': 'Virgo', 'text': u'Eine Teeeeeest Diskussion wird er\xf6ffnet!!! @zas-rep-tools \nEinen Test Retweet wird gepostet!!!!! Juhuuuuuu=) \U0001f600\U0001f600\U0001f600\U0001f600\nnoooooooch einen Tweeeeeeeeet=)))))))', 'working_area': 'Non-Profit', 'age': '17', 'id': '322624', 'gender': 'female'}]
-        self.fieldnames = blogger_columns 
+        self.input_list_fake_blogger_corpus = [{'rowid':'1' ,'star_constellation': 'Capricorn', 'text': u'Well, the angel won. I went to work today....after alot of internal struggle with the facts. I calculated sick days left this year,', 'working_area': 'Consulting', 'age': '46', 'id': '324114', 'gender': 'female'}, {'rowid':'2' ,'star_constellation': 'Pisces', 'text': u"urlLink Drawing Game  It's PICTIONARY. It's very cool.", 'working_area': 'indUnk', 'age': '24', 'id': '416465', 'gender': 'male'}, {'rowid':'3' ,'star_constellation': 'Virgo', 'text': u'The mango said, "Hi there!!.... \n"Hi there!!.... \n"Hi there!!.... ', 'working_area': 'Non-Profit', 'age': '17', 'id': '322624', 'gender': 'female'}]
+        self.input_list_blogger_corpus_high_repetativ_subset = [{'rowid':'1' ,'star_constellation': 'Capricorn', 'text': u'@lovelypig #direct_to_haven 67666 8997 -))) -) -P Neeeeeeeeeeeeeeeeiiiiiiinnnnn!!!!! Bitte nicht \U0001f602\U0001f602\U0001f602 \nTest Version von einem Tweeeeeeeeet=)))))))\nnoch einen Tweeeeeeeeet=))))))) \U0001f605\U0001f605', 'working_area': 'Consulting', 'age': '46', 'id': '324114', 'gender': 'female'}, {'rowid':'2' ,'star_constellation': 'Pisces', 'text': u'Einen weiteren Thread eingef\xfcgt!!! juHuuuuuuuu=) \U0001f49b\U0001f49b\U0001f49b\nden vierten Threadddddd!!! wooooowwwwww!!! \u263a\ufe0f \U0001f61c\U0001f61c\U0001f61c\nDas ist einnnneeeen Teeeeest Tweeeets, das als "extended" klassifiziert werden sollte!!! Weil es bis 280 Zeichen beinhalten sollte. \U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c Das ist einnnneeeen Teeeeest Tweeeets, das als "extended" klassifiziert werden sollte!!! Weil es bis 280 Zeichen \U0001f61c\U0001f61c\U0001f61c\U0001f61c\nDas ist einnnneeeen Teeeeest Quoted Tweet, das als "extended" klassifiziert werden sollte!!! Weil es bis 280 Zeichen beinhalten sollte. \U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c Das ist einnnneeeen Teeeeest Tweeeets, das als "extended" klassifiziert werden sollte!!! Weil es bis 280 Zeichen \U0001f61c\U0001f61c h', 'working_area': 'indUnk', 'age': '24', 'id': '416465', 'gender': 'male'}, {'rowid':'3' ,'star_constellation': 'Virgo', 'text': u'Eine Teeeeeest Diskussion wird er\xf6ffnet!!! @zas-rep-tools \nEinen Test Retweet wird gepostet!!!!! Juhuuuuuu=) \U0001f600\U0001f600\U0001f600\U0001f600\nnoooooooch einen Tweeeeeeeeet=)))))))', 'working_area': 'Non-Profit', 'age': '17', 'id': '322624', 'gender': 'female'}]
+        self.fieldnames = self.configer.columns_in_doc_table["blogger"] 
 
         #######End###########
         #### Test Blogger ####
@@ -131,58 +167,17 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
         self.tempdir.makedir('ProjectFolder')
         self.tempdir_project_folder  = self.tempdir.getpath('ProjectFolder')
 
-
         #######End###########
        #### Test PrjFolder #
         #####################  
 
+    @classmethod 
     def tearDown(self):
+        #print "teardown called"# called.append(‘teardown’)
         self.tempdir.cleanup()
 
 
 
-    # def setUp(self):
-
-
-
-    #     ######## Folders Creation ##############
-    #     ########### Begin ######################
-    #     abs_path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Logger))))
-    #     #p(abs_path_to_zas_rep_tools)
-    #     relativ_path_to_test_prjFolder = "data/tests_data/testDBs/prjFolder"
-    #     self.abs_path_to_test_prjFolder = os.path.join(abs_path_to_zas_rep_tools,relativ_path_to_test_prjFolder)
-    #     relativ_path_to_test_testFolder = "data/tests_data/testDBs/testFolder"
-    #     self.abs_path_to_test_testFolder = os.path.join(abs_path_to_zas_rep_tools,relativ_path_to_test_testFolder)
-
-
-    #     relativ_path_to_test_corpus = "data/tests_data/testDBs/test/corpus.db"
-    #     relativ_path_to_test_stats = "data/tests_data/testDBs/test/stats.db"
-    #     self.abs_path_to_test_corpus = os.path.join(abs_path_to_zas_rep_tools,relativ_path_to_test_corpus)
-    #     self.abs_path_to_test_stats = os.path.join(abs_path_to_zas_rep_tools,relativ_path_to_test_stats)
-
-
-    #     self.tempdir = TempDirectory()
-    #     self.tempdir.makedir('PrjFolder')
-    #     self.tempdir.makedir('TestFolder')
-    #     self.tempdir_project_folder  = self.tempdir.getpath('PrjFolder')
-    #     self.path_to_temp_testFolder  = self.tempdir.getpath('TestFolder')
-    #     copy_tree(self.abs_path_to_test_prjFolder,self.tempdir_project_folder )
-    #     copy_tree(self.abs_path_to_test_testFolder,self.path_to_temp_testFolder )
-
-    #     os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp) = os.path.join(self.path_to_temp_testFolder, "7614_corpus_blogs_blogger_de_extern_plaintext.db")
-    #     os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats) = os.path.join(self.path_to_temp_testFolder, "7614_3497_stats_blogger_de_extern_plaintext.db")
-    #     os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats) = os.path.join(self.path_to_temp_testFolder, "fakeDB.db")
-    #     os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_corp) = os.path.join(self.path_to_temp_testFolder, "9588_corpus_twitter_streamed_de_intern_encrypted.db")
-    #     os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats) = os.path.join(self.path_to_temp_testFolder, "9588_6361_stats_streamed_de_intern_encrypted.db")
-    #     ######## Folders Creation ##############
-    #     ########### End #####################
-        
-
-
-
-    # def tearDown(self):
-    #     self.tempdir.cleanup()
-    #     #print ">>>TempDirectory was cleaned<<<"
 
 
 ####################################################################################################
@@ -201,7 +196,7 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_dbhandler_initialisation_000(self):
-        db = DBHandler(logger_level=logging.ERROR)
+        db = DBHandler(mode="test")
         assert not db.get_db()
         #assert db._attachedDBs_config is False
         assert not db._attachedDBs_config 
@@ -256,19 +251,19 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_dbhandler_creation_of_empty_corpus_with_general_init_as_plaintext_500(self):
-        db = DBHandler(logger_level=logging.ERROR)
+        db = DBHandler(mode="test")
         
-        name = init_data_twitter["name"]
-        language = init_data_twitter["language"]
-        visibility = init_data_twitter["visibility"]
-        platform_name = init_data_twitter["platform_name"]
-        license = init_data_twitter["license"]
-        template_name = init_data_twitter["template_name"]
-        version = init_data_twitter["version"]
-        source = init_data_twitter["source"]
-        encryption_key = init_data_twitter["encryption_key_corp"]
-        corpus_id = init_data_twitter["corpus_id"]
-        stats_id = init_data_twitter["stats_id"]
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        platform_name = self.configer.init_info_data["twitter"]["platform_name"]
+        license = self.configer.init_info_data["twitter"]["license"]
+        template_name = self.configer.init_info_data["twitter"]["template_name"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        source = self.configer.init_info_data["twitter"]["source"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["corpus"]
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
         typ= "corpus"
 
         db.init(typ, self.tempdir_project_folder, name, language,
@@ -286,16 +281,16 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
         # check attributes names
-        db.get_all_attr('main')['name'].should.be.equal(name)
-        db.get_all_attr('main')['language'].should.be.equal(language)
-        db.get_all_attr('main')['visibility'].should.be.equal(visibility)
-        db.get_all_attr('main')['platform_name'].should.be.equal(platform_name)
-        db.get_all_attr('main')['typ'].should.be.equal(typ)
-        #db.get_all_attr('main')['id'].should.be.equal(create_id(name,language, typ, visibility))
-        db.get_all_attr('main')['license'].should.be.equal(license)
-        db.get_all_attr('main')['version'].should.be.equal(version)
-        db.get_all_attr('main')['template_name'].should.be.equal(template_name)
-        db.get_all_attr('main')['source'].should.be.equal(source)
+        db.get_all_attr()['name'].should.be.equal(name)
+        db.get_all_attr()['language'].should.be.equal(language)
+        db.get_all_attr()['visibility'].should.be.equal(visibility)
+        db.get_all_attr()['platform_name'].should.be.equal(platform_name)
+        db.get_all_attr()['typ'].should.be.equal(typ)
+        #db.get_all_attr()['id'].should.be.equal(create_id(name,language, typ, visibility))
+        db.get_all_attr()['license'].should.be.equal(license)
+        db.get_all_attr()['version'].should.be.equal(version)
+        db.get_all_attr()['template_name'].should.be.equal(template_name)
+        db.get_all_attr()['source'].should.be.equal(source)
 
 
         #encryption
@@ -305,7 +300,7 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_dbhandler_creation_of_empty_corpus_with_additional_columns_and_template_in_documents_501(self):
-        db = DBHandler(logger_level=logging.ERROR)
+        db = DBHandler(mode="test")
         
         new_additional_columns = [
                         ("gender","TEXT"),
@@ -313,17 +308,17 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
                         ("eye_colour","TEXT"),
                         ]
         #p(new_additional_columns, "new_additional_columns")
-        name = init_data_twitter["name"]
-        language = init_data_twitter["language"]
-        visibility = init_data_twitter["visibility"]
-        platform_name = init_data_twitter["platform_name"]
-        license = init_data_twitter["license"]
-        template_name = init_data_twitter["template_name"]
-        version = init_data_twitter["version"]
-        source = init_data_twitter["source"]
-        encryption_key = init_data_twitter["encryption_key_corp"]
-        corpus_id = init_data_twitter["corpus_id"]
-        stats_id = init_data_twitter["stats_id"]
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        platform_name = self.configer.init_info_data["twitter"]["platform_name"]
+        license = self.configer.init_info_data["twitter"]["license"]
+        template_name = self.configer.init_info_data["twitter"]["template_name"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        source = self.configer.init_info_data["twitter"]["source"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["corpus"]
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
         typ= "corpus"
 
         db.init(typ, self.tempdir_project_folder, name, language,
@@ -360,7 +355,7 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_dbhandler_creation_of_empty_corpus_just_with_additional_columns_in_documents_502(self):
-        db = DBHandler(logger_level=logging.ERROR)
+        db = DBHandler(mode="test")
         
         new_additional_columns = [
                         ("gender","TEXT"),
@@ -368,17 +363,17 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
                         ("eye_colour","TEXT"),
                         ]
         #p(new_additional_columns, "new_additional_columns")
-        name = init_data_twitter["name"]
-        language = init_data_twitter["language"]
-        visibility = init_data_twitter["visibility"]
-        platform_name = init_data_twitter["platform_name"]
-        license = init_data_twitter["license"]
-        template_name = init_data_twitter["template_name"]
-        version = init_data_twitter["version"]
-        source = init_data_twitter["source"]
-        encryption_key = init_data_twitter["encryption_key_corp"]
-        corpus_id = init_data_twitter["corpus_id"]
-        stats_id = init_data_twitter["stats_id"]
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        platform_name = self.configer.init_info_data["twitter"]["platform_name"]
+        license = self.configer.init_info_data["twitter"]["license"]
+        template_name = self.configer.init_info_data["twitter"]["template_name"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        source = self.configer.init_info_data["twitter"]["source"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["corpus"]
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
         typ= "corpus"
 
         db.init(typ, self.tempdir_project_folder, name, language,
@@ -405,23 +400,27 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
 
+
+
+
+
     ###### xxx: 000 ######
     @attr(status='stable')
     #@wipd
     def test_dbhandler_creation_of_empty_corpus_with_special_init_as_plaintext_503(self):
-        db = DBHandler(logger_level=logging.ERROR)
+        db = DBHandler(mode="test")
         
-        name = init_data_twitter["name"]
-        language = init_data_twitter["language"]
-        visibility = init_data_twitter["visibility"]
-        platform_name = init_data_twitter["platform_name"]
-        license = init_data_twitter["license"]
-        template_name = init_data_twitter["template_name"]
-        version = init_data_twitter["version"]
-        source = init_data_twitter["source"]
-        encryption_key = init_data_twitter["encryption_key_corp"]
-        corpus_id = init_data_twitter["corpus_id"]
-        stats_id = init_data_twitter["stats_id"]
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        platform_name = self.configer.init_info_data["twitter"]["platform_name"]
+        license = self.configer.init_info_data["twitter"]["license"]
+        template_name = self.configer.init_info_data["twitter"]["template_name"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        source = self.configer.init_info_data["twitter"]["source"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["corpus"]
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
         typ= "corpus"
 
         db.init_corpus(self.tempdir_project_folder, name, language,
@@ -439,16 +438,16 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
         # check attributes names
-        db.get_all_attr('main')['name'].should.be.equal(name)
-        db.get_all_attr('main')['language'].should.be.equal(language)
-        db.get_all_attr('main')['visibility'].should.be.equal(visibility)
-        db.get_all_attr('main')['platform_name'].should.be.equal(platform_name)
-        db.get_all_attr('main')['typ'].should.be.equal(typ)
-        #db.get_all_attr('main')['id'].should.be.equal(create_id(name,language, typ, visibility))
-        db.get_all_attr('main')['license'].should.be.equal(license)
-        db.get_all_attr('main')['version'].should.be.equal(version)
-        db.get_all_attr('main')['template_name'].should.be.equal(template_name)
-        db.get_all_attr('main')['source'].should.be.equal(source)
+        db.get_all_attr()['name'].should.be.equal(name)
+        db.get_all_attr()['language'].should.be.equal(language)
+        db.get_all_attr()['visibility'].should.be.equal(visibility)
+        db.get_all_attr()['platform_name'].should.be.equal(platform_name)
+        db.get_all_attr()['typ'].should.be.equal(typ)
+        #db.get_all_attr()['id'].should.be.equal(create_id(name,language, typ, visibility))
+        db.get_all_attr()['license'].should.be.equal(license)
+        db.get_all_attr()['version'].should.be.equal(version)
+        db.get_all_attr()['template_name'].should.be.equal(template_name)
+        db.get_all_attr()['source'].should.be.equal(source)
 
         #encryption
         db.encryption().should.be.equal("plaintext")
@@ -458,19 +457,19 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_dbhandler_creation_of_encrypted_empty_corpus_with_general_init_504(self):
-        db = DBHandler(logger_level=logging.ERROR)
+        db = DBHandler(mode="test")
         
-        name = init_data_twitter["name"]
-        language = init_data_twitter["language"]
-        visibility = init_data_twitter["visibility"]
-        platform_name = init_data_twitter["platform_name"]
-        license = init_data_twitter["license"]
-        template_name = init_data_twitter["template_name"]
-        version = init_data_twitter["version"]
-        source = init_data_twitter["source"]
-        encryption_key = init_data_twitter["encryption_key_corp"]
-        corpus_id = init_data_twitter["corpus_id"]
-        stats_id = init_data_twitter["stats_id"]
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        platform_name = self.configer.init_info_data["twitter"]["platform_name"]
+        license = self.configer.init_info_data["twitter"]["license"]
+        template_name = self.configer.init_info_data["twitter"]["template_name"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        source = self.configer.init_info_data["twitter"]["source"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["corpus"]
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
         typ= "corpus"
 
         db.init(typ, self.tempdir_project_folder, name, language,
@@ -489,16 +488,16 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
         # check attributes names
-        db.get_all_attr('main')['name'].should.be.equal(name)
-        db.get_all_attr('main')['language'].should.be.equal(language)
-        db.get_all_attr('main')['visibility'].should.be.equal(visibility)
-        db.get_all_attr('main')['platform_name'].should.be.equal(platform_name)
-        db.get_all_attr('main')['typ'].should.be.equal(typ)
-        #db.get_all_attr('main')['id'].should.be.equal(create_id(name,language, typ, visibility))
-        db.get_all_attr('main')['license'].should.be.equal(license)
-        db.get_all_attr('main')['version'].should.be.equal(version)
-        db.get_all_attr('main')['template_name'].should.be.equal(template_name)
-        db.get_all_attr('main')['source'].should.be.equal(source)
+        db.get_all_attr()['name'].should.be.equal(name)
+        db.get_all_attr()['language'].should.be.equal(language)
+        db.get_all_attr()['visibility'].should.be.equal(visibility)
+        db.get_all_attr()['platform_name'].should.be.equal(platform_name)
+        db.get_all_attr()['typ'].should.be.equal(typ)
+        #db.get_all_attr()['id'].should.be.equal(create_id(name,language, typ, visibility))
+        db.get_all_attr()['license'].should.be.equal(license)
+        db.get_all_attr()['version'].should.be.equal(version)
+        db.get_all_attr()['template_name'].should.be.equal(template_name)
+        db.get_all_attr()['source'].should.be.equal(source)
 
 
         #encryption
@@ -511,19 +510,19 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_dbhandler_creation_of_encrypted_empty_corpus_with_special_init_505(self):
-        db = DBHandler(logger_level=logging.ERROR)
+        db = DBHandler(mode="test")
         
-        name = init_data_twitter["name"]
-        language = init_data_twitter["language"]
-        visibility = init_data_twitter["visibility"]
-        platform_name = init_data_twitter["platform_name"]
-        license = init_data_twitter["license"]
-        template_name = init_data_twitter["template_name"]
-        version = init_data_twitter["version"]
-        source = init_data_twitter["source"]
-        encryption_key = init_data_twitter["encryption_key_corp"]
-        corpus_id = init_data_twitter["corpus_id"]
-        stats_id = init_data_twitter["stats_id"]
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        platform_name = self.configer.init_info_data["twitter"]["platform_name"]
+        license = self.configer.init_info_data["twitter"]["license"]
+        template_name = self.configer.init_info_data["twitter"]["template_name"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        source = self.configer.init_info_data["twitter"]["source"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["corpus"]
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
         typ= "corpus"
 
         db.init_corpus(self.tempdir_project_folder, name, language,
@@ -542,16 +541,16 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
         # check attributes names
-        db.get_all_attr('main')['name'].should.be.equal(name)
-        db.get_all_attr('main')['language'].should.be.equal(language)
-        db.get_all_attr('main')['visibility'].should.be.equal(visibility)
-        db.get_all_attr('main')['platform_name'].should.be.equal(platform_name)
-        db.get_all_attr('main')['typ'].should.be.equal(typ)
-        #db.get_all_attr('main')['id'].should.be.equal(create_id(name,language, typ, visibility))
-        db.get_all_attr('main')['license'].should.be.equal(license)
-        db.get_all_attr('main')['version'].should.be.equal(version)
-        db.get_all_attr('main')['template_name'].should.be.equal(template_name)
-        db.get_all_attr('main')['source'].should.be.equal(source)
+        db.get_all_attr()['name'].should.be.equal(name)
+        db.get_all_attr()['language'].should.be.equal(language)
+        db.get_all_attr()['visibility'].should.be.equal(visibility)
+        db.get_all_attr()['platform_name'].should.be.equal(platform_name)
+        db.get_all_attr()['typ'].should.be.equal(typ)
+        #db.get_all_attr()['id'].should.be.equal(create_id(name,language, typ, visibility))
+        db.get_all_attr()['license'].should.be.equal(license)
+        db.get_all_attr()['version'].should.be.equal(version)
+        db.get_all_attr()['template_name'].should.be.equal(template_name)
+        db.get_all_attr()['source'].should.be.equal(source)
 
 
         #encryption
@@ -563,18 +562,18 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
     ###### xxx: 000 ######
     @attr(status='stable')
-    #@wipd
+    #@wipdl
     def test_dbhandler_creation_of_empty_stats_with_general_init_as_plaintext_506(self):
-        db = DBHandler(logger_level=logging.ERROR)
+        db = DBHandler(mode="test")
         
 
-        name = init_data_twitter["name"]
-        language = init_data_twitter["language"]
-        visibility = init_data_twitter["visibility"]
-        version = init_data_twitter["version"]
-        encryption_key = init_data_twitter["encryption_key_stats"]
-        corpus_id = init_data_twitter["corpus_id"]
-        stats_id = init_data_twitter["stats_id"]
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["stats"]
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
         typ= "stats"
 
 
@@ -585,17 +584,17 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
         db.get_db().should.be.a("pysqlcipher.dbapi2.Connection")
 
         # check tables
-        set(db.tables()).should.be.equal(set([u'info', u'baseline', u'replications', u'reduplications']))
+        set(db.tables()).should.be.equal(set(db_helper.default_tables["stats"].keys()))
         
         # check db names
         db.dbnames.should.be.equal([u'main'])
 
         # check attributes names
-        db.get_all_attr('main')['name'].should.be.equal(name)
-        db.get_all_attr('main')['visibility'].should.be.equal(visibility)
-        db.get_all_attr('main')['typ'].should.be.equal(typ)
-        #db.get_all_attr('main')['id'].should.be.equal(create_id(name,language, typ, visibility, corpus_id=corpus_id))
-        db.get_all_attr('main')['version'].should.be.equal(version)
+        db.get_all_attr()['name'].should.be.equal(name)
+        db.get_all_attr()['visibility'].should.be.equal(visibility)
+        db.get_all_attr()['typ'].should.be.equal(typ)
+        #db.get_all_attr()['id'].should.be.equal(create_id(name,language, typ, visibility, corpus_id=corpus_id))
+        db.get_all_attr()['version'].should.be.equal(version)
 
 
         #encryption
@@ -605,18 +604,18 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
     ###### xxx: 000 ######
     @attr(status='stable')
-    #@wipd
+    #@wipdl
     def test_dbhandler_creation_of_empty_stats_with_special_init_as_plaintext_507(self):
-        db = DBHandler(logger_level=logging.ERROR)
+        db = DBHandler(mode="test")
         
 
-        name = init_data_twitter["name"]
-        language = init_data_twitter["language"]
-        visibility = init_data_twitter["visibility"]
-        version = init_data_twitter["version"]
-        encryption_key = init_data_twitter["encryption_key_stats"]
-        corpus_id = init_data_twitter["corpus_id"]
-        stats_id = init_data_twitter["stats_id"]
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["stats"]
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
         typ= "stats"
 
         db.init_stats(self.tempdir_project_folder, name, language,
@@ -626,17 +625,17 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
         db.get_db().should.be.a("pysqlcipher.dbapi2.Connection")
 
         # check tables
-        set(db.tables()).should.be.equal(set([u'info', u'baseline', u'replications', u'reduplications']))
+        set(db.tables()).should.be.equal(set(db_helper.default_tables["stats"].keys()))
         
         # check db names
         db.dbnames.should.be.equal([u'main'])
 
         # check attributes names
-        db.get_all_attr('main')['name'].should.be.equal(name)
-        db.get_all_attr('main')['visibility'].should.be.equal(visibility)
-        db.get_all_attr('main')['typ'].should.be.equal(typ)
-        #db.get_all_attr('main')['id'].should.be.equal(create_id(name,language, typ, visibility, corpus_id=corpus_id))
-        db.get_all_attr('main')['version'].should.be.equal(version)
+        db.get_all_attr()['name'].should.be.equal(name)
+        db.get_all_attr()['visibility'].should.be.equal(visibility)
+        db.get_all_attr()['typ'].should.be.equal(typ)
+        #db.get_all_attr()['id'].should.be.equal(create_id(name,language, typ, visibility, corpus_id=corpus_id))
+        db.get_all_attr()['version'].should.be.equal(version)
 
 
         #encryption
@@ -651,16 +650,16 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_dbhandler_creation_of_empty_encrypted_stats_with_general_init_508(self):
-        db = DBHandler(logger_level=logging.ERROR)
+        db = DBHandler(mode="test")
         
 
-        name = init_data_twitter["name"]
-        language = init_data_twitter["language"]
-        visibility = init_data_twitter["visibility"]
-        version = init_data_twitter["version"]
-        encryption_key = init_data_twitter["encryption_key_stats"]
-        corpus_id = init_data_twitter["corpus_id"]
-        stats_id = init_data_twitter["stats_id"]
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["stats"]
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
         typ= "stats"
 
 
@@ -672,17 +671,18 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
         db.get_db().should.be.a("pysqlcipher.dbapi2.Connection")
 
         # check tables
-        set(db.tables()).should.be.equal(set([u'info', u'baseline', u'replications', u'reduplications']))
+        db_helper.default_tables["stats"]
+        set(db.tables()).should.be.equal(set(db_helper.default_tables["stats"].keys()))
         
         # check db names
         db.dbnames.should.be.equal([u'main'])
 
         # check attributes names
-        db.get_all_attr('main')['name'].should.be.equal(name)
-        db.get_all_attr('main')['visibility'].should.be.equal(visibility)
-        db.get_all_attr('main')['typ'].should.be.equal(typ)
-        #db.get_all_attr('main')['id'].should.be.equal(create_id(name,language, typ, visibility, corpus_id=corpus_id))
-        db.get_all_attr('main')['version'].should.be.equal(version)
+        db.get_all_attr()['name'].should.be.equal(name)
+        db.get_all_attr()['visibility'].should.be.equal(visibility)
+        db.get_all_attr()['typ'].should.be.equal(typ)
+        #db.get_all_attr()['id'].should.be.equal(create_id(name,language, typ, visibility, corpus_id=corpus_id))
+        db.get_all_attr()['version'].should.be.equal(version)
 
 
         #encryption
@@ -695,16 +695,16 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_dbhandler_creation_of_empty_encrypted_stats_with_special_init_509(self):
-        db = DBHandler(logger_level=logging.ERROR)
+        db = DBHandler(mode="test")
         
 
-        name = init_data_twitter["name"]
-        language = init_data_twitter["language"]
-        visibility = init_data_twitter["visibility"]
-        version = init_data_twitter["version"]
-        encryption_key = init_data_twitter["encryption_key_stats"]
-        corpus_id = init_data_twitter["corpus_id"]
-        stats_id = init_data_twitter["stats_id"]
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["stats"]
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
         typ= "stats"
 
 
@@ -716,17 +716,17 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
         db.get_db().should.be.a("pysqlcipher.dbapi2.Connection")
 
         # check tables
-        set(db.tables()).should.be.equal(set([u'info', u'baseline', u'replications', u'reduplications']))
+        set(db.tables()).should.be.equal(set(db_helper.default_tables["stats"].keys()))
         
         # check db names
         db.dbnames.should.be.equal([u'main'])
 
         # check attributes names
-        db.get_all_attr('main')['name'].should.be.equal(name)
-        db.get_all_attr('main')['visibility'].should.be.equal(visibility)
-        db.get_all_attr('main')['typ'].should.be.equal(typ)
-        #db.get_all_attr('main')['id'].should.be.equal(create_id(name,language, typ, visibility, corpus_id=corpus_id))
-        db.get_all_attr('main')['version'].should.be.equal(version)
+        db.get_all_attr()['name'].should.be.equal(name)
+        db.get_all_attr()['visibility'].should.be.equal(visibility)
+        db.get_all_attr()['typ'].should.be.equal(typ)
+        #db.get_all_attr()['id'].should.be.equal(create_id(name,language, typ, visibility, corpus_id=corpus_id))
+        db.get_all_attr()['version'].should.be.equal(version)
 
 
         #encryption
@@ -738,7 +738,7 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_dbhandler_creation_of_empty_DB_as_plaintext_510(self):
-        db = DBHandler(logger_level=logging.ERROR)
+        db = DBHandler(mode="test")
 
         name= "testDB"
 
@@ -761,9 +761,9 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
     @attr(status='stable')
-    #@wipd
+    #@wipdl
     def test_dbhandler_creation_of_empty_DB_as_encrypted_511(self):
-        db = DBHandler(logger_level=logging.ERROR)
+        db = DBHandler(mode="test")
 
         name= "testDB"
         encryption_key= "testDB"
@@ -792,23 +792,23 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_connection_with_plain_text_blogger_corpus_plaintext_515(self): 
-        #db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+        #db.init("corpus", self.tempdir_project_folder, "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
 
 
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        #p(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        name = init_data_blogger["name"]
-        language = init_data_blogger["language"]
-        visibility = init_data_blogger["visibility"]
-        platform_name = init_data_blogger["platform_name"]
-        license = init_data_blogger["license"]
-        template_name = init_data_blogger["template_name"]
-        version = init_data_blogger["version"]
-        source = init_data_blogger["source"]
-        encryption_key = init_data_blogger["encryption_key_corp"]
-        corpus_id = init_data_blogger["corpus_id"]
-        stats_id = init_data_blogger["stats_id"]
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
+        #p(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"]
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
         typ= "corpus"
 
 
@@ -824,16 +824,16 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
         #p(db.id())
 
         # check attributes names
-        db.get_all_attr('main')['name'].should.be.equal(name)
-        db.get_all_attr('main')['language'].should.be.equal(language)
-        db.get_all_attr('main')['visibility'].should.be.equal(visibility)
-        db.get_all_attr('main')['platform_name'].should.be.equal(platform_name)
-        db.get_all_attr('main')['typ'].should.be.equal(typ)
-        db.get_all_attr('main')['id'].should.be.equal(corpus_id)
-        db.get_all_attr('main')['license'].should.be.equal(license)
-        db.get_all_attr('main')['version'].should.be.equal(version)
-        db.get_all_attr('main')['template_name'].should.be.equal(template_name)
-        db.get_all_attr('main')['source'].should.be.equal(source)
+        db.get_all_attr()['name'].should.be.equal(name)
+        db.get_all_attr()['language'].should.be.equal(language)
+        db.get_all_attr()['visibility'].should.be.equal(visibility)
+        db.get_all_attr()['platform_name'].should.be.equal(platform_name)
+        db.get_all_attr()['typ'].should.be.equal(typ)
+        db.get_all_attr()['id'].should.be.equal(corpus_id)
+        db.get_all_attr()['license'].should.be.equal(license)
+        db.get_all_attr()['version'].should.be.equal(version)
+        db.get_all_attr()['template_name'].should.be.equal(template_name)
+        db.get_all_attr()['source'].should.be.equal(source)
 
         db.encryption().should.be.equal("plaintext")
 
@@ -844,35 +844,35 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
         #db.init("corpus", ".", "streamed", "de", "intern", platform_name="twitter", license="MIT" , template_name="twitter", version="2", source="Twitter API", encryption_key="corpus", corpus_id="9588")
 
 
-        name = init_data_twitter["name"]
-        language = init_data_twitter["language"]
-        visibility = init_data_twitter["visibility"]
-        platform_name = init_data_twitter["platform_name"]
-        license = init_data_twitter["license"]
-        template_name = init_data_twitter["template_name"]
-        version = init_data_twitter["version"]
-        source = init_data_twitter["source"]
-        encryption_key = init_data_twitter["encryption_key_corp"]
-        corpus_id = init_data_twitter["corpus_id"]
-        stats_id = init_data_twitter["stats_id"]
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        platform_name = self.configer.init_info_data["twitter"]["platform_name"]
+        license = self.configer.init_info_data["twitter"]["license"]
+        template_name = self.configer.init_info_data["twitter"]["template_name"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        source = self.configer.init_info_data["twitter"]["source"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["corpus"]
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
         typ= "corpus"
 
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_corp), encryption_key=encryption_key)
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_corp_de ), encryption_key=encryption_key)
 
 
 
         # check attributes names
-        db.get_all_attr('main')['name'].should.be.equal(name)
-        db.get_all_attr('main')['language'].should.be.equal(language)
-        db.get_all_attr('main')['visibility'].should.be.equal(visibility)
-        db.get_all_attr('main')['platform_name'].should.be.equal(platform_name)
-        db.get_all_attr('main')['typ'].should.be.equal(typ)
-        db.get_all_attr('main')['id'].should.be.equal(corpus_id)
-        db.get_all_attr('main')['license'].should.be.equal(license)
-        db.get_all_attr('main')['version'].should.be.equal(version)
-        db.get_all_attr('main')['template_name'].should.be.equal(template_name)
-        db.get_all_attr('main')['source'].should.be.equal(source)
+        db.get_all_attr()['name'].should.be.equal(name)
+        db.get_all_attr()['language'].should.be.equal(language)
+        db.get_all_attr()['visibility'].should.be.equal(visibility)
+        db.get_all_attr()['platform_name'].should.be.equal(platform_name)
+        db.get_all_attr()['typ'].should.be.equal(typ)
+        db.get_all_attr()['id'].should.be.equal(corpus_id)
+        db.get_all_attr()['license'].should.be.equal(license)
+        db.get_all_attr()['version'].should.be.equal(version)
+        db.get_all_attr()['template_name'].should.be.equal(template_name)
+        db.get_all_attr()['source'].should.be.equal(source)
 
         db.encryption().should.be.equal("encrypted")
 
@@ -881,30 +881,30 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_connection_with_plain_text_blogger_stats_plaintext_517(self):
-        #db.init("stats", ".", "blogger", "de", "extern", corpus_id="7614" , version="2", stats_id="3497")
+        #db.init("stats", self.tempdir_project_folder, "blogger", "de", "extern", corpus_id="7614" , version="2", stats_id="3497")
 
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats))
-        #p(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) )
+        #p(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
 
 
-        name = init_data_blogger["name"]
-        language = init_data_blogger["language"]
-        visibility = init_data_blogger["visibility"]
-        version = init_data_blogger["version"]
-        encryption_key = init_data_blogger["encryption_key_stats"]
-        corpus_id = init_data_blogger["corpus_id"]
-        stats_id = init_data_blogger["stats_id"]
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["stats"]
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
         typ= "stats"
 
 
         # check attributes names
-        db.get_all_attr('main')['name'].should.be.equal(name)
-        db.get_all_attr('main')['visibility'].should.be.equal(visibility)
-        db.get_all_attr('main')['typ'].should.be.equal(typ)
-        db.get_all_attr('main')['corpus_id'].should.be.equal(corpus_id)
-        db.get_all_attr('main')['id'].should.be.equal(stats_id)
-        db.get_all_attr('main')['version'].should.be.equal(version)
+        db.get_all_attr()['name'].should.be.equal(name)
+        db.get_all_attr()['visibility'].should.be.equal(visibility)
+        db.get_all_attr()['typ'].should.be.equal(typ)
+        db.get_all_attr()['corpus_id'].should.be.equal(corpus_id)
+        db.get_all_attr()['id'].should.be.equal(stats_id)
+        db.get_all_attr()['version'].should.be.equal(version)
 
         db.encryption().should.be.equal("plaintext")
 
@@ -914,29 +914,29 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     def test_connection_with_plain_text_twitter_stats_encrypted_518(self):
         #db.init("stats", ".", "streamed", "de", "intern", corpus_id="9588" , version="2", encryption_key="stats", stats_id="6361")
 
-        name = init_data_twitter["name"]
-        language = init_data_twitter["language"]
-        visibility = init_data_twitter["visibility"]
-        version = init_data_twitter["version"]
-        encryption_key = init_data_twitter["encryption_key_stats"]
-        corpus_id = init_data_twitter["corpus_id"]
-        stats_id = init_data_twitter["stats_id"]
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["stats"]
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
         typ= "stats"
 
 
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats),  encryption_key=encryption_key)
-        #p(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ),  encryption_key=encryption_key)
+        #p(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
 
 
 
         # check attributes names
-        db.get_all_attr('main')['name'].should.be.equal(name)
-        db.get_all_attr('main')['visibility'].should.be.equal(visibility)
-        db.get_all_attr('main')['typ'].should.be.equal(typ)
-        db.get_all_attr('main')['corpus_id'].should.be.equal(corpus_id)
-        db.get_all_attr('main')['id'].should.be.equal(stats_id)
-        db.get_all_attr('main')['version'].should.be.equal(version)
+        db.get_all_attr()['name'].should.be.equal(name)
+        db.get_all_attr()['visibility'].should.be.equal(visibility)
+        db.get_all_attr()['typ'].should.be.equal(typ)
+        db.get_all_attr()['corpus_id'].should.be.equal(corpus_id)
+        db.get_all_attr()['id'].should.be.equal(stats_id)
+        db.get_all_attr()['version'].should.be.equal(version)
 
         db.encryption().should.be.equal("encrypted")
 
@@ -950,25 +950,25 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     #@wipd
     def test_attach_plaintext_corpus_db_520(self):
         #db.init("stats", ".", "streamed", "de", "intern", corpus_id="9588" , version="2", encryption_key="stats", stats_id="6361")
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats))
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) )
+        db.attach(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
         db.status().should.be.equal("manyDB")
 
         #p(db.dbnames)
-        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))[0])
+        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )[0])
 
-        name = init_data_blogger["name"]
-        language = init_data_blogger["language"]
-        visibility = init_data_blogger["visibility"]
-        platform_name = init_data_blogger["platform_name"]
-        license = init_data_blogger["license"]
-        template_name = init_data_blogger["template_name"]
-        version = init_data_blogger["version"]
-        source = init_data_blogger["source"]
-        encryption_key = init_data_blogger["encryption_key_corp"]
-        corpus_id = init_data_blogger["corpus_id"]
-        stats_id = init_data_blogger["stats_id"]
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"]
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
         typ= "corpus"
 
 
@@ -1003,27 +1003,27 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     #@wipd
     def test_attach_encrypted_corpus_db_521(self):
         #db.init("stats", ".", "streamed", "de", "intern", corpus_id="9588" , version="2", encryption_key="stats", stats_id="6361")
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats),  encryption_key="stats")
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_corp),  encryption_key="corpus")
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ),  encryption_key="stats")
+        db.attach(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_corp_de ),  encryption_key="corpus")
         #p(db.status())
         db.status().should.be.equal("manyDB")
 
 
-        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_corp))[0])
+        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_corp_de ))[0])
 
-        #p(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        name = init_data_twitter["name"]
-        language = init_data_twitter["language"]
-        visibility = init_data_twitter["visibility"]
-        platform_name = init_data_twitter["platform_name"]
-        license = init_data_twitter["license"]
-        template_name = init_data_twitter["template_name"]
-        version = init_data_twitter["version"]
-        source = init_data_twitter["source"]
-        encryption_key = init_data_twitter["encryption_key_corp"]
-        corpus_id = init_data_twitter["corpus_id"]
-        stats_id = init_data_twitter["stats_id"]
+        #p(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        platform_name = self.configer.init_info_data["twitter"]["platform_name"]
+        license = self.configer.init_info_data["twitter"]["license"]
+        template_name = self.configer.init_info_data["twitter"]["template_name"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        source = self.configer.init_info_data["twitter"]["source"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["corpus"]
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
         typ= "corpus"
 
         # check attributes names
@@ -1046,20 +1046,20 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     #@wipd
     def test_attach_plaintext_stats_db_522(self):
         #db.init("stats", ".", "streamed", "de", "intern", corpus_id="9588" , version="2", encryption_key="stats", stats_id="6361")
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats))
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
+        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) )
         db.status().should.be.equal("manyDB")
-        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats))[0])
+        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) )[0])
 
 
-        name = init_data_blogger["name"]
-        language = init_data_blogger["language"]
-        visibility = init_data_blogger["visibility"]
-        version = init_data_blogger["version"]
-        encryption_key = init_data_blogger["encryption_key_stats"]
-        corpus_id = init_data_blogger["corpus_id"]
-        stats_id = init_data_blogger["stats_id"]
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["stats"]
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
         typ= "stats"
 
 
@@ -1077,19 +1077,19 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     #@wipd
     def test_attach_encrypted_stats_db_523(self):
         #db.init("stats", ".", "streamed", "de", "intern", corpus_id="9588" , version="2", encryption_key="stats", stats_id="6361")
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_corp), encryption_key="corpus")
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats), encryption_key="stats" )
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_corp_de ), encryption_key="corpus")
+        db.attach(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ), encryption_key="stats" )
         db.status().should.be.equal("manyDB")
-        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats))[0])
+        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ))[0])
 
-        name = init_data_twitter["name"]
-        language = init_data_twitter["language"]
-        visibility = init_data_twitter["visibility"]
-        version = init_data_twitter["version"]
-        encryption_key = init_data_twitter["encryption_key_stats"]
-        corpus_id = init_data_twitter["corpus_id"]
-        stats_id = init_data_twitter["stats_id"]
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["stats"] 
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"] 
         typ= "stats"
 
         # check attributes names
@@ -1110,11 +1110,11 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_reattaching_one_plaintext_db_530(self):
-        db = DBHandler(logger_level=logging.ERROR)
-        #db = DBHandler(developingMode=True)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats))
-        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats))[0])
+        db = DBHandler(mode="test")
+        #db = DBHandler(devmode=True)
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
+        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) )
+        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) )[0])
         dbnames = db.dbnames
 
         #Reattach without set an dbname
@@ -1133,11 +1133,11 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_reattaching_one_encrypted_db_531(self):
-        db = DBHandler(logger_level=logging.ERROR)
-        #db = DBHandler(developingMode=True)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_corp), encryption_key="corpus")
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats), encryption_key="stats" )
-        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats))[0])
+        db = DBHandler(mode="test")
+        #db = DBHandler(devmode=True)
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_corp_de ), encryption_key="corpus")
+        db.attach(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ), encryption_key="stats" )
+        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ))[0])
         dbnames = db.dbnames
 
         if len(db._attachedDBs_config)==1:
@@ -1169,12 +1169,12 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_reattaching_many_attached_dbs_532(self):
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_corp), encryption_key="corpus")
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats), encryption_key="stats" )
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats))
-        attached_db_name_1 = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats))[0])
-        attached_db_name_2 = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats))[0])
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_corp_de ), encryption_key="corpus")
+        db.attach(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ), encryption_key="stats" )
+        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) )
+        attached_db_name_1 = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ))[0])
+        attached_db_name_2 = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) )[0])
         dbnames = db.dbnames
 
         if len(db._attachedDBs_config)==2:
@@ -1213,11 +1213,11 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_detaching_one_encrypted_db_540(self):
-        db = DBHandler(logger_level=logging.ERROR)
-        #db = DBHandler(developingMode=True)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_corp), encryption_key="corpus")
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats), encryption_key="stats" )
-        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats))[0])
+        db = DBHandler(mode="test")
+        #db = DBHandler(devmode=True)
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_corp_de ), encryption_key="corpus")
+        db.attach(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ), encryption_key="stats" )
+        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ))[0])
         #dbnames = db.dbnames
 
 
@@ -1242,7 +1242,7 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
         # Detach one attached DB 
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats), encryption_key="stats" )
+        db.attach(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ), encryption_key="stats" )
         db.status().should.be.equal("manyDB")
 
         if len(db._attachedDBs_config)==1:
@@ -1267,11 +1267,11 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_detaching_one_plaintext_db_541(self):
-        db = DBHandler(logger_level=logging.ERROR)
-        #db = DBHandler(developingMode=True)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats))
-        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats))[0])
+        db = DBHandler(mode="test")
+        #db = DBHandler(devmode=True)
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
+        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) )
+        attached_db_name = "_"+os.path.basename(os.path.splitext(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) )[0])
         #dbnames = db.dbnames
 
         if len(db._attachedDBs_config)==1:
@@ -1294,7 +1294,7 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
         # Detach one attached DB 
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats))
+        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) )
         db.status().should.be.equal("manyDB")
 
         if len(db._attachedDBs_config)==1:
@@ -1322,13 +1322,13 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_detaching_many_attached_dbs_542(self):
-        db = DBHandler(logger_level=logging.ERROR)
-        #db = DBHandler(developingMode=True)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_corp), encryption_key="corpus")
-        #db.attach(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats), encryption_key="stats" )
-        path_to_db1 = os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats)
-        path_to_db2 = os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_corp)
-        path_to_db3 = os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp)
+        db = DBHandler(mode="test")
+        #db = DBHandler(devmode=True)
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_corp_de ), encryption_key="corpus")
+        #db.attach(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ), encryption_key="stats" )
+        path_to_db1 = os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) 
+        path_to_db2 = os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_corp_de )
+        path_to_db3 = os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) 
         db.attach(path_to_db1)
         db.attach(path_to_db2, encryption_key="corpus")
         db.attach(path_to_db3)
@@ -1403,48 +1403,7 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
     ###### Inserts of DBs: 560 ######
-    @attr(status='stable')
-    #@wipd
-    def test_insertCV_into_db_560(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        #p(db.col("documents"))
-        #[u'blogger_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
-        columns = [ u'blogger_id',u'text', u'gender', u'age', u'working_area', u'star_constellation']
-        values = [322624,['schöööööönen',"taaaaaag", "dirrrrrr"], 'm', '27', 'IT', 'lion' ]
-        
-        num_of_insertions = 10
-        rowNum_bevore = db.rownum("documents")
 
-        for i in range(num_of_insertions):
-            db.insertCV("documents", columns, values)
-
-        rowsNum_after = db.rownum("documents")
-
-        if (num_of_insertions + rowNum_bevore) != rowsNum_after:
-            assert False
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_insertV_into_db_561(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        #p(db.col("documents"))
-        #[u'blogger_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
-        values = [None, 322624, ['schöööööönen',"taaaaaag", "dirrrrrr"], 'm', '27', 'IT', 'lion' ]
-        num_of_insertions = 10
-        rowNum_bevore = db.rownum("documents")
-
-        for i in range(num_of_insertions):
-            db.insertV("documents",  values)
-
-        rowsNum_after = db.rownum("documents")
-
-        if (num_of_insertions + rowNum_bevore) != rowsNum_after:
-            assert False
 
 
 
@@ -1452,243 +1411,226 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
     @attr(status='stable')
     #@wipd
-    def test_insert_with_insert_many_rows_as_dict_CV_562(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+    def test_insert_many_values_with_insertdict_560(self):
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
 
-
-        inp_dict = {
-                "blogger_id":("1111", "2222"),
-                "text":('json(["sch","taaaaaag", "dirrrrrr"])', 'json(["!!!!",""])'),
-                "gender":("m","w"),
-                "age":("27", "67"),
-                "working_area":("IT","care"),
-                "star_constellation":("lion","fish")
-                }
-
-
-        num_of_insertions = 2
-
-        db.insertCV_many_rows_as_dict("documents", inp_dict)
-
-        if num_of_insertions != db.rownum("documents"):
-            assert False
-
-        output= [(1, 1111, u'json(["sch","taaaaaag", "dirrrrrr"])', u'm', 27, u'IT', u'lion'), (2, 2222, u'json(["!!!!",""])', u'w', 67, u'care', u'fish')]
-        db.getall("documents").should.be.equal(output)
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_insert_with_insertCV_one_row_as_dict_563(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
-
-
-        inp_dict = {
-                "blogger_id": "2222",
-                "text":'json(["!!!!",""])',
-                "gender":"m",
-                "age": "67",
-                "working_area":"care",
-                "star_constellation":"fish"
-                }
-
-        num_of_insertions = 1
-
-        db.insertCV_one_row_as_dict("documents", inp_dict)
-
-        if num_of_insertions != db.rownum("documents"):
-            assert False
-
-        output= [(1, 2222, u'json(["!!!!",""])', u'm', 67, u'care', u'fish')]
-        #p(db.getall("documents"))
-        db.getall("documents").should.be.equal(output)
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_insert_many_values_with_insertdict_564(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
-
-        inp_dict = {
-                "blogger_id":("1111", "2222"),
-                "text":('json(["sch","taaaaaag", "dirrrrrr"])', 'json(["!!!!",""])'),
-                "gender":("m","w"),
-                "age":("27", "67"),
-                "working_area":("IT","care"),
-                "star_constellation":("lion","fish")
-                }
-
-        num_of_insertions = 2
-
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
         db.insertdict("documents", inp_dict)
 
         if num_of_insertions != db.rownum("documents"):
             assert False
 
-        output= [(1, 1111, u'json(["sch","taaaaaag", "dirrrrrr"])', u'm', 27, u'IT', u'lion'), (2, 2222, u'json(["!!!!",""])', u'w', 67, u'care', u'fish')]
-        db.getall("documents").should.be.equal(output)
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+        for i in xrange(num_of_insertions):
+            for col, value in  zip(self.configer.columns_in_doc_table["blogger"],db.getall("documents")[i]):
+                if col != "text":
+                    if inp_dict[col][i] != value:
+                        assert False
+                    else:
+                        assert True
+                else:
+                    if value != json.dumps(inp_dict[col][i]):
+                        assert False
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_insert_dict_with_many_values_with_lazyinsert_561(self):
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        db.init("corpus", self.tempdir_project_folder, "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+        db.lazyinsert("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+        #p(inp_dict)
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+        for i in xrange(num_of_insertions):
+            for col, value in  zip(self.configer.columns_in_doc_table["blogger"],db.getall("documents")[i]):
+                if col != "text":
+                    if inp_dict[col][i] != value:
+                        assert False
+                    else:
+                        assert True
+                else:
+                    if value != json.dumps(inp_dict[col][i]):
+                        assert False
 
 
 
 
     @attr(status='stable')
     #@wipd
-    def test_insert_one_value_with_insertdict_565(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
-        inp_dict = {
-                "blogger_id": "2222",
-                "text":'json(["!!!!",""])',
-                "gender":"m",
-                "age": "67",
-                "working_area":"care",
-                "star_constellation":"fish"
-                }
+    def test_insert_one_value_with_insertdict_562(self):
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        db.init("corpus", self.tempdir_project_folder, "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=False)["blogger"]
         num_of_insertions = 1
+
         db.insertdict("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+   
+        #[unicode(item) for item in db.getall("documents")[0]].should.be.equal([unicode(inp_dict[col]) for col in self.configer.columns_in_doc_table["blogger"] ])
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+        #for i in xrange(num_of_insertions):
+        for col, value in  zip(self.configer.columns_in_doc_table["blogger"],db.getall("documents")[0]):
+            if col != "text":
+                if inp_dict[col] != value:
+                    assert False
+                else:
+                    assert True
+            else:
+                if value != json.dumps(inp_dict[col]):
+                    assert False
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_insert_dict_with_one_value_with_lazyinsert_563(self):
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        db.init("corpus", self.tempdir_project_folder, "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=False)["blogger"]
+        num_of_insertions = 1
+
+        db.lazyinsert("documents", inp_dict)
+
         if num_of_insertions != db.rownum("documents"):
             assert False
 
 
-        output= [(1, 2222, u'json(["!!!!",""])', u'm', 67, u'care', u'fish')]
-        #p(db.getall("documents"))
-        db.getall("documents").should.be.equal(output)
+
+        #[unicode(item) for item in db.getall("documents")[0]].should.be.equal([unicode(inp_dict[col]) for col in self.configer.columns_in_doc_table["blogger"] ])
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+        #for i in xrange(num_of_insertions):
+        for col, value in  zip(self.configer.columns_in_doc_table["blogger"],db.getall("documents")[0]):
+            if col != "text":
+                if inp_dict[col] != value:
+                    assert False
+                else:
+                    assert True
+            else:
+                if value != json.dumps(inp_dict[col]):
+                    assert False
+
 
 
 
 
     @attr(status='stable')
     #@wipd
-    def test_insert_one_row_with_insertV_rows_as_list_566(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+    def test_insert_one_row_with_insert_list_564(self):
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        db.init("corpus", self.tempdir_project_folder, "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
 
-
-        inp_list = [
-                    (None,"2222", 'json(["!!!!",""])', "m", "67", "care", "fish"),
-                    
-                    ]
-
-
+        inp_list = self.configer.docs_row_values(token=True, unicode_str=True)["blogger"][0]
 
         num_of_insertions = 1
 
-        db.insertV_rows_as_list("documents", inp_list)
-
-        if num_of_insertions != db.rownum("documents"):
-            assert False
-        
-        output= [(1, 2222, u'json(["!!!!",""])', u'm', 67, u'care', u'fish')]
-        #p(db.getall("documents"))
-        db.getall("documents").should.be.equal(output)
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_insert_many_rows_with_insertV_rows_as_list_567(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
-
-
-        inp_list = [
-                    (None,"1111", 'json(["sch","taaaaaag", "dirrrrrr"])', "m", "27", "IT", "lion"),
-                    (None,"2222", 'json(["!!!!",""])', "w", "67", "care", "fish")
-                    ]
-
-        num_of_insertions = 2
-
-        db.insertV_rows_as_list("documents", inp_list)
-
-        if num_of_insertions != db.rownum("documents"):
-            assert False
-
-        output= [(1, 1111, u'json(["sch","taaaaaag", "dirrrrrr"])', u'm', 27, u'IT', u'lion'), (2, 2222, u'json(["!!!!",""])', u'w', 67, u'care', u'fish')]
-        db.getall("documents").should.be.equal(output)
-
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_insert_one_row_with_insert_list_568(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
-
-
-        inp_list = [
-                    (None,"2222", 'json(["!!!!",""])', "m", "67", "care", "fish")
-                    ]
-
-        num_of_insertions = 1
-        #p(db.col("documents"))
         db.insertlist("documents", inp_list)
 
         if num_of_insertions != db.rownum("documents"):
            assert False
-        output= [(1, 2222, u'json(["!!!!",""])', u'm', 67, u'care', u'fish')]
-        #p(db.getall("documents"))
-        db.getall("documents").should.be.equal(output)
+
+        for  item1,  item2 in zip(db.getall("documents")[0], inp_list):
+            #print item1,item2
+            if not isinstance(item2, (list,dict,tuple)):
+                if item1 != item2:
+                    assert False
+            else:
+                if item1 != json.dumps(item2):
+                    assert False
 
 
     @attr(status='stable')
     #@wipd
-    def test_insert_many_rows_with_insertlist_569(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+    def test_insert_one_row_with_insert_lazyinsert_565(self):
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        db.init("corpus", self.tempdir_project_folder, "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
 
-        inp_list = [
-                    (None,"1111", 'json(["sch","taaaaaag", "dirrrrrr"])', "m", "27", "IT", "lion"),
-                    (None,"2222", 'json(["!!!!",""])', "w", "67", "care", "fish")
-                    ]
+        inp_list = self.configer.docs_row_values(token=True, unicode_str=True)["blogger"][0]
 
-        num_of_insertions = 2
+        num_of_insertions = 1
+        #p(db.col("documents"))
+        db.lazyinsert("documents", inp_list)
+
+        if num_of_insertions != db.rownum("documents"):
+           assert False
+
+        for  item1,  item2 in zip(db.getall("documents")[0], inp_list):
+            #print item1,item2
+            if not isinstance(item2, (list,dict,tuple)):
+                if item1 != item2:
+                    assert False
+            else:
+                if item1 != json.dumps(item2):
+                    assert False
+
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_insert_many_rows_with_insertlist_566(self):
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        db.init("corpus", self.tempdir_project_folder, "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+
+        inp_list = self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]
+
+        num_of_insertions = len(self.configer.docs_row_values(token=True, unicode_str=True)["blogger"])
+        #p(num_of_insertions)
 
         db.insertlist("documents", inp_list)
 
         if num_of_insertions != db.rownum("documents"):
-            assert False
-
-        #p(db.getall("documents"))
-        output= [(1, 1111, u'json(["sch","taaaaaag", "dirrrrrr"])', u'm', 27, u'IT', u'lion'), (2, 2222, u'json(["!!!!",""])', u'w', 67, u'care', u'fish')]
-        db.getall("documents").should.be.equal(output)
-
-
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_lazyinsert_cv_570(self):
-        #db = DBHandler(developingMode=True, lazyness_border=1000)
-        db = DBHandler(logger_level=logging.ERROR, lazyness_border=1000)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        #p(db.col("documents"))
-        #[u'blogger_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
-        columns = [u'blogger_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
-        values = [322624,['schöööööönen',"taaaaaag", "dirrrrrr"], 'm', '27', 'IT', 'lion' ]
-        
-        num_of_insertions = 1002
-        rowNum_bevore = db.rownum("documents")
-        #p(rowNum_bevore)
-        for i in range(num_of_insertions):
-            db.lazyinsert("cv", "documents", columns, values)
-
-        if db.commit() != 2:
            assert False
 
-        rowsNum_after = db.rownum("documents")
-        #p(rowsNum_after)
-        if (num_of_insertions + rowNum_bevore) != rowsNum_after:
-            assert False
+        for i in xrange(num_of_insertions):
+            for  item1,  item2 in zip(db.getall("documents")[i], inp_list[i]):
+                if not isinstance(item2, (list,dict,tuple)):
+                    if item1 != item2:
+                        assert False
+                else:
+                    if item1 != json.dumps(item2):
+                        assert False
 
 
 
@@ -1696,613 +1638,958 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
     @attr(status='stable')
     #@wipd
-    def test_lazyinsert_v_571(self):
-        #db = DBHandler(developingMode=True, lazyness_border=1000)
-        db = DBHandler(logger_level=logging.ERROR, lazyness_border=1000)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        #p(db.col("documents"))
-        #[u'blogger_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
-        values = [None,322624, ['schöööööönen',"taaaaaag", "dirrrrrr"], 'm', '27', 'IT', 'lion' ]
-        num_of_insertions = 1002
-        rowNum_bevore = db.rownum("documents")
-        #p(rowNum_bevore)
-        for i in range(num_of_insertions):
-            db.lazyinsert("v", "documents", values)
+    def test_insert_many_rows_with_lazyinsert_567(self):
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        db.init("corpus", self.tempdir_project_folder, "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
 
-        if db.commit() != 2:
+        inp_list = self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]
+
+        num_of_insertions = len(self.configer.docs_row_values(token=True, unicode_str=True)["blogger"])
+        #p(num_of_insertions)
+
+        db.lazyinsert("documents", inp_list)
+
+        if num_of_insertions != db.rownum("documents"):
            assert False
 
-        rowsNum_after = db.rownum("documents")
-        #p(rowsNum_after)
-        if (num_of_insertions + rowNum_bevore) != rowsNum_after:
-            assert False
+        for i in xrange(num_of_insertions):
+            for  item1,  item2 in zip(db.getall("documents")[i], inp_list[i]):
+                if not isinstance(item2, (list,dict,tuple)):
+                    if item1 != item2:
+                        assert False
+                else:
+                    if item1 != json.dumps(item2):
+                        assert False
 
 
 
 
-    @attr(status='stable')
-    #@wipd
-    def test_insert_list_with_lazyinsert_572(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
-
-        inp_list = [
-                    (None,"1111", 'json(["sch","taaaaaag", "dirrrrrr"])', "m", "27", "IT", "lion"),
-                    (None,"2222", 'json(["!!!!",""])', "w", "67", "care", "fish")
-                    ]
-
-        num_of_insertions = 2
-
-        db.lazyinsert("list","documents", inp_list)
-
-        if num_of_insertions != db.rownum("documents"):
-            assert False
-
-        output= [(1, 1111, u'json(["sch","taaaaaag", "dirrrrrr"])', u'm', 27, u'IT', u'lion'), (2, 2222, u'json(["!!!!",""])', u'w', 67, u'care', u'fish')]
-        db.getall("documents").should.be.equal(output)
-
-
-
-
+    ####### Work with JSON1: 570 #######
 
     @attr(status='stable')
     #@wipd
-    def test_insert_dict_with_lazyinsert_573(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+    def test_work_with_json_list_570(self):
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        db.init("corpus", self.tempdir_project_folder, "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
 
-        inp_dict = {
-                "blogger_id":("1111", "2222"),
-                "text":('json(["sch","taaaaaag", "dirrrrrr"])', 'json(["!!!!",""])'),
-                "gender":("m","w"),
-                "age":("27", "67"),
-                "working_area":("IT","care"),
-                "star_constellation":("lion","fish")
-                }
+        inp_list = self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]
+        #p(inp_list)
+        #p(self.configer.docs_row_values(token=True, unicode_str=True)["blogger"])
+        num_of_insertions = len(self.configer.docs_row_values(token=True, unicode_str=True)["blogger"])
+        #p(num_of_insertions)
 
-        num_of_insertions = 2
-
-        db.lazyinsert("dict","documents", inp_dict)
+        db.insertlist("documents", inp_list)
 
         if num_of_insertions != db.rownum("documents"):
-            assert False
+           assert False
 
-        output= [(1, 1111, u'json(["sch","taaaaaag", "dirrrrrr"])', u'm', 27, u'IT', u'lion'), (2, 2222, u'json(["!!!!",""])', u'w', 67, u'care', u'fish')]
-        db.getall("documents").should.be.equal(output)
+        for i in xrange(num_of_insertions):
+            for  item1,  item2 in zip(db.getall("documents")[i], inp_list[i]):
+                if not isinstance(item2, (list,dict,tuple)):
+                    if item1 != item2:
+                        assert False
+                else:
+                    if item1 != json.dumps(item2):
+                        assert False
 
+        id_index = self.configer.columns_in_doc_table["blogger"].index("id")
+        text_index = self.configer.columns_in_doc_table["blogger"].index("text")
 
+        #c = db.execute('SELECT * FROM documents WHERE json_extract("text", "$[1]") LIKE "%tt%";')
+        #p(c.fetchall())
+        #p((id_index, text_index), c="r")
+        for row in inp_list:
+            #p(row)
+            input_id = row[id_index]
+            text_element = row[text_index]
+            c = db.execute('select json_extract("text", "$[0]") from documents WHERE id={};'.format(input_id))
+            
+            # p((c.fetchall(), len(c.fetchall())), c="r")
+            # p((c.fetchall(), len(c.fetchall())), c="r")
+            # p(c.fetchall()[0][0])
+            #p((c.fetchall(), text_element[0]))
+            # if c.fetchall()[0][0] != text_element[0]:
+            #     assert False
 
 
 
     ###### Get rows from DB: 580 ######
 
     @attr(status='stable')
-    #@wipd
-    def test_get_all_580(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        rows = db.getall("documents")
+    #@wipdl
+    def test_get_all_rows_from_db_with_intern_getter_580_1(self):
+        ####code from "test_insert_many_values_with_insertdict_560"
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
 
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+        db.insertdict("documents", inp_dict)
 
-        row1 = list(rows[0])
-        row1.pop(0)
-        [unicode(item) for item in row1].should.be.equal([unicode(item) for item in blog_value1])
-
-        row2 = list(rows[1])
-        row2.pop(0)
-        [unicode(item) for item in row2].should.be.equal([unicode(item) for item in blog_value2])
-
-
-        row3 = list(rows[2])
-        row3.pop(0)
-        [unicode(item) for item in row3].should.be.equal([unicode(item) for item in blog_value3])
-
-
-        row4 = list(rows[3])
-        row4.pop(0)
-        [unicode(item) for item in row4].should.be.equal([unicode(item) for item in blog_value4])
-
-
-        row5 = list(rows[4])
-        row5.pop(0)
-        [unicode(item) for item in row5].should.be.equal([unicode(item) for item in blog_value5])
-
-
-        row6 = list(rows[5])
-        row6.pop(0)
-        [unicode(item) for item in row6].should.be.equal([unicode(item) for item in blog_value6])
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_get_all_with_where_condition_581(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        rows = db.getall("documents", where="rowid = 1")
-        #rows = db.getall("documents")
-
-        # p(len(rows))
-        # p(rows)
-        row1 = list(rows[0])
-        row1.pop(0)
-        [unicode(item) for item in row1].should.be.equal([unicode(item) for item in blog_value1])
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_get_all_with_where_condition_and_dbname_582(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        rows = db.getall("documents", where="rowid = 1", dbname="main")
-
-        #p(rows)
-        row1 = list(rows[0])
-        row1.pop(0)
-        [unicode(item) for item in row1].should.be.equal([unicode(item) for item in blog_value1])
-
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_get_all_with_where_condition_and_dbname_and_columnsname_582(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        rows = db.getall("documents", where="rowid = 1", dbname="main", columns=[ u'gender', u'age', u'working_area', u'star_constellation'])
-
-        row1 = list(rows[0])
-        output_row1 = [unicode(item) for item in blog_value1]
-        output_row1.pop(0)
-        output_row1.pop(0)
-        [unicode(item) for item in row1].should.be.equal(output_row1)
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_get_all_with_where_condition_and_columnsname_583(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        rows = db.getall("documents", where="rowid = 1", columns=[ u'gender', u'age', u'working_area', u'star_constellation'])
-
-        row1 = list(rows[0])
-        output_row1 = [unicode(item) for item in blog_value1]
-        output_row1.pop(0)
-        output_row1.pop(0)
-        [unicode(item) for item in row1].should.be.equal(output_row1)
-
-
-
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_get_all_with_columnsname_584(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        rows = db.getall("documents", columns=[ u'gender', u'age', u'working_area', u'star_constellation'])
-
-        if len(rows)!=6:
+        if num_of_insertions != db.rownum("documents"):
             assert False
 
-        row1 = list(rows[0])
-        output_row1 = [unicode(item) for item in blog_value1]
-        output_row1.pop(0)
-        output_row1.pop(0)
-        [unicode(item) for item in row1].should.be.equal(output_row1)
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
 
-        row2 = list(rows[1])
-        output_row2 = [unicode(item) for item in blog_value2]
-        output_row2.pop(0)
-        output_row2.pop(0)
-        [unicode(item) for item in row2].should.be.equal(output_row2)
-
-        row3 = list(rows[2])
-        output_row3 = [unicode(item) for item in blog_value3]
-        output_row3.pop(0)
-        output_row3.pop(0)
-        [unicode(item) for item in row3].should.be.equal(output_row3)
-
-
-        row4 = list(rows[3])
-        output_row4 = [unicode(item) for item in blog_value4]
-        output_row4.pop(0)
-        output_row4.pop(0)
-        [unicode(item) for item in row4].should.be.equal(output_row4)
-
-
-        row5 = list(rows[4])
-        output_row5 = [unicode(item) for item in blog_value5]
-        output_row5.pop(0)
-        output_row5.pop(0)
-        [unicode(item) for item in row5].should.be.equal(output_row5)
-
-        row6 = list(rows[5])
-        output_row6 = [unicode(item) for item in blog_value6]
-        output_row6.pop(0)
-        output_row6.pop(0)
-        [unicode(item) for item in row6].should.be.equal(output_row6)
-
+        ## test_get_all_rows_from_db_with_intern_getter Part
+        for i in xrange(num_of_insertions):
+            for col, value in  zip(self.configer.columns_in_doc_table["blogger"],db._intern_getter("documents").fetchall()[i]):
+                if col != "text":
+                    if inp_dict[col][i] != value:
+                        assert False
+                    else:
+                        assert True
+                else:
+                    if value != json.dumps(inp_dict[col][i]):
+                        assert False
 
 
 
     @attr(status='stable')
     #@wipd
-    def test_get_one_585(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        output_list_with_rows = [blog_value1,blog_value2,blog_value3,blog_value4,blog_value5, blog_value6]
-        for row_db, row_output in zip(db.getone("documents"), output_list_with_rows):
-            #p((row_db, row_output))
-            row_db = list(row_db)
-            row_db.pop(0)
-            [unicode(item) for item in row_db].should.be.equal([unicode(item) for item in row_output])
+    def test_get_all_rows_from_db_with_intern_getter_with_limit_and_offset_580_2(self):
+        ####code from "test_insert_many_values_with_insertdict_560"
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
 
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+        db.insertdict("documents", inp_dict)
 
-
-    @attr(status='stable')
-    #@wipd
-    def test_get_one_with_where_conditions_586(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        output_list_with_rows = [blog_value1]
-        for row_db, row_output in zip(db.getone("documents", where="rowid=1"), output_list_with_rows):
-            #p((row_db, row_output))
-            row_db = list(row_db)
-            row_db.pop(0)
-            [unicode(item) for item in row_db].should.be.equal([unicode(item) for item in row_output])
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_get_one_with_where_conditions_and_dbname_587(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        output_list_with_rows = [blog_value1]
-        for row_db, row_output in zip(db.getone("documents", where="rowid=1", dbname="main"), output_list_with_rows):
-            #p((row_db, row_output))
-            row_db = list(row_db)
-            row_db.pop(0)
-            [unicode(item) for item in row_db].should.be.equal([unicode(item) for item in row_output])
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_get_one_with_where_conditions_and_dbname_and_colnames_588(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        output_list_with_rows = [blog_value1]
-        for row_db, row_output in zip(db.getone("documents", where="rowid=1", dbname="main", columns=[ u'gender', u'age', u'working_area', u'star_constellation']), output_list_with_rows):
-            #p((row_db, row_output))
-            row_db = list(row_db)
-            row_output = [unicode(item) for item in row_output]
-            row_output.pop(0)
-            row_output.pop(0)
-            #p((row_db, row_output))
-            [unicode(item) for item in row_db].should.be.equal(row_output)
-
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_get_one_with_where_conditions_and_colnames_589(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        output_list_with_rows = [blog_value1]
-        for row_db, row_output in zip(db.getone("documents", where="rowid=1", columns=[ u'gender', u'age', u'working_area', u'star_constellation']), output_list_with_rows):
-            #p((row_db, row_output))
-            row_db = list(row_db)
-            row_output = [unicode(item) for item in row_output]
-            row_output.pop(0)
-            row_output.pop(0)
-            #p((row_db, row_output))
-            [unicode(item) for item in row_db].should.be.equal(row_output)
-
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_get_one_with_and_colnames_590(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        output_list_with_rows = [blog_value1,blog_value2,blog_value3,blog_value4,blog_value5, blog_value6]
-        for row_db, row_output in zip(db.getone("documents",  columns=[ u'gender', u'age', u'working_area', u'star_constellation']), output_list_with_rows):
-            #p((row_db, row_output))
-            row_db = list(row_db)
-            row_output = [unicode(item) for item in row_output]
-            row_output.pop(0)
-            row_output.pop(0)
-            #p((row_db, row_output))
-            [unicode(item) for item in row_db].should.be.equal(row_output)
-
-
-
-
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_get_all_with_limit_591(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        rows = db.getlimit(3,"documents", )
-
-        if len(rows)!=3:
+        if num_of_insertions != db.rownum("documents"):
             assert False
 
-        row1 = list(rows[0])
-        row1.pop(0)
-        [unicode(item) for item in row1].should.be.equal([unicode(item) for item in blog_value1])
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
 
-        row2 = list(rows[1])
-        row2.pop(0)
-        [unicode(item) for item in row2].should.be.equal([unicode(item) for item in blog_value2])
+        rows_with_intergetter =  list(db._intern_getter("documents", limit=3, offset=3))
+        #p(rows_with_intergetter)
+        rows_with_execute = db.execute("SELECT * FROM documents LIMIT 3 OFFSET 3;").fetchall()
 
-
-        row3 = list(rows[2])
-        row3.pop(0)
-        [unicode(item) for item in row3].should.be.equal([unicode(item) for item in blog_value3])
-
+        rows_with_intergetter.should.be.equal(rows_with_execute)
 
 
 
     @attr(status='stable')
     #@wipd
-    def test_get_all_with_limit_with_where_condition_592(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        rows = db.getlimit(3,"documents", where="rowid = 1",connector_where="AND")
-        #p(db.getall("documents", where=["rowid = 1", "gender = 'm'"]))
-        #p(db.getall("documents", where=["age = 27", "gender = 'm'"], connector_where="OR"))
+    def test_get_all_rows_from_db_with_intern_getter_with_where_condition_581(self):
+        ####code from "test_insert_many_values_with_insertdict_560"
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
 
-        #p(rows)
-        row1 = list(rows[0])
-        row1.pop(0)
-        [unicode(item) for item in row1].should.be.equal([unicode(item) for item in blog_value1])
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+        db.insertdict("documents", inp_dict)
 
-
-    @attr(status='stable')
-    #@wipd
-    def test_get_all_with_limit_with_where_condition_and_dbname_593(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        rows = db.getlimit(1,"documents", where="rowid = 1", dbname="main")
-
-        #p(rows)
-        row1 = list(rows[0])
-        row1.pop(0)
-        [unicode(item) for item in row1].should.be.equal([unicode(item) for item in blog_value1])
-
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_get_all_with_limit_with_where_condition_and_dbname_and_columnsname_594(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        rows = db.getlimit(1,"documents", where="rowid = 1", dbname="main", columns=[ u'gender', u'age', u'working_area', u'star_constellation'])
-
-        row1 = list(rows[0])
-        output_row1 = [unicode(item) for item in blog_value1]
-        output_row1.pop(0)
-        output_row1.pop(0)
-        [unicode(item) for item in row1].should.be.equal(output_row1)
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_get_all_with_limit_with_where_condition_and_columnsname_595(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        rows = db.getlimit(1,"documents", where="rowid = 1", columns=[ u'gender', u'age', u'working_area', u'star_constellation'])
-
-        row1 = list(rows[0])
-        output_row1 = [unicode(item) for item in blog_value1]
-        output_row1.pop(0)
-        output_row1.pop(0)
-        [unicode(item) for item in row1].should.be.equal(output_row1)
-
-
-
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_get_all_with_limit_with_columnsname_596(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        rows = db.getlimit(3,"documents", columns=[ u'gender', u'age', u'working_area', u'star_constellation'])
-
-        if len(rows)!=3:
+        if num_of_insertions != db.rownum("documents"):
             assert False
 
-        row1 = list(rows[0])
-        output_row1 = [unicode(item) for item in blog_value1]
-        output_row1.pop(0)
-        output_row1.pop(0)
-        [unicode(item) for item in row1].should.be.equal(output_row1)
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
 
-        row2 = list(rows[1])
-        output_row2 = [unicode(item) for item in blog_value2]
-        output_row2.pop(0)
-        output_row2.pop(0)
-        [unicode(item) for item in row2].should.be.equal(output_row2)
 
-        row3 = list(rows[2])
-        output_row3 = [unicode(item) for item in blog_value3]
-        output_row3.pop(0)
-        output_row3.pop(0)
-        [unicode(item) for item in row3].should.be.equal(output_row3)
+        id_index = self.configer.columns_in_doc_table["blogger"].index("id")
+        text_index = self.configer.columns_in_doc_table["blogger"].index("text")
+
+        ##1. where as string
+        #p(self.configer.docs_row_values(token=True, unicode_str=True)["blogger"])
+        for item in self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]:
+            id_to_search = item[id_index]
+            getted_item = db._intern_getter("documents", where="id = {}".format(id_to_search)).fetchall()[0] 
+            #p((item, getted_item))
+            for i1, i2 in zip(item, getted_item):
+                #p((i1, i2))
+                if isinstance(i1, (list, dict, tuple)):
+                    i1= json.dumps(i1)
+                #p((i1, i2))
+
+                if i1 != i2:
+                    assert False
+
+
+        ##2.  where as list with one condition
+        for item in self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]:
+            id_to_search = item[id_index]
+            getted_item = db._intern_getter("documents", where=["id = {}".format(id_to_search)]).fetchall()[0]
+            #p((item, getted_item))
+            for i1, i2 in zip(item, getted_item):
+                #p((i1, i2))
+                if isinstance(i1, (list, dict, tuple)):
+                    i1= json.dumps(i1)
+                #p((i1, i2))
+
+                if i1 != i2:
+                    assert False   
+
+        ## 3. where as list with many conditions
+        id_collector = []
+        items_collector = []
+        for item in self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]:
+            id_to_search = item[id_index]
+            if len(id_collector) >= 3:
+                where_cond_list = ["id={}".format(doc_id) for doc_id in id_collector]
+                #p(where_cond_list, "where_cond_list")
+                getted_item = db._intern_getter("documents", where=where_cond_list, connector_where="OR").fetchall()
+                #p(getted_item, "getted_item")
+                for item1, item2 in zip(items_collector, getted_item):
+                    for i1, i2 in zip(item1, item2):
+                        #p((i1, i2))
+                        if isinstance(i1, (list, dict, tuple)):
+                            i1= json.dumps(i1)
+                        #p((i1, i2))
+
+                        if i1 != i2:
+                           #p((i1, i2), c="r")
+                            assert False    
+            else:
+                id_collector.append(id_to_search)
+                items_collector.append(item)
+
+        ## 4. where as list with json_extract condition
+        #SELECT * FROM documents WHERE json_extract("text", "$[1]") LIKE '%ta%';
+        
+        ##########4.1. prepare ietem to compare
+        elem_index_to_use = 0
+        index_of_token_in_text_elemen_to_use = 0
+        text_token_to_search = ""
+        matched_items_to_compare = []
+        for item in self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]:
+            id_to_search = item[id_index]
+            getted_item = db._intern_getter("documents", where=["id = {}".format(id_to_search)]).fetchall()[0]
+            
+            #p((item, getted_item))
+            #p((item[text_index], getted_item[text_index]))
+
+            
+            text_elem_1 = item[text_index]
+            text_elem_2 = json.loads(getted_item[text_index])
+            #p((text_elem_1,text_elem_2))
+
+            ### set_element_to_search
+            if elem_index_to_use ==0:
+                text_token_to_search = text_elem_1[index_of_token_in_text_elemen_to_use]
+                item[text_index] = json.dumps(item[text_index]) if isinstance(item[text_index], list) else item[text_index]
+                matched_items_to_compare.append(tuple(item))
+            #p(text_token_to_search)
+            else:
+                if text_elem_1[index_of_token_in_text_elemen_to_use].lower() == text_token_to_search.lower():
+                    item[text_index] = json.dumps(item[text_index]) if isinstance(item[text_index], list) else item[text_index]
+                    matched_items_to_compare.append(tuple(item))
+
+            elem_index_to_use+=1
+        #p(matched_items_to_compare, "matched_items_to_compare")
+
+        ##########4.2.  extract items with json_extract from the db
+        if not isinstance(text_token_to_search, unicode):
+            print "'text_token_to_search' is not an unicode string."
+            assert False
+        #print repr((text_token_to_search.encode("utf-8"))), type(text_token_to_search.encode("utf-8"))
+        where_cond = 'json_extract("text", "$[{}]") LIKE "{}" '.format(index_of_token_in_text_elemen_to_use, text_token_to_search.encode("utf-8"))
+        extracted_items_from_db = db._intern_getter("documents", where=where_cond).fetchall()
+        #p(extracted_items_from_db)
+        #p(text_token_to_search.encode("utf-8"), "text_token_to_search.encode('utf-8')")
+        #p(matched_items_to_compare, "matched_items_to_compare")
+        #p(extracted_items_from_db, "extracted_items_from_db")
+        #p(matched_items_to_compare,"matched_items_to_compare")
+        #p(extracted_items_from_db,"extracted_items_from_db")
+        if matched_items_to_compare != extracted_items_from_db:
+            assert False
+
+
+
+
+    ## colums with and without json_extract condition!!! as new test case
+
+    @attr(status='stable')
+    #@wipd
+    def test_get_all_rows_from_db_with_intern_getter_for_certain_columns_582(self):
+        ####code from "test_insert_many_values_with_insertdict_560"
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
+
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+        db.insertdict("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+
+        id_index = self.configer.columns_in_doc_table["blogger"].index("id")
+        text_index = self.configer.columns_in_doc_table["blogger"].index("text")
+
+
+        # ##1. columns as string
+        getted_ids_from_db = db._intern_getter("documents", columns="id").fetchall()
+        #p(getted_ids_from_db)
+        extracted_ids_from_input_data = []
+        for item in self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]:
+            extracted_ids_from_input_data.append((item[id_index],))
+        #p(extracted_ids_from_input_data)
+        if getted_ids_from_db != extracted_ids_from_input_data:
+            assert False
+
+
+
+        # ##3. columns as list (one columns to search)
+        getted_ids_from_db = db._intern_getter("documents", columns=["id"]).fetchall()
+        #p(getted_ids_from_db)
+        extracted_ids_from_input_data = []
+        for item in self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]:
+            extracted_ids_from_input_data.append((item[id_index],))
+        #p(extracted_ids_from_input_data)
+        if getted_ids_from_db != extracted_ids_from_input_data:
+            assert False 
+
+
+
+        # ##4. columns as list (with many columns to search)
+        getted_ids_from_db = db._intern_getter("documents", columns=["id", "text"]).fetchall()
+        #p(getted_ids_from_db)
+        extracted_ids_from_input_data = []
+        for item in self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]:
+            extracted_ids_from_input_data.append((item[id_index],json.dumps(item[text_index])))
+        #p(extracted_ids_from_input_data)
+        if getted_ids_from_db != extracted_ids_from_input_data:
+           assert False 
 
 
 
 
     @attr(status='stable')
     #@wipd
-    def test_lazyget_list_597(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        output_list_with_rows = [blog_value1,blog_value2,blog_value3,blog_value4,blog_value5, blog_value6]
-        for row_db, row_output in zip(db.lazyget("documents", size_to_get=3), output_list_with_rows):
-            #p((row_db, row_output))
-            row_db = list(row_db)
-            row_db.pop(0)
-            [unicode(item) for item in row_db].should.be.equal([unicode(item) for item in row_output])
+    def test_get_all_rows_from_db_with_intern_getter_with_additional_select_conditions_on_example_of_json1_583(self):
+        ####code from "test_insert_many_values_with_insertdict_560"
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
+
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+        db.insertdict("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+
+        id_index = self.configer.columns_in_doc_table["blogger"].index("id")
+        text_index = self.configer.columns_in_doc_table["blogger"].index("text")
+
+        #select json_extract("text", "$[0]") from documents;
+
+        # ##1. select condition as string
+        index_of_token_to_extract_from_text_element = 0
+        getted_text_tokens_from_db = db._intern_getter("documents", select='json_extract("text", "$[{}]")'.format(index_of_token_to_extract_from_text_element)).fetchall()
+        #p(getted_text_tokens_from_db)
+        #p(getted_text_tokens_from_db)
+        extracted_text_tokens_from_input_data = []
+        for item in self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]:
+            extracted_text_tokens_from_input_data.append((item[text_index][index_of_token_to_extract_from_text_element],))
+        #p(getted_text_tokens_from_db)
+        #p(extracted_text_tokens_from_input_data)
+        getted_text_tokens_from_db.should.be.equal(extracted_text_tokens_from_input_data)
 
 
 
-    @attr(status='stable')
-    #@wipd
-    def test_lazyget_list_with_where_conditions_598(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        output_list_with_rows = [blog_value1]
-        for row_db, row_output in zip(db.lazyget("documents", where="rowid=1", size_to_get=3), output_list_with_rows):
-            #p((row_db, row_output))
-            row_db = list(row_db)
-            row_db.pop(0)
-            [unicode(item) for item in row_db].should.be.equal([unicode(item) for item in row_output])
 
-
-    @attr(status='stable')
-    #@wipd
-    def test_lazyget_list_with_where_conditions_and_dbname_599(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        output_list_with_rows = [blog_value1]
-        for row_db, row_output in zip(db.lazyget("documents", where="rowid=1", dbname="main", size_to_get=3), output_list_with_rows):
-            #p((row_db, row_output))
-            #p((row_db, row_output))
-            row_db = list(row_db)
-            row_db.pop(0)
-            [unicode(item) for item in row_db].should.be.equal([unicode(item) for item in row_output])
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_lazyget_list_with_where_conditions_and_dbname_and_colnames_600(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        output_list_with_rows = [blog_value1]
-        for row_db, row_output in zip(db.lazyget("documents", where="rowid=1", dbname="main", columns=[ u'gender', u'age', u'working_area', u'star_constellation'], size_to_get=3), output_list_with_rows):
-            #p((row_db, row_output))
-            row_db = list(row_db)
-            row_output = [unicode(item) for item in row_output]
-            row_output.pop(0)
-            row_output.pop(0)
-            #p((row_db, row_output))
-            [unicode(item) for item in row_db].should.be.equal(row_output)
+        # ##2. select condition as list (with one elemnt)
+        index_of_token_to_extract_from_text_element = 0
+        getted_text_tokens_from_db = db._intern_getter("documents", select=['json_extract("text", "$[{}]")'.format(index_of_token_to_extract_from_text_element)]).fetchall()
+        #p(getted_text_tokens_from_db)
+        #p(getted_text_tokens_from_db)
+        extracted_text_tokens_from_input_data = []
+        for item in self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]:
+            extracted_text_tokens_from_input_data.append((item[text_index][index_of_token_to_extract_from_text_element],))
+        #p(getted_text_tokens_from_db)
+        #p(extracted_text_tokens_from_input_data)
+        getted_text_tokens_from_db.should.be.equal(extracted_text_tokens_from_input_data)
 
 
 
-    @attr(status='stable')
-    #@wipd
-    def test_lazyget_list_with_where_conditions_and_colnames_601(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        output_list_with_rows = [blog_value1]
-        for row_db, row_output in zip(db.lazyget("documents", where="rowid=1", columns=[ u'gender', u'age', u'working_area', u'star_constellation']), output_list_with_rows):
-            #p((row_db, row_output))
-            row_db = list(row_db)
-            row_output = [unicode(item) for item in row_output]
-            row_output.pop(0)
-            row_output.pop(0)
-            #p((row_db, row_output))
-            [unicode(item) for item in row_db].should.be.equal(row_output)
+        # ##3. select condition as list (with many elements)
+        index_of_1_token_to_extract_from_text_element = 0
+        index_of_2_token_to_extract_from_text_element = 1
+        getted_text_tokens_from_db = db._intern_getter("documents", select=['json_extract("text", "$[{}]")'.format(index_of_1_token_to_extract_from_text_element),'json_extract("text", "$[{}]")'.format(index_of_2_token_to_extract_from_text_element)]).fetchall()
+        #p(getted_text_tokens_from_db)
+        #p(getted_text_tokens_from_db)
+        extracted_text_tokens_from_input_data = []
+        for item1, item2 in zip(self.configer.docs_row_values(token=True, unicode_str=True)["blogger"],getted_text_tokens_from_db):
+            #p(text_index,"text_index")
+            #p(item, "item")
+            extracted_text_tokens_from_input_data.append((item1[text_index][index_of_1_token_to_extract_from_text_element],item1[text_index][index_of_2_token_to_extract_from_text_element]))
+
+        #p(getted_text_tokens_from_db)
+        #p(extracted_text_tokens_from_input_data)
+        getted_text_tokens_from_db.should.be.equal(extracted_text_tokens_from_input_data)
 
 
-
-    @attr(status='stable')
-    #@wipd
-    def test_lazyget_list_with_and_colnames_602(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        output_list_with_rows = [blog_value1,blog_value2,blog_value3,blog_value4,blog_value5, blog_value6]
-        for row_db, row_output in zip(db.lazyget("documents",  columns=[ u'gender', u'age', u'working_area', u'star_constellation'], size_to_get=2), output_list_with_rows):
-            #p((row_db, row_output))
-            row_db = list(row_db)
-            row_output = [unicode(item) for item in row_output]
-            row_output.pop(0)
-            row_output.pop(0)
-            #p((row_db, row_output))
-            [unicode(item) for item in row_db].should.be.equal(row_output)
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_lazyget_dict_with_colnames_603(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        output_list_with_rows = [blog_value1,blog_value2,blog_value3,blog_value4,blog_value5, blog_value6]
-        for getted_dict, row_output in zip(db.lazyget("documents", output="dict"), output_list_with_rows ):
-            #p(getted_dict)
-            getted_dict["blogger_id"].should.be.equal(row_output[0])
-            getted_dict["text"].should.be.equal(unicode(row_output[1]))
-            getted_dict["gender"].should.be.equal(row_output[2])
-            getted_dict["age"].should.be.equal(row_output[3])
-            getted_dict["working_area"].should.be.equal(row_output[4])
-            getted_dict["star_constellation"].should.be.equal(row_output[5])
 
 
 
 
     @attr(status='stable')
     #@wipd
-    def test_getdictlazy_with_colnames_604(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        output_list_with_rows = [blog_value1,blog_value2,blog_value3,blog_value4,blog_value5, blog_value6]
-        for getted_dict, row_output in zip(db.getdictlazy("documents",  columns=[ u'gender', u'age', u'working_area', u'star_constellation'], size_to_get=2), output_list_with_rows):
-            #p((getted_dict, row_output))
-            getted_dict["gender"].should.be.equal(row_output[2])
-            getted_dict["age"].should.be.equal(row_output[3])
-            getted_dict["working_area"].should.be.equal(row_output[4])
-            getted_dict["star_constellation"].should.be.equal(row_output[5])
+    def test_get_all_rows_from_db_with_intern_getter_with_select_and_columns_combined_584(self):
+        ####code from "test_insert_many_values_with_insertdict_560"
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
+
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+        db.insertdict("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+
+        id_index = self.configer.columns_in_doc_table["blogger"].index("id")
+        text_index = self.configer.columns_in_doc_table["blogger"].index("text")
+        gender_index = self.configer.columns_in_doc_table["blogger"].index("gender")
+
+        #select json_extract("text", "$[0]") from documents;
+
+        # ##1. columns and select conditions (1 elem from each condition)
+        index_of_token_to_extract_from_text_element = 0
+        getted_text_tokens_from_db = db._intern_getter("documents",columns="id", select='json_extract("text", "$[{}]")'.format(index_of_token_to_extract_from_text_element)).fetchall()
+        #p(getted_text_tokens_from_db)
+        #p(getted_text_tokens_from_db)
+        extracted_text_tokens_from_input_data = []
+        for item in self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]:
+            extracted_text_tokens_from_input_data.append((item[id_index],item[text_index][index_of_token_to_extract_from_text_element]))
+        #p(getted_text_tokens_from_db)
+        #p(extracted_text_tokens_from_input_data)
+        getted_text_tokens_from_db.should.be.equal(extracted_text_tokens_from_input_data)
+
+
+
+        # ##2. columns and select conditions (many elements from each condition)
+        index_of_1_token_to_extract_from_text_element = 0
+        index_of_2_token_to_extract_from_text_element = 1
+        getted_text_tokens_from_db = db._intern_getter("documents", columns=["id","gender"], select=['json_extract("text", "$[{}]")'.format(index_of_1_token_to_extract_from_text_element),'json_extract("text", "$[{}]")'.format(index_of_2_token_to_extract_from_text_element)]).fetchall()
+        #p(getted_text_tokens_from_db)
+        #p(getted_text_tokens_from_db)
+        extracted_text_tokens_from_input_data = []
+        for item in self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]:
+            extracted_text_tokens_from_input_data.append((item[id_index],item[gender_index],item[text_index][index_of_1_token_to_extract_from_text_element],item[text_index][index_of_2_token_to_extract_from_text_element]))
+        #p(getted_text_tokens_from_db)
+        #p(extracted_text_tokens_from_input_data)
+        getted_text_tokens_from_db.should.be.equal(extracted_text_tokens_from_input_data)
 
 
 
 
     @attr(status='stable')
     #@wipd
-    def test_getdictlazy_without_colnames_605(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        output_list_with_rows = [blog_value1,blog_value2,blog_value3,blog_value4,blog_value5, blog_value6]
-        for getted_dict, row_output in zip(db.getdictlazy("documents"), output_list_with_rows):
-            #p(getted_dict)
-            getted_dict["blogger_id"].should.be.equal(row_output[0])
-            getted_dict["text"].should.be.equal(unicode(row_output[1]))
-            getted_dict["gender"].should.be.equal(row_output[2])
-            getted_dict["age"].should.be.equal(row_output[3])
-            getted_dict["working_area"].should.be.equal(row_output[4])
-            getted_dict["star_constellation"].should.be.equal(row_output[5])
+    def test_get_all_rows_from_db_with_intern_getter_with_select_and_columns_combined_585(self):
+        ####code from "test_insert_many_values_with_insertdict_560"
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
+
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+        db.insertdict("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+
+        id_index = self.configer.columns_in_doc_table["blogger"].index("id")
+        text_index = self.configer.columns_in_doc_table["blogger"].index("text")
+        gender_index = self.configer.columns_in_doc_table["blogger"].index("gender")
+
+        #select json_extract("text", "$[0]") from documents;
+
+        # ##1. columns and select conditions (1 elem from each condition)
+        index_of_token_to_extract_from_text_element = 0
+        getted_text_tokens_from_db = db._intern_getter("documents",columns="id", select='json_extract("text", "$[{}]")'.format(index_of_token_to_extract_from_text_element)).fetchall()
+        #p(getted_text_tokens_from_db)
+        #p(getted_text_tokens_from_db)
+        extracted_text_tokens_from_input_data = []
+        for item in self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]:
+            extracted_text_tokens_from_input_data.append((item[id_index],item[text_index][index_of_token_to_extract_from_text_element]))
+        #p(getted_text_tokens_from_db)
+        #p(extracted_text_tokens_from_input_data)
+        getted_text_tokens_from_db.should.be.equal(extracted_text_tokens_from_input_data)
+
+
+
+        # ##2. columns and select conditions (many elements from each condition)
+        index_of_1_token_to_extract_from_text_element = 0
+        index_of_2_token_to_extract_from_text_element = 1
+        getted_text_tokens_from_db = db._intern_getter("documents", columns=["id","gender"], select=['json_extract("text", "$[{}]")'.format(index_of_1_token_to_extract_from_text_element),'json_extract("text", "$[{}]")'.format(index_of_2_token_to_extract_from_text_element)]).fetchall()
+        #p(getted_text_tokens_from_db)
+        #p(getted_text_tokens_from_db)
+        
+
+        extracted_text_tokens_from_input_data = []
+        for item in self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]:
+            extracted_text_tokens_from_input_data.append((item[id_index],item[gender_index],item[text_index][index_of_1_token_to_extract_from_text_element],item[text_index][index_of_2_token_to_extract_from_text_element]))
+        #p(getted_text_tokens_from_db)
+        #p(extracted_text_tokens_from_input_data)
+        getted_text_tokens_from_db.should.be.equal(extracted_text_tokens_from_input_data)
+
+
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_get_all_rows_from_db_with_intern_getter_with_columns_and_where_combined_586(self):
+        ####code from "test_insert_many_values_with_insertdict_560"
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
+
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+        db.insertdict("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+
+        id_index = self.configer.columns_in_doc_table["blogger"].index("id")
+        text_index = self.configer.columns_in_doc_table["blogger"].index("text")
+        gender_index = self.configer.columns_in_doc_table["blogger"].index("gender")
+
+        #select json_extract("text", "$[0]") from documents;
+
+        # ##1. columns where condition
+        index_of_token_to_extract_from_text_element = 0
+        getted_text_tokens_from_db = db._intern_getter("documents",columns="id", where="gender='m'").fetchall()
+        #p(getted_text_tokens_from_db)
+        #p(getted_text_tokens_from_db)
+        extracted_text_tokens_from_input_data = []
+        for item in self.configer.docs_row_values(token=True, unicode_str=True)["blogger"]:
+            if item[gender_index] == "m":
+                extracted_text_tokens_from_input_data.append((item[id_index],))
+        #p(getted_text_tokens_from_db)
+        #p(extracted_text_tokens_from_input_data)
+        getted_text_tokens_from_db.should.be.equal(extracted_text_tokens_from_input_data)
+
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_getall_587(self):
+        ####code from "test_insert_many_values_with_insertdict_560"
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
+
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+        db.insertdict("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+        ## test_get_all_rows_from_db_with_intern_getter Part
+        for i in xrange(num_of_insertions):
+            for col, value in  zip(self.configer.columns_in_doc_table["blogger"],db.getall("documents")[i]):
+                if col != "text":
+                    if inp_dict[col][i] != value:
+                        assert False
+                    else:
+                        assert True
+                else:
+                    if value != json.dumps(inp_dict[col][i]):
+                        assert False
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_getlistlazy_588(self):
+        ####code from "test_insert_many_values_with_insertdict_560"
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
+
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+        db.insertdict("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+        ## test_get_all_rows_from_db_with_intern_getter Part
+        for i in xrange(num_of_insertions):
+            for col, value in  zip(self.configer.columns_in_doc_table["blogger"],list(db.getlistlazy("documents"))[i]):
+                if col != "text":
+                    if inp_dict[col][i] != value:
+                        assert False
+                    else:
+                        assert True
+                else:
+                    if value != json.dumps(inp_dict[col][i]):
+                        assert False
+
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_getdictlazy_589(self):
+        ####code from "test_insert_many_values_with_insertdict_560"
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
+
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+        db.insertdict("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+
+        #p(list(db.getdictlazy("documents"))[0]["gender"])
+        getted_output_from_db = list(db.getdictlazy("documents"))
+        #p(getted_output_from_db)
+        #p(inp_dict)
+        ## test_get_all_rows_from_db_with_intern_getter Part
+        for i in xrange(num_of_insertions):
+            for col in self.configer.columns_in_doc_table["blogger"]:
+                value_from_input = inp_dict[col][i]
+                value_from_output=getted_output_from_db[i][col]
+ 
+                #p((value_from_input, value_from_output))
+                if col != "text":
+                    if value_from_input != value_from_output:
+                        assert False
+                    else:
+                        assert True
+                else:
+                    if value_from_output != json.dumps(value_from_input):
+                        assert False
+
+
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_getdictlazy_for_certain_columns_and_select_590(self):
+        ####code from "test_insert_many_values_with_insertdict_560"
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
+
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+        db.insertdict("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+
+        #p(list(db.getdictlazy("documents", columns=["hhh", "id"]))[0])
+        columns_to_get = ["id", "text"]
+        select_to_get = ["gender"]
+        getted_output_from_db = list(db.getdictlazy("documents", columns=columns_to_get, select=select_to_get ))
+        #p(getted_output_from_db)
+        #p(inp_dict)
+        #test_get_all_rows_from_db_with_intern_getter Part
+        for i in xrange(num_of_insertions):
+            for col in columns_to_get +select_to_get:
+                value_from_input = inp_dict[col][i]
+                value_from_output=getted_output_from_db[i][col]
+ 
+                #p((value_from_input, value_from_output))
+                if col != "text":
+                    if value_from_input != value_from_output:
+                        assert False
+                    else:
+                        assert True
+                else:
+                    if value_from_output != json.dumps(value_from_input):
+                        assert False
+
+
+
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_getlazy_591(self):
+        ####code from "test_insert_many_values_with_insertdict_560"
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
+
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+        db.insertdict("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+
+
+        # lazyget() -> dict
+        #p(list(db.getdictlazy("documents", columns=["hhh", "id"]))[0])
+        columns_to_get = ["id", "text"]
+        select_to_get = ["gender"]
+        getted_output_from_db = list(db.lazyget("documents", columns=columns_to_get, select=select_to_get, output="dict"))
+        #p(getted_output_from_db)
+        #p(inp_dict)
+        #test_get_all_rows_from_db_with_intern_getter Part
+        for i in xrange(num_of_insertions):
+            for col in columns_to_get +select_to_get:
+                value_from_input = inp_dict[col][i]
+                value_from_output=getted_output_from_db[i][col]
+ 
+                #p((value_from_input, value_from_output))
+                if col != "text":
+                    if value_from_input != value_from_output:
+                        assert False
+                    else:
+                        assert True
+                else:
+                    if value_from_output != json.dumps(value_from_input):
+                        assert False
+
+        # lazyget() -> list
+        ## test_get_all_rows_from_db_with_intern_getter Part
+        for i in xrange(num_of_insertions):
+            for col, value in  zip(self.configer.columns_in_doc_table["blogger"],list(db.lazyget("documents", output="list"))[i]):
+                if col != "text":
+                    if inp_dict[col][i] != value:
+                        assert False
+                    else:
+                        assert True
+                else:
+                    if value != json.dumps(inp_dict[col][i]):
+                        assert False
 
 
 
@@ -2313,22 +2600,37 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_roleback_changes_db_610(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        #p(db.col("documents"))
-        #[u'blogger_id', u'text', u'gender', u'age', u'working_area', u'star_constellation']
-        columns = [ u'blogger_id',u'text', u'gender', u'age', u'working_area', u'star_constellation']
-        values = [322624,['schöööööönen',"taaaaaag", "dirrrrrr"], 'm', '27', 'IT', 'lion' ]
-        
-        num_of_insertions = 10
-        rowNum_bevore = db.rownum("documents")
+        ####test_insert_many_values_with_insertdict_560
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
 
-        for i in range(num_of_insertions):
-            db.insertCV("documents", columns, values)
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+        db.insertdict("documents", inp_dict)
 
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+        ##### test roleback
+
+        rowNum_bevore = 0
+        #p((db.all_inserts_counter, db.number_of_new_inserts_after_last_commit, db.rollback()))
         if db.rollback() != num_of_insertions:
-            assert False
+           assert False
 
         rowsNum_after_rollback = db.rownum("documents")
 
@@ -2338,18 +2640,13 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
 
-    ###### Role Back of DBs: 610 ######
-
-
-
-
     ###### Encryption/Decryption: 620 ######
     @attr(status='stable')
     #@wipd
     def test_uniq_DB_encryption_620(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
 
         tables_from_plaintextDB = db.tables()
 
@@ -2370,11 +2667,11 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_DB_encryption_with_attachedDBs_621(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats), encryption_key="stats" )
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats))
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
+        db.attach(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ), encryption_key="stats" )
+        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) )
 
         tables_from_plaintextDB = db.tables()
         dbname_bevore_encryption = db.dbnames
@@ -2403,9 +2700,9 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_uniq_DB_decryption_622(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats), encryption_key="stats" )
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ), encryption_key="stats" )
 
         tables_from_plaintextDB = db.tables()
 
@@ -2427,11 +2724,11 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_DB_decryption_with_attachedDBs_623(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats), encryption_key="stats")
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_corp), encryption_key="corpus")
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats))
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ), encryption_key="stats")
+        db.attach(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_corp_de ), encryption_key="corpus")
+        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) )
 
         tables_from_plaintextDB = db.tables()
         dbnames_bevore_encryption = db.dbnames
@@ -2461,9 +2758,9 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_DB_change_encryption_key_624(self):
-        #db = DBHandler(developingMode=True)
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_twitter_encrypted_stats), encryption_key="stats")
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_twitter_encrypted_stats_de ), encryption_key="stats")
         newkey = "newkey"
         db.change_key(newkey)
 
@@ -2477,25 +2774,25 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     #@wipd
     def test_get_attr_from_connected_db_625(self):
         #corpus:
-        #    db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+        #    db.init("corpus", self.tempdir_project_folder, "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
         #stats:
-        #    db.init("stats", ".", "blogger", "de", "extern", corpus_id="7614" , version="2", stats_id="3497")
+        #    db.init("stats", self.tempdir_project_folder, "blogger", "de", "extern", corpus_id="7614" , version="2", stats_id="3497")
 
 
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        #p(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        name = init_data_blogger["name"]
-        language = init_data_blogger["language"]
-        visibility = init_data_blogger["visibility"]
-        platform_name = init_data_blogger["platform_name"]
-        license = init_data_blogger["license"]
-        template_name = init_data_blogger["template_name"]
-        version = init_data_blogger["version"]
-        source = init_data_blogger["source"]
-        encryption_key = init_data_blogger["encryption_key_corp"]
-        corpus_id = init_data_blogger["corpus_id"]
-        stats_id = init_data_blogger["stats_id"]
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
+        #p(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"]
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
         typ= "corpus"
 
         # check attributes names
@@ -2516,30 +2813,30 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     #@wipd
     def test_get_attr_from_attached_db_626(self):
         #corpus:
-        #    db.init("corpus", ".", "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
+        #    db.init("corpus", self.tempdir_project_folder, "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
         #stats:
-        #    db.init("stats", ".", "blogger", "de", "extern", corpus_id="7614" , version="2", stats_id="3497")
+        #    db.init("stats", self.tempdir_project_folder, "blogger", "de", "extern", corpus_id="7614" , version="2", stats_id="3497")
 
-        db = DBHandler(logger_level=logging.ERROR)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        #p(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-        name = init_data_blogger["name"]
-        language = init_data_blogger["language"]
-        visibility = init_data_blogger["visibility"]
-        platform_name = init_data_blogger["platform_name"]
-        license = init_data_blogger["license"]
-        template_name = init_data_blogger["template_name"]
-        version = init_data_blogger["version"]
-        source = init_data_blogger["source"]
-        encryption_key = init_data_blogger["encryption_key_corp"]
-        corpus_id = init_data_blogger["corpus_id"]
-        stats_id = init_data_blogger["stats_id"]
+        db = DBHandler(mode="test")
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
+        #p(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"]
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
         typ= "corpus"
 
 
-        fname = os.path.splitext(os.path.basename(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats)))[0]
+        fname = os.path.splitext(os.path.basename(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) ))[0]
         stats_db_name = "_"+fname
-        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats))
+        db.attach(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_stats_en) )
         db.get_attr('name', stats_db_name).should.be.equal(name)
         db.get_attr('visibility', stats_db_name).should.be.equal(visibility)
         db.get_attr('typ', stats_db_name).should.be.equal("stats")
@@ -2556,9 +2853,9 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_drop_table_from_db_db_700(self):
-        db = DBHandler(logger_level=logging.ERROR)
-        #db = DBHandler(developingMode=True)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
+        db = DBHandler(mode="test")
+        #db = DBHandler(devmode=True)
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
 
         tables_bevore = db.tables()
         db.drop_table(u"documents")
@@ -2575,27 +2872,29 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
             assert False
 
 
+    
     @attr(status='stable')
     #@wipd
     def test_update_value_701(self):
-        db = DBHandler(logger_level=logging.ERROR)
-        #db = DBHandler(developingMode=True)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
-
+        db = DBHandler(mode="test")
+        #db = DBHandler(devmode=True)
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
+        #p(db.col("documents"))
         row1_bevore = db.getall("documents", where="rowid=1")
         db.update("documents", ["gender"], ["unknown"], where="rowid=1")
         row1_after = db.getall("documents", where="rowid=1")
         #p((row1_bevore,row1_after))
         if row1_after[0][3] != u"unknown":
-            assert False
+           assert False
+        db.close()
 
 
     @attr(status='stable')
     #@wipd
     def test_addNewtable_702(self):
-        db = DBHandler(logger_level=logging.ERROR)
-        #db = DBHandler(developingMode=True)
-        db.connect(os.path.join(self.tempdir_testdbs, self.db_blogger_plaintext_corp))
+        db = DBHandler(mode="test")
+        #db = DBHandler(devmode=True)
+        db.connect(os.path.join(self.tempdir_testdbs,  self.db_blogger_plaintext_corp_en) )
 
         newtableName = u"tempTables"
         attributs_names_with_types_as_str = [
@@ -2620,7 +2919,164 @@ class TestZAScorpusDBHandlerDBHandler(unittest.TestCase):
 
 
 
+
+    ###### INDEXES: 750 ######
+
+    @attr(status='stable')
+    #@wipd
+    def test_init_default_indexes_in_corpus_bevore_insertions_750(self):
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
+
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
         
+        number_of_indexes_which_should_be_initialized = 0
+        for table_name, index_query_list in db_helper.default_indexes["corpus"].iteritems():
+            for index_query in index_query_list:
+                number_of_indexes_which_should_be_initialized+=1
+
+
+        number_of_indexes_bevor = len(db.indexes())
+        db.init_default_indexes()
+        #p(db.execute("SELECT * FROM sqlite_master WHERE type = 'index';").fetchall())
+        number_of_indexes_after = len(db.indexes())
+        if number_of_indexes_bevor+number_of_indexes_which_should_be_initialized != number_of_indexes_after:
+            assert False
+        #p(db.indexes())
+
+
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_init_default_indexes_in_corpus_after_insertions_751(self):
+        #db = DBHandler(devmode=True)
+        db = DBHandler(mode="test")
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"] 
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"] 
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "corpus"
+
+        db.init_corpus(self.tempdir_project_folder, name, language,
+                visibility, platform_name, license=license,
+                template_name=template_name, version=version, source=source)
+        inp_dict = self.configer.docs_row_dict( token=True, unicode_str=True, all_values=True)["blogger"]
+        num_of_insertions = len(random.choice(inp_dict.values()))
+
+        number_of_indexes_which_should_be_initialized = 0
+        for table_name, index_query_list in db_helper.default_indexes["corpus"].iteritems():
+            for index_query in index_query_list:
+                number_of_indexes_which_should_be_initialized+=1
+
+
+        number_of_indexes_bevor = len(db.indexes())
+
+
+
+        db.insertdict("documents", inp_dict)
+
+        if num_of_insertions != db.rownum("documents"):
+            assert False
+
+        columns = inp_dict.keys()
+        rows = inp_dict.values()
+
+        for i in xrange(num_of_insertions):
+            for col, value in  zip(self.configer.columns_in_doc_table["blogger"],db.getall("documents")[i]):
+                if col != "text":
+                    if inp_dict[col][i] != value:
+                        assert False
+                    else:
+                        assert True
+                else:
+                    if value != json.dumps(inp_dict[col][i]):
+                        assert False
+
+
+        db.init_default_indexes()
+        #p(db.execute("SELECT * FROM sqlite_master WHERE type = 'index';").fetchall())
+        number_of_indexes_after = len(db.indexes())
+        if number_of_indexes_bevor+number_of_indexes_which_should_be_initialized != number_of_indexes_after:
+            assert False
+        #p(db.indexes())
+     
+
+
+
+
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_init_default_indexes_in_stats_bevore_insertions_752(self):
+        db = DBHandler(mode="test")
+        
+
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["stats"]
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
+        typ= "stats"
+
+
+        db.init(typ, self.tempdir_project_folder, name, language,
+                visibility, corpus_id=corpus_id,  version=version)
+
+
+
+        number_of_indexes_which_should_be_initialized = 0
+        for table_name, index_query_list in db_helper.default_indexes["stats"].iteritems():
+            for index_query in index_query_list:
+                number_of_indexes_which_should_be_initialized+=1
+
+        #p(db.indexes())
+
+        number_of_indexes_bevor = len(db.indexes())
+        db.init_default_indexes()
+        #p(db.execute("SELECT * FROM sqlite_master WHERE type = 'index';").fetchall())
+        number_of_indexes_after = len(db.indexes())
+
+        if number_of_indexes_bevor+number_of_indexes_which_should_be_initialized != number_of_indexes_after:
+            assert False
+        #p(db.indexes())
+
+
+
+
+
+
+
 
 #################################END##################################################
 ############################EXTERN METHODS############################################

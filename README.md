@@ -5,27 +5,137 @@
 # System level
 
 #### System Requirements
+    MacOS
 
+    
+
+    brew
     python 2.7
+    python 3.6
     pip
     virtualenv 
 
-#### System Requirements (installation)
-    Linux
-    sudo apt-get install python-pip
-    pip install virtualenv 
+    python 3.6
+    pip
+    virtualenv
+    pip3 install SoMeWeTa
+    pip3 install SoMaJo 
 
-    Windows 10
-    - Install Windows Tools für Windows
-    - Install Ubuntu from App Store
-    - sudo apt-get update
-    - sudo apt-get upgrade
-    - install python ($ sudo apt install python )
-    - sudo apt-get install python-setuptools python-dev build-essential (https://www.saltycrane.com/blog/2010/02/how-install-pip-ubuntu/) 
-    - sudo apt-get install python-pip
-    - Install the Microsoft Visual C++ Compiler for Python 2.7
-    - install pysqlcipher https://stackoverflow.com/questions/27154476/how-to-compile-and-install-pysqlcipher-for-python-2-7-on-windows-7
----
+
+    java 6 (To run the tweetNLP tagger)
+
+
+
+
+#### System Requirements 
+
+On MacOS
+
+
+On Windows
+    - Windows Subsystem for Linux
+    - 
+
+
+On Linux
+
+
+
+
+#### System Requirements  (installation)
+
+
+On MacOS
+    1. install brew
+        $ /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+    2. install there 
+        -> python (2+3), pip (2+3)
+            $ brew install python2
+            $ brew install python3
+            $ sudo python2 -m ensurepip
+            $ sudo python3 -m ensurepip
+            $ pip2 install --upgrade pip
+            $ pip3 install --upgrade pip
+
+
+        -> sqlite
+            $ brew install sqlite
+            $ brew install openssl
+            $ brew install sqlcipher
+            $ sudo python2 -m pip install pysqlcipher --install-option="--bundled"
+            compile json1 - extention 
+                $ gcc -g -fPIC -dynamiclib sqlite-src-3140100/ext/misc/json1.c -o json1
+        -> additional python packages, which will not be installed automatically
+            Tokenizers and POS Taggers 
+                $ sudo python3 -m pip install somajo
+                $ sudo python3 -m pip install someweta
+        -> java 6 (for TweetNLP Tokenizer and POS Tagger)
+            $ brew cask install java
+
+
+
+
+On Windows
+    1. Enable in Feauters - "Windows Subsystem for Linux"
+    2. Enable in Settings - "Developer Mode"
+    3. Install Ubuntu 16.04 from Windows Store
+    4. goes to Ubuntu Bash 
+    5. up now handle according instruction for Linux
+
+
+
+On Linux (was tested on Ubuntu 16.04)
+*** install if not installed (better to delete and install everything one more time but in the follwoing order)
+    1. open bash 
+    2, upgrade important tools
+        $ sudo apt-get update
+        $ sudo apt-get upgrade
+        $ 
+    2. install there 
+        -> python (2+3), pip (2+3)
+            $ sudo apt install python2
+            $ sudo apt install python3
+            $ sudo apt-get install python-setuptools python-dev build-essential #((https://www.saltycrane.com/blog/2010/02/how-install-pip-ubuntu/))
+            $ sudo apt-get install python-software-properties
+            $ sudo apt-get install python2-pip
+            $ sudo apt-get install python3-pip
+            $ pip2 install --upgrade pip
+            $ pip3 install --upgrade pip
+            probably! (need to be tested)
+                - Install the Microsoft Visual C++ Compiler for Python 2.7 (https://www.microsoft.com/en-us/download/details.aspx?id=44266)
+                #- install pysqlcipher https://stackoverflow.com/questions/27154476/how-to-compile-and-install-pysqlcipher-for-python-2-7-on-windows-7
+
+        -> sqlite
+            $ sudo apt-get install sqlite3
+            $ sudo apt-get install sqlcipher
+            $ sudo python2 -m pip install pysqlcipher --install-option="--bundled"
+            compile json1 - extention 
+                $ gcc -g -fPIC -shared YourCode.c -o YourCode.so
+        -> additional python packages, which will not be installed automatically
+            Tokenizers and POS Taggers 
+                $ sudo python3 -m pip install somajo
+                $ sudo python3 -m pip install someweta
+        -> Java
+            $ sudo add-apt-repository ppa:webupd8team/java
+            $  sudo apt-get update
+            $ sudo apt-get install oracle-java6-installer # (https://www.digitalocean.com/community/tutorials/how-to-install-java-on-ubuntu-12-04-with-apt-get) OR !!!! (better solution https://stackoverflow.com/questions/36478741/installing-oracle-jdk-on-windows-subsystem-for-linux) !!!!!!!! JAVA6 is not supporting anymore! (See here: http://www.webupd8.org/2017/06/why-oracle-java-7-and-6-installers-no.html)
+
+     
+
+
+    mac osx: gcc -g -fPIC -dynamiclib sqlite-src-3140100/ext/misc/json1.c -o json1
+    windows: cl YourCode.c -link -dll -out:YourCode.dll
+    *nix (linux, BSD, etc): gcc -g -fPIC -shared YourCode.c -o YourCode.so
+
+
+
+
+
+
+
+
+
+
 
 ---
 ---
@@ -37,17 +147,6 @@
 # Package level
 
 ### Installation 
-
-This guide assumes loadable sqlite extention `json1`. It is used to isolate the environment and dependences.
-1. go to download page:http://sqlite.org/download.html:
-    $ curl -O http://sqlite.org/2016/sqlite-src-3140100.zip # (swap '3140100' with latest version from downloads page)
-    $ unzip sqlite-src-3140100.zip
-2. than compile it 
-    mac osx: gcc -g -fPIC -dynamiclib sqlite-src-3140100/ext/misc/json1.c -o json1
-    windows: cl YourCode.c -link -dll -out:YourCode.dll
-    *nix (linux, BSD, etc): gcc -g -fPIC -shared YourCode.c -o YourCode.so
-
-
 
 This guide assumes `virtualenv`. It is used to isolate the environment and dependences.
 

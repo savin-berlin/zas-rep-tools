@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import platform
+import sys
+from kitchen.text.converters import getwriter
 
 if platform.uname()[0].lower() !="windows":
     from blessings import Terminal
@@ -9,7 +11,8 @@ if platform.uname()[0].lower() !="windows":
 from nose.plugins.attrib import attr
 from cached_property import cached_property
 
-
+UTF8Writer = getwriter('utf8')
+sys.stdout = UTF8Writer(sys.stdout)
 
 def p(func, func_name='DEBUGING', c='w'):
 	'''

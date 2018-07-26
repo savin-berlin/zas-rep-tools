@@ -9,7 +9,7 @@
 
 ###Programm Info######
 
-from zas_rep_tools.src.utils.logger import Logger
+#from zas_rep_tools.src.utils.logger import Logger
 
 import logging
 import inspect
@@ -21,7 +21,7 @@ import json
 import sys
 
 
-from zas_rep_tools.src.classes.Corpus import Corpus
+from zas_rep_tools.src.classes.corpus import Corpus
 from zas_rep_tools.src.utils.debugger import p
 
 path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Corpus))))
@@ -41,6 +41,10 @@ def logger_initialisation(logger_name,use_logger, save_logs, logs_dir):
     global logger 
     logger = Logger()
     logger = logger.myLogger2(folder_for_log=logs_dir, logger_name=logger_name, use_logger=use_logger, save_logs=save_logs)
+
+
+    
+    self.logger = main_logger(self.__class__.__name__, level=self._logger_level, folder_for_log=logger_folder_to_save, use_logger=logger_usage, save_logs=logger_save_logs, num_buffered=logger_num_buffered)
 
     return logger
 

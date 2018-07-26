@@ -16,22 +16,28 @@ import sys
 import regex
 import sqlite3
 import inspect
+import itertools
+import logging
+import json
+
 
 import functools
 from pyhashxx import hashxx
-from datetime import datetime
+from datetime import datetime as dt
+
 
 from zas_rep_tools.src.utils.debugger import p
-from zas_rep_tools.src.utils.logger import Logger
+from zas_rep_tools.src.utils.logger import *
 
 
 
-path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Logger))))
+#path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Logger))))
 
 
 ########################################################################################
 #########################Exception- Handling#############################################
 ########################################################################################
+
 
 
 
@@ -46,12 +52,14 @@ class DBErrorCatcher(type):
 
 
     def __new__(cls, name, bases, dct):
+
+
         #p(dct)
         if 'DBErrorCatcher' in dct:
             #p(dct['DBErrorCatcher'])
             if dct['DBErrorCatcher']:
-                logger = Logger()
-                logger = logger.errorLogger("DBErrorCatcher")
+                logger = main_logger('DBErrorCatcher', level=logging.ERROR,  use_logger=True)
+                #logger = errorLogger("DBErrorCatcher")
                 for m in dct:
                     if hasattr(dct[m], '__call__'):
                         dct[m] = catch_exception(dct[m],logger)
@@ -108,6 +116,10 @@ def catch_exception(f,logger):
             msg = "sqlite3.ProgrammingError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
             logger.error(msg)
             sys.exit()
+
+        except KeyboardInterrupt:
+            logger.warning("KeyboardInterrupt: Process was stopped from User. Some inconsistence in the current DB may situated.")
+            sys.exit()
          
         except Exception as e:
             msg = "OtherExceptions: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
@@ -124,6 +136,28 @@ def catch_exception(f,logger):
 
 
 
+
+
+
+# class defaultlist(list):
+#     """List returning default value when accessing uninitialized index.
+
+#     Original implementation: http://stackoverflow.com/a/8719940/315168
+#     """
+
+#     def __init__(self, fx):
+#         self._fx = fx
+
+#     def __setitem__(self, index, value):
+#         while len(self) <= index:
+#             self.append(self._fx())
+#         list.__setitem__(self, index, value)
+
+#     def __getitem__(self, index):
+#         """Allows self.dlist[0] style access before value is initialized."""
+#         while len(self) <= index:
+#             self.append(self._fx())
+#         return list.__getitem__(self, index)
 
 
 
@@ -151,7 +185,20 @@ attributs_names_corpus = [
                             ("source", "TEXT"),
                             ("license", "TEXT"),
                             ("visibility", "TEXT NOT NULL"),
-                            ("typ", "TEXT NOT NULL")
+                            ("typ", "TEXT NOT NULL"),
+                            ("tokenizer", "TEXT"),
+                            ("sent_splitter", "TEXT"),
+                            ("pos_tagger", "TEXT"),
+                            ("sentiment_analyzer", "TEXT"),
+                            ("preprocession", "INTEGER"),
+                            ("del_url", "INTEGER"),
+                            ("del_punkt", "INTEGER"),
+                            ("del_num", "INTEGER"),
+                            ("del_mention", "INTEGER"),
+                            ("del_hashtag", "INTEGER"),
+                            ("del_html", "INTEGER"),
+                            ("case_sensitiv", "INTEGER"),
+                            ("lang_classification", "INTEGER")
                         ]
 
 
@@ -159,19 +206,20 @@ attributs_names_corpus = [
 ### Documnets_Table (default)
 
 default_columns_and_types_for_corpus_documents = [
-                                ('id','INTEGER PRIMARY KEY')
+                                ('rowid','INTEGER PRIMARY KEY'),
+                                ('id','INTEGER'),
+                                ('text','JSON NOT NULL')
                                 ]
 
 
 default_constraints_for_corpus_documents = [
-                        'CONSTRAINT "Uniq_Blogger_ID" UNIQUE ("id")',
+                        'CONSTRAINT "Uniq_ID" UNIQUE ("id")',
 
                         ]
 
 
 default_index_for_corpus_documents = [
-                        'CREATE INDEX "ix_doc_id" ON "documents" ("id");',
-
+                        'CREATE INDEX "ix_id" ON "documents" ("id");',
                             ]
 
 
@@ -179,7 +227,6 @@ default_index_for_corpus_documents = [
 ### Documnets_Table (special)
 
 extended_columns_and_types_for_corpus_documents_twitter = [
-                                ('text','JSON NOT NULL'),
                                 ('t_created_at','TEXT NOT NULL'),
                                 ('t_language','TEXT'),
                                 ('t_used_client','TEXT'),
@@ -194,6 +241,9 @@ extended_columns_and_types_for_corpus_documents_twitter = [
                                 ('u_username','TEXT NOT NULL'),
                                 ('u_verified','TEXT NOT NULL'),
                                 ('u_location','TEXT'),
+                                ('is_extended','INTEGER'),
+                                ('is_retweet','INTEGER'),
+                                ('is_answer','INTEGER'),
                                 ]
 
 
@@ -201,8 +251,6 @@ extended_columns_and_types_for_corpus_documents_twitter = [
 
 
 extended_columns_and_types_for_corpus_documents_blogger =[
-                                ('blogger_id','INTEGER NOT NULL'),
-                                ('text','JSON NOT NULL'),
                                 ('gender','TEXT NOT NULL'),
                                 ('age','INTEGER NOT NULL'),
                                 ('working_area','TEXT NOT NULL'),
@@ -242,23 +290,39 @@ attributs_names_stats = [
 
 
 
-### Baseline_Table (default)
+### Baseline_Tables (default)
+#default_columns_and_types_for_stats_baseline
 
-default_columns_and_types_for_stats_baseline = [
-                                ('word','TEXT PRIMARY KEY'),
-                                ('redu_counts','INTEGER NOT NULL'),
-                                ('repl_counts','INTEGER NOT NULL'),
-                                ('all_counts','INTEGER NOT NULL'),
-                                ('repl_IDs','BLOB NOT NULL'),
-                                ('redu_IDs','BLOB NOT NULL'),
+
+#repl_baseline
+default_columns_and_types_for_stats_repl_baseline = [
+                                ('syntagma','TEXT PRIMARY KEY NOT NULL'),
+                                ('occurrence_repl_uniq','INTEGER NOT NULL'),
+                                ('occurrence_repl_alle','INTEGER NOT NULL'),
+                                ('occurrence_non_repl','INTEGER NOT NULL'),
+                                ('repl_ids','TEXT'),
+                                ]
+
+#redu_baseline
+default_columns_and_types_for_redu_baseline = [
+                                ('syntagma','TEXT PRIMARY KEY NOT NULL'),
+                                ('scope','INTEGER NOT NULL'),
+                                ('occurrence','INTEGER NOT NULL'),
+                                ('redu_ids','TEXT'),
                                 ]
 
 
+default_constraints_for_stats_baseline = [
+                                    'CONSTRAINT "Uniq_Syntagma" UNIQUE ("syntagma")',
+                                    ]
 
-default_indexes_for_stats_baseline = [
-                                'CREATE INDEX "ix_word" ON "baseline" ("word");',
-                                'CREATE INDEX "ix_all_counts" ON "baseline" ("all_counts");',                            
-                                ]
+
+
+# default_indexes_for_stats_baseline = [
+#                                 'CREATE INDEX "ix_word" ON "baseline" ("word");',
+#                                 'CREATE INDEX "ix_all_counts" ON "baseline" ("all_counts");',                            
+#                                 ]
+
 
 
 
@@ -266,7 +330,7 @@ default_indexes_for_stats_baseline = [
 
 default_columns_and_types_for_stats_replications = [
                                 ('repl_id','INTEGER PRIMARY KEY'),
-                                ('id','INTEGER NOT NULL'),
+                                ('doc_id','INTEGER NOT NULL'),
                                 ('token_nr','INTEGER NOT NULL'),
                                 ('word','TEXT NOT NULL'),
                                 ('rle',' TEXT'),
@@ -276,13 +340,13 @@ default_columns_and_types_for_stats_replications = [
                                 ]
 
 
-default_constrains_for_stats_replications = [
+default_constraints_for_stats_replications = [
                                 'CONSTRAINT "Uniq_Repl_ID" UNIQUE ("repl_id")',
                                 ]
 
 
 default_indexes_for_stats_replications = [
-                                'CREATE INDEX "ix_replID" ON "stats.replications" ("repl_id");',
+                                'CREATE INDEX "ix_replID" ON "replications" ("repl_id");',
                                 ]
 
 ### Reduplications_Table (default)
@@ -291,7 +355,7 @@ default_indexes_for_stats_replications = [
 
 default_columns_and_types_for_stats_reduplications = [
                                 ('redu_id','INTEGER PRIMARY KEY'),
-                                ('id','INTEGER NOT NULL'),
+                                ('doc_id','INTEGER NOT NULL'),
                                 ('token_nr','INTEGER NOT NULL'),
                                 ('word','TEXT NOT NULL'),
                                 ('nr_of_redu','INTEGER NOT NULL'),
@@ -299,33 +363,75 @@ default_columns_and_types_for_stats_reduplications = [
                                 ]
 
 
-default_constrains_for_stats_reduplications = [
+default_constraints_for_stats_reduplications = [
                                     'CONSTRAINT "Uniq_Redu-ID" UNIQUE ("redu_id")',
                                     ]
 
 
 default_indexes_for_stats_reduplications = [
-                                    'CREATE INDEX "ix_reduID" ON "stats.reduplications" ("redu-id");',
+                                    'CREATE INDEX "ix_reduID" ON "reduplications" ("redu-id");',
                                     ]
 
+default_indexes = {
+                    "corpus": {
+                            "documents":default_index_for_corpus_documents
+                            },
+                    "stats": {
+                            #"baseline":default_indexes_for_stats_baseline,
+                            "replications":default_indexes_for_stats_replications,
+                            "reduplications":default_indexes_for_stats_reduplications
+                            }
+                }
+
+
+default_tables = {
+                "corpus":{
+                        "info":attributs_names_corpus,
+                        "documents":{
+                                    "basic": default_columns_and_types_for_corpus_documents,
+                                    "twitter":extended_columns_and_types_for_corpus_documents_twitter,
+                                    "blogger":extended_columns_and_types_for_corpus_documents_blogger,
+                                    }
+                        },
+
+                "stats":{
+                        "info":attributs_names_stats,
+                        "replications":default_columns_and_types_for_stats_replications,
+                        "reduplications":default_columns_and_types_for_stats_reduplications,
+                        "repl_baseline":default_columns_and_types_for_stats_repl_baseline,
+                        "redu_baseline":default_columns_and_types_for_redu_baseline
+                        }
+
+            }
 
 
 
+default_constraints = {
+                    "corpus":{
+                            "documents":default_constraints_for_corpus_documents,
+                            },
 
+                    "stats":{
+                            "replications":default_constraints_for_stats_replications,
+                            "reduplications":default_constraints_for_stats_reduplications,
+                            "repl_baseline":default_constraints_for_stats_baseline,
+                            "redu_baseline":default_constraints_for_stats_baseline,
+                            }
+                    }
 
 
 ########################################################################
 #########################Other  Helpers##################################
 ########################################################################
 
-def ResultIter(cursor, arraysize=1000):
-    'An iterator that uses fetchmany to keep memory usage down'
-    while True:
-        results = cursor.fetchmany(arraysize)
-        if not results:
-            break
-        for result in results:
-            yield result
+# def ResultIter(cursor, arraysize=1000):
+#     'An iterator that uses fetchmany to keep memory usage down'
+#     while True:
+#         results = cursor.fetchmany(arraysize)
+#         if not results:
+#             break
+#         for result in results:
+#             yield result
 
 
 
@@ -417,178 +523,38 @@ def columns_and_types_in_tuples_to_str(attributs_names):
 
 
 
-def attributs_to_str(attributs_names):
-    '''
-    without Datatypes
-    '''
-    if isinstance(attributs_names, list):
-        str_attributs_names = ""
-        i=1
-        for attribut in attributs_names:
+# def attributs_to_str(attributs_names):
+#     '''
+#     without Datatypes
+#     '''
+#     if isinstance(attributs_names, list):
+#         str_attributs_names = ""
+#         i=1
+#         for attribut in attributs_names:
 
-            if isinstance(attribut, unicode):
-                attribut = attribut.encode('utf8')
-            if not isinstance(attribut, tuple):
-                return False
+#             if isinstance(attribut, unicode):
+#                 attribut = attribut.encode('utf8')
+#             if not isinstance(attribut, tuple):
+#                 return False
 
-            if len(attributs_names) > 1:
-                if i < len(attributs_names):
-                    str_attributs_names += "\n{}, ".format(attribut[0])
-                else:
-                    str_attributs_names += "\n{} ".format(attribut[0])
+#             if len(attributs_names) > 1:
+#                 if i < len(attributs_names):
+#                     str_attributs_names += "\n{}, ".format(attribut[0])
+#                 else:
+#                     str_attributs_names += "\n{} ".format(attribut[0])
 
-                i+=1
-            elif len(attributs_names) == 1:
-                str_attributs_names += "{}".format(attribut[0])
+#                 i+=1
+#             elif len(attributs_names) == 1:
+#                 str_attributs_names += "{}".format(attribut[0])
 
-            else:
-                return False
-    else:
-        return False
+#             else:
+#                 return False
+#     else:
+#         return False
 
-    return str_attributs_names
-
-
+#     return str_attributs_names
 
 
-def columns_list_to_str(attributs_names):
-    '''
-    without Datatypes
-    '''
-    if isinstance(attributs_names, list):
-        str_attributs_names = ""
-        i=1
-        for attribut in attributs_names:
-            if isinstance(attribut, unicode):
-                attribut = attribut.encode('utf8')
-            if len(attributs_names) > 1:
-                if i < len(attributs_names):
-                    str_attributs_names += "\n{}, ".format(attribut)
-                else:
-                    str_attributs_names += "\n{} ".format(attribut)
-
-                i+=1
-            elif len(attributs_names) == 1:
-                str_attributs_names += "{}".format(attribut)
-
-            else:
-                return False
-    else:
-        return False
-
-    return str_attributs_names
-
-
-
-def constrains_list_to_str(constrains):
-    '''
-    without Datatypes
-    '''
-    #p(constrains)
-    if isinstance(constrains, list):
-        str_constrains = ""
-        i=0
-        for constrain in constrains:
-            if len(constrains) > 1:
-                if i == 0:
-                    str_constrains += ",\n{} ".format(constrain)
-                elif i<0 and  i < len(constrains):
-                    str_constrains += "\n{}, ".format(constrain)
-                else:
-                    str_constrains += "\n{} ".format(constrain)
-
-                i+=1
-            elif len(constrains) == 1:
-                str_constrains += ",\n{}".format(constrain)
-
-            else:
-                return False
-    else:
-        return False
-
-    #p(str_constrains, c="m")
-    return str_constrains
-
-
-def clean_value(value):
-    #p(value, "value")
-    if isinstance(value, (str,unicode)):
-        #newval= value
-        newval = value.replace('\n', '\\n"')
-        newval = newval.replace('"', '\'')
-        newval = newval.replace('\r', '\\r"')
-        return newval
-
-    else:
-        return False
-
-     
-
-def values_to_tuple(values):
-    values_as_list = list()
-    if isinstance(values, list):
-        for value in values:
-            if isinstance(value, (str, unicode)):
-                values_as_list.append(clean_value(value))
-            elif isinstance(value, list):
-                values_as_list.append(clean_value(str(value)))
-            else:
-                values_as_list.append(value)
-
-
-    else:
-        return False
-
-    return tuple(values_as_list)
-
-
-def values_list_to_str(values):
-    '''
-    without Datatypes
-    '''
-    if isinstance(values, list):
-        str_values = ""
-        i=1
-        for value in values:
-            if isinstance(value, unicode):
-                value = value.encode('utf8')
-            if value is None:
-                value = "NULL"
-            if value == "NULL":
-                if len(values) > 1:
-                    if i < len(values):
-                        str_values += "\n{}, ".format(clean_value(value))
-                    else:
-                        str_values += "\n{} ".format(clean_value(value))
-                    i+=1
-                elif len(values) == 1:
-                    str_values += "{}".format(clean_value(value))
-                else:
-                    return False
-            else:
-                if len(values) > 1:
-                    if i < len(values):
-                        if isinstance(value, list):
-                            str_values += '\n"{}", '.format(unicode(clean_value(value)))
-                        else:
-                            str_values += '\n"{}", '.format(clean_value(value))
-                    else:
-                        if isinstance(value, list):
-                            str_values += '\n"{}" '.format(unicode(clean_value(value)))
-                        else:
-                            str_values += '\n"{}" '.format(clean_value(value))
-                    i+=1
-                elif len(values) == 1:
-                    if isinstance(value, list):
-                        str_values += '"{}"'.format(unicode(clean_value(value)))
-                    else:
-                        str_values += '"{}"'.format(clean_value(value))
-                else:
-                    return False
-    else:
-        return False
-
-    return str_values
 
 
 
@@ -614,7 +580,223 @@ def where_condition_to_str(inputobj,  connector="AND"):
     return outputstr
 
 
-def get_file_name(prjFolder,first_id ,DBname, language,visibility, typ,  fileName=False, platform_name=False, second_id=False,encrypted=False):
+
+
+def list_of_select_objects_to_str(inputobj):
+    '''
+    without Datatypes
+    '''
+    if isinstance(inputobj, list):
+        outputstr = ""
+        i=1
+        for obj in inputobj:
+            if isinstance(obj, unicode):
+                obj = obj.encode('utf8')
+            if len(inputobj) > 1:
+                if i < len(inputobj):
+                    outputstr += "\n{}, ".format(obj)
+                else:
+                    outputstr += "\n{} ".format(obj)
+
+                i+=1
+            elif len(inputobj) == 1:
+                outputstr += "{}".format(obj)
+
+            else:
+                return False
+    elif isinstance(inputobj, str):
+        outputstr += " {}".format(inputobj)
+    else:
+        return False
+    #p(outputstr)
+    return outputstr
+
+
+
+
+
+# def columns_list_to_str(inputobj):
+#     '''
+#     without Datatypes
+#     '''
+#     if isinstance(inputobj, list):
+#         outputstr = ""
+#         i=1
+#         for column in inputobj:
+#             if isinstance(column, unicode):
+#                 column = column.encode('utf8')
+#             if len(inputobj) > 1:
+#                 if i < len(inputobj):
+#                     outputstr += "\n{}, ".format(column)
+#                 else:
+#                     outputstr += "\n{} ".format(column)
+
+#                 i+=1
+#             elif len(inputobj) == 1:
+#                 outputstr += "{}".format(column)
+
+#             else:
+#                 return False
+#     elif isinstance(inputobj, str):
+#         outputstr += " {}".format(inputobj)
+#     else:
+#         return False
+
+#     return outputstr
+
+
+
+def constraints_list_to_str(constraints):
+    '''
+    without Datatypes
+    '''
+    #p(constraints)
+    if isinstance(constraints, list):
+        str_constraints = ""
+        i=0
+        for constrain in constraints:
+            if len(constraints) > 1:
+                if i == 0:
+                    str_constraints += ",\n{} ".format(constrain)
+                elif i<0 and  i < len(constraints):
+                    str_constraints += "\n{}, ".format(constrain)
+                else:
+                    str_constraints += "\n{} ".format(constrain)
+
+                i+=1
+            elif len(constraints) == 1:
+                str_constraints += ",\n{}".format(constrain)
+
+            else:
+                return False
+    else:
+        return False
+
+    #p(str_constraints, c="m")
+    return str_constraints
+
+
+def clean_value(value):
+    #p(value, "value")
+    if isinstance(value, (str,unicode)):
+        #newval= value
+        newval = value.replace('\n', '\\n"')
+        newval = newval.replace('"', '\'')
+        newval = newval.replace('\r', '\\r"')
+        return newval
+
+    else:
+        return False
+
+     
+
+def values_to_tuple(values, mode):
+    values_as_list = list()
+    if mode == "one":
+        if isinstance(values, list):
+            for value in values:
+                if isinstance(value, (str, unicode)):
+                    values_as_list.append(value)
+                    #values_as_list.append(clean_value(value))
+                elif isinstance(value, (list,dict,tuple)):
+                    values_as_list.append(json.dumps(value))
+                else:
+                    values_as_list.append(value)
+        else:
+            return False
+    else:
+        if isinstance(values, list):
+            for row in values:
+                temp_row = []
+                for item in row:
+                    if isinstance(item, (str, unicode)):
+                        temp_row.append(item)
+                        #temp_row.append(clean_value(value))
+                    elif isinstance(item, (list,dict,tuple)):
+                        temp_row.append(unicode(json.dumps(item)))
+                    else:
+                        temp_row.append(item)
+                values_as_list.append(tuple(temp_row))
+        else:
+            return False
+
+    return tuple(values_as_list)
+
+
+# def values_list_to_str(values):
+#     '''
+#     without Datatypes
+#     '''
+#     if isinstance(values, list):
+#         str_values = ""
+#         i=1
+#         for value in values:
+#             if isinstance(value, unicode):
+#                 value = value.encode('utf8')
+#             if value is None:
+#                 value = "NULL"
+#             if value == "NULL":
+#                 if len(values) > 1:
+#                     if i < len(values):
+#                         str_values += "\n{}, ".format(clean_value(value))
+#                     else:
+#                         str_values += "\n{} ".format(clean_value(value))
+#                     i+=1
+#                 elif len(values) == 1:
+#                     str_values += "{}".format(clean_value(value))
+#                 else:
+#                     return False
+#             else:
+#                 if len(values) > 1:
+#                     if i < len(values):
+#                         if isinstance(value, list):
+#                             str_values += '\n"{}", '.format(unicode(clean_value(value)))
+#                         else:
+#                             str_values += '\n"{}", '.format(clean_value(value))
+#                     else:
+#                         if isinstance(value, list):
+#                             str_values += '\n"{}" '.format(unicode(clean_value(value)))
+#                         else:
+#                             str_values += '\n"{}" '.format(clean_value(value))
+#                     i+=1
+#                 elif len(values) == 1:
+#                     if isinstance(value, list):
+#                         str_values += '"{}"'.format(unicode(clean_value(value)))
+#                     else:
+#                         str_values += '"{}"'.format(clean_value(value))
+#                 else:
+#                     return False
+#     else:
+#         return False
+
+#     return str_values
+
+
+
+def where_condition_to_str(inputobj,  connector="AND"):
+    outputstr = ""
+
+    i=0
+    if isinstance(inputobj, list):
+        for item in inputobj:
+            i+=1
+            if i < len(inputobj):
+                outputstr += " {} {}".format(item, connector)
+            else:
+                outputstr += " {} ".format(item)
+
+    elif isinstance(inputobj, str):
+        outputstr += " {}".format(inputobj)
+
+    else:
+        return False
+
+
+    return outputstr
+
+
+def get_file_name(prjFolder,first_id ,DBname, language,visibility, typ,  fileName=False, platform_name=False, second_id=False,encrypted=False, rewrite=False, stop_if_db_already_exist=False):
+    #p("1234", c="m")
     status = True
     i=0
     while status:
@@ -679,7 +861,9 @@ def get_file_name(prjFolder,first_id ,DBname, language,visibility, typ,  fileNam
                 
 
         if i > 10000:
-            print "Aborting!!! To avoid never-ending loop"
+            #p(fileName)
+            print "db_helpers.get_file_name(): Script was Aborting!!! To avoid never-ending loop"
+            return False, False
             sys.exit()
 
         i+=1
@@ -690,15 +874,29 @@ def get_file_name(prjFolder,first_id ,DBname, language,visibility, typ,  fileNam
         #Create path_to_db
         path_to_db = os.path.join(prjFolder,fileName)
 
-        #Check if this file already exist. and if yes, than change the name
-        if not os.path.isfile(path_to_db):
-            status = False
+
+        if stop_if_db_already_exist:
+            if os.path.isfile(path_to_db):
+                status = False
+                return fileName,None
+
+
+        if rewrite:
+            if os.path.isfile(path_to_db):
+                status = False
+                #p((fileName,path_to_db))
             return fileName,path_to_db
+
+        else:       
+            if not os.path.isfile(path_to_db):
+                status = False
+                return fileName,path_to_db
  
 
 
 
-def get_file_name_for_empty_DB(prjFolder,DBname,  fileName=False, encrypted=False):
+def get_file_name_for_empty_DB(prjFolder,DBname,  fileName=False, encrypted=False, rewrite=False, stop_if_db_already_exist=False):
+    
     status = True
     i=0
     while status:
@@ -728,7 +926,8 @@ def get_file_name_for_empty_DB(prjFolder,DBname,  fileName=False, encrypted=Fals
                 
 
         if i > 10000:
-            print "Aborting!!! To avoid never-ending loop"
+            print "db_helpers.get_file_name_for_empty_DB(): Aborting!!! To avoid never-ending loop"
+            #return False
             sys.exit()
 
         i+=1
@@ -740,13 +939,27 @@ def get_file_name_for_empty_DB(prjFolder,DBname,  fileName=False, encrypted=Fals
         path_to_db = os.path.join(prjFolder,fileName)
 
         #Check if this file already exist. and if yes, than change the name
-        if not os.path.isfile(path_to_db):
-            status = False
+
+        if stop_if_db_already_exist:
+            if os.path.isfile(path_to_db):
+                status = False
+                return fileName, None
+
+
+        if rewrite:
+            if os.path.isfile(path_to_db):
+                status = False
+                #p((fileName,path_to_db))
             return fileName,path_to_db
+ 
+        else:       
+            if not os.path.isfile(path_to_db):
+                status = False
+                return fileName,path_to_db
  
 #int(str(number)[2:5])
 def create_id(name,lang, typ, visibility):
-    time_now = datetime.now().strftime('%H:%M:%S')
+    time_now = dt.now().strftime('%H:%M:%S')
     return str(hashxx("{}{}{}{}{}".format(name[0], lang[0], typ[0], visibility[0], time_now)))[2:6]
 
 
@@ -767,35 +980,35 @@ def create_id(name,lang, typ, visibility):
 #             return str(hashxx("{}{}{}{}{}".format(name[0], lang[0], typ[0], visibility[0], time_now)))[2:6]
 
 
-def make_acronyme(full_name):
-    '''
-    Rules:
-    take all first 3 consonant non-repetitive from the word
+# def make_acronyme(full_name):
+#     '''
+#     Rules:
+#     take all first 3 consonant non-repetitive from the word
 
-    Example:
-    Full_name = "twitter"
-    acronyme = "twt"
-    '''
-    acronyme = ''
-    consonants = set("bcdfghjklmnpqrstvwxyz")
-    i=0
-    if isinstance(full_name, (str, unicode)):
-        for char in full_name:
-            if char in consonants:
-                if len(acronyme)==0:
-                        acronyme += char
-                else:
-                    if acronyme[-1]!= char:
-                        acronyme += char
-                i+=1
+#     Example:
+#     Full_name = "twitter"
+#     acronyme = "twt"
+#     '''
+#     acronyme = ''
+#     consonants = set("bcdfghjklmnpqrstvwxyz")
+#     i=0
+#     if isinstance(full_name, (str, unicode)):
+#         for char in full_name:
+#             if char in consonants:
+#                 if len(acronyme)==0:
+#                         acronyme += char
+#                 else:
+#                     if acronyme[-1]!= char:
+#                         acronyme += char
+#                 i+=1
 
-            if i >=3:
-                return acronyme
-    else:
-        return False
+#             if i >=3:
+#                 return acronyme
+#     else:
+#         return False
 
 
-    return acronyme
+#     return acronyme
 
 
 

@@ -25,21 +25,24 @@ import sure
 import sys
 import inspect
 import copy
-from collections import defaultdict
+#from collections import defaultdict
 from nose.plugins.attrib import attr
 from testfixtures import tempdir, TempDirectory
 from distutils.dir_util import copy_tree 
-import glob
-import signal
-import subprocess
+#import glob
+#import signal
+#import subprocess
 #import multiprocessing
 
-from zas_rep_tools.src.classes.Streamer import Streamer
+from zas_rep_tools.src.classes.configer import Configer
+from zas_rep_tools.src.classes.streamer import Streamer
 from zas_rep_tools.src.utils.debugger import p, wipd, wipdn, wipdl, wipdo
-from zas_rep_tools.src.utils.logger import Logger
+from zas_rep_tools.src.utils.logger import *
 from zas_rep_tools.src.utils.test_helpers import exit_after
 
 
+### Create all test Data, if needed!
+Configer(mode="test").create_test_data()
 
 
 
@@ -100,7 +103,7 @@ class TestZASStreamerStreamer(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_streamer_initialisation_000(self):
-        stream = Streamer(self.test_consumer_key,self.test_consumer_secret,self.test_access_token,self.test_access_token_secret,self.path_to_output, language="de")
+        stream = Streamer(self.test_consumer_key,self.test_consumer_secret,self.test_access_token,self.test_access_token_secret,self.path_to_output, language="de", mode="test")
 
         assert  isinstance(stream, Streamer)
         #stream.stream_twitter()
@@ -154,7 +157,7 @@ class TestZASStreamerStreamer(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_stream_twitter_500(self):
-        stream = Streamer(self.test_consumer_key,self.test_consumer_secret,self.test_access_token,self.test_access_token_secret,self.path_to_output, use_logger=False, language="de")
+        stream = Streamer(self.test_consumer_key,self.test_consumer_secret,self.test_access_token,self.test_access_token_secret,self.path_to_output, logger_usage=False, language="de", mode="test")
 
         #assert  isinstance(stream, Streamer)
         #stream.stream_twitter()
@@ -169,88 +172,6 @@ class TestZASStreamerStreamer(unittest.TestCase):
             assert  True
         except Exception, e:
             print "!!!!!!!!!\n!!!!!!!!!\n If you have problem with this Test, probably the test Twitter Credentials was changed. Try to reinstall this package or set your own Twitter initials in the following Test File: 'test_zas_rep_tools_streamer.py'."
-
-        # try:
-        #     run_streamer()
-        # except SystemExit:
-        #     assert  True  
-        # except:
-        #     assert False  
-
-
-
-        # Start bar as a process
-        # p = multiprocessing.Process(target=stream.stream_twitter())
-        # p.start()
-
-        #     # Wait for 10 seconds or until process finishes
-        # p.join(10)
-
-        #  # If thread is still active
-        # if p.is_alive():
-        #     print "running... let's kill it..."
-
-        #     # Terminate
-        #     p.terminate()
-        #     p.join()
-
-
-
-        # def timeout(func, args=(), kwargs={}, timeout_duration=5, default=None):
-        #     import signal
-
-        #     class TimeoutError(Exception):
-        #         pass
-
-        #     def handler(signum, frame):
-        #         raise TimeoutError()
-
-        #     # set the timeout handler
-        #     signal.signal(signal.SIGINT, handler) 
-        #     signal.alarm(timeout_duration)
-        #     try:
-        #         result = func(*args, **kwargs)
-        #     except TimeoutError as exc:
-        #         result = default
-        #     finally:
-        #         signal.alarm(0)
-
-        #     return result
-
-
-        # timeout(stream.stream_twitter())
-
-
-            #exit(signal.SIGINT)
-
-        # signal.signal(signal.SIGINT, stream.stream_twitter())
-        # signal.alarm(10)
-
-
-
-        # def handler():
-        #     stream.stream_twitter()
-
-        # # Set the signal handler and a 5-second alarm
-        # signal.signal(signal.SIGINT, handler)
-        # signal.alarm(5)
-
-        # # This open() may hang indefinitely
-        # #fd = os.open('/dev/ttyS0', os.O_RDWR)
-
-        # signal.alarm(0)
-
-        # handler()
-
-            # signal.SIGINT
-            # process = subprocess.Popen(..)
-        # process.send_signal()
-
-
-        
-
-   
-
 
 
 #################################END##################################################

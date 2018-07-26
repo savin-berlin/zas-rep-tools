@@ -17,12 +17,12 @@
 
 
 import os
-import copy
+#import copy
 import sys
-import regex
+#import regex
 import logging
 import sys
-import signal
+#import signal
 import platform
 
 import shutil
@@ -35,15 +35,15 @@ import langid
 import unicodecsv as csv
 import codecs
 import json
-import codecs
-from collections import defaultdict
+
+#from collections import defaultdict
 from raven import Client
-from cached_property import cached_property
+#from cached_property import cached_property
 from encodings.aliases import aliases
 import nltk
 from nltk.corpus import stopwords
 import threading
-import multiprocessing
+#import multiprocessing
 
 try:
     nltk.data.find('corpora/stopwords')
@@ -55,15 +55,21 @@ if platform.uname()[0].lower() !="windows":
     from blessings import Terminal
 
 
+if platform.uname()[0].lower() !="windows":
+    import colored_traceback
+    colored_traceback.add_hook()
+else:
+    import colorama
 
-from zas_rep_tools.src.utils.logger import Logger
+
+from zas_rep_tools.src.utils.logger import main_logger
 from zas_rep_tools.src.utils.debugger import p
 from zas_rep_tools.src.utils.error_tracking import initialisation
-from zas_rep_tools.src.utils.helpers import *
+from zas_rep_tools.src.utils.helpers import write_data_to_json, paste_new_line, send_email, set_class_mode, print_mode_name, path_to_zas_rep_tools
+from zas_rep_tools.src.utils.traceback_helpers import print_exc_plus
+from zas_rep_tools.src.classes.configer import Configer
 
-
-abs_path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Logger))))
-abs_paths_to_stop_words = os.path.join(abs_path_to_zas_rep_tools, "data/stop_words/")
+abs_paths_to_stop_words = os.path.join(path_to_zas_rep_tools, "data/stop_words/")
 
 
 global last_error
@@ -107,11 +113,36 @@ class Streamer(object):
     def __init__(self, consumer_key, consumer_secret, access_token, access_token_secret, storage_path,
                 platfrom="twitter", language=False, terms=False, stop_words=False, encoding="utf_8",
                 email_addresse=False, ignore_rt=False, save_used_terms=False, filterStrat=False,
-                folder_for_log_files=False,  use_logger=True, logger_level=logging.INFO,   error_tracking=True):
+                logger_folder_to_save=False,  logger_usage=True, logger_level=logging.INFO,
+                logger_save_logs=True, logger_num_buffered=5, error_tracking=True,
+                ext_tb=False, logger_traceback=False, mode="prod"):
 
-        ## Logger Initialisation 
-        global global_logger
+        ## Set Mode: Part 1
+        self._mode = mode
+        if mode != "free":
+            _logger_level, _logger_traceback, _logger_save_logs = set_class_mode(self._mode)
+            logger_level = _logger_level if _logger_level!=None else logger_level
+            logger_traceback = _logger_traceback if _logger_traceback!=None else logger_traceback
+            logger_save_logs = _logger_save_logs if _logger_save_logs!=None else logger_save_logs
+    
 
+    
+        ## Logger Initialisation
+        self._logger_level = logger_level
+        self._logger_traceback =logger_traceback
+        self._logger_folder_to_save = logger_folder_to_save
+        self._logger_usage = logger_usage
+        self._logger_save_logs = logger_save_logs
+        self.logger = main_logger(self.__class__.__name__, level=self._logger_level, folder_for_log=self._logger_folder_to_save, use_logger=self._logger_usage, save_logs=self._logger_save_logs)
+
+        ## Set Mode: Part 2:
+        print_mode_name(self._mode, self.logger)
+
+
+        self.logger.debug('Beginn of creating an instance of {}()'.format(self.__class__.__name__))
+
+
+        
         global num_tweets_all_saved_for_this_session
         global num_tweets_all_getted_for_one_day 
         global num_tweets_saved_on_the_disk_for_one_day
@@ -121,16 +152,7 @@ class Streamer(object):
         global num_retweets_for_one_day 
         global num_original_tweets_for_one_day 
 
-        logger = Logger()
-        self._folder_for_log_files = folder_for_log_files
-        self._use_logger = use_logger
-        
-        
-        
-        self.logger = logger.myLogger("Streamer", self._folder_for_log_files, use_logger=self._use_logger, level=logger_level)
-        global_logger = self.logger
-        #p(global_logger)
-        self.logger.debug('Beginn of creating an instance of Streamer()')
+
 
 
         #Input: Incaplusation:
@@ -156,6 +178,7 @@ class Streamer(object):
                      "filter":self._filterStrat  }
         
         # p(self._streamer_settings)
+        self._ext_tb = ext_tb
 
 
         # make Variable global for tweepy
@@ -186,7 +209,7 @@ class Streamer(object):
 
 
         if platfrom not in Streamer.supported_platforms:
-            self.logger.error("Given Platform({}) is not supported. Please choice one of the following platforms: {}".format(platfrom,Streamer.supported_platforms))
+            self.logger.error("Given Platform({}) is not supported. Please choice one of the following platforms: {}".format(platfrom,Streamer.supported_platforms), exc_info=self._logger_traceback)
             sys.exit()
 
 
@@ -206,7 +229,7 @@ class Streamer(object):
 
 
         if self._stop_words and not self._language:
-            self.logger.error("ToolRestriction: Stop-words cannot be given as stand-alone parameter. It should be given together with the any languages. If you want to give stop-words alone, please use for it parameter with the name 'terms'. ")
+            self.logger.error("ToolRestriction: Stop-words cannot be given as stand-alone parameter. It should be given together with the any languages. If you want to give stop-words alone, please use for it parameter with the name 'terms'. ", exc_info=self._logger_traceback)
             sys.exit()
 
         elif not self._stop_words and  self._language:
@@ -216,22 +239,22 @@ class Streamer(object):
                         stop_words = [line.strip() for line in codecs.open(Streamer.stop_words_collection[self._language], encoding=self._encoding)]
                         self.logger.debug("Stop words was read from a file")
                     else:
-                        self.logger.error("StopWordsGetterError: Given path to stop_words is not exist")
+                        self.logger.error("StopWordsGetterError: Given path to stop_words is not exist", exc_info=self._logger_traceback)
                         sys.exit()
                 elif isinstance(Streamer.stop_words_collection[self._language], list):
                     stop_words = Streamer.stop_words_collection[self._language]
                     self.logger.debug("Stop words was read from a given list")
                 else:
-                    self.logger.error("StopWordsGetterError: Not supported format of stop-words. Please give them as path of as a list.")
+                    self.logger.error("StopWordsGetterError: Not supported format of stop-words. Please give them as path of as a list.", exc_info=self._logger_traceback)
                     sys.exit()
 
                 self._streamer_settings["stop_words"] = True
                 self.logger.info("Stop-words was took from the intern-set for the '{}' language.".format(self._language))
                 
             else:
-                self.logger.error("StopWordsGetterError: Stop-words for given language ('{}') wasn't found in the intern set of stop-words. Please import them into the Streamer using 'stop_words' parameter ".format(language) )
+                self.logger.error("StopWordsGetterError: Stop-words for given language ('{}') wasn't found in the intern set of stop-words. Please import them into the Streamer using 'stop_words' parameter ".format(language) , exc_info=self._logger_traceback)
                 sys.exit()
-            #self.logger.error("TwitterRestriction: Language cannot be given as stand-alone parameter. It should be given together with the stop-words or terms.")
+            #self.logger.error("TwitterRestriction: Language cannot be given as stand-alone parameter. It should be given together with the stop-words or terms.", exc_info=self._logger_traceback)
             #sys.exit()
 
         elif self._stop_words and self._language:
@@ -243,13 +266,13 @@ class Streamer(object):
                             stop_words = [line.strip() for line in codecs.open(Streamer.stop_words_collection[self._stop_words], encoding=self._encoding)]
                             self.logger.debug("Stop words was read from a file")
                         else:
-                            self.logger.error("StopWordsGetterError: Given path to stop_words is not exist")
+                            self.logger.error("StopWordsGetterError: Given path to stop_words is not exist", exc_info=self._logger_traceback)
                             sys.exit()
                     elif isinstance(Streamer.stop_words_collection[self._stop_words], list):
                         stop_words = Streamer.stop_words_collection[self._stop_words]
                         self.logger.debug("Stop words was read from a given list")
                     else:
-                        self.logger.error("StopWordsGetterError: Given path to stop_words or stop-words in the intern collection is not exist")
+                        self.logger.error("StopWordsGetterError: Given path to stop_words or stop-words in the intern collection is not exist", exc_info=self._logger_traceback)
                         sys.exit()
                     self.logger.info("Stop-words was took from the intern-set for the '{}' language.".format(self._stop_words))
 
@@ -258,7 +281,7 @@ class Streamer(object):
                     self.logger.debug("Stop words was read from a file")
 
                 else:
-                    self.logger.error("StopWordsGetterError: Not supported format of stop-words. Please give them as path or as a list. (or check, if given path to file exist)")
+                    self.logger.error("StopWordsGetterError: Not supported format of stop-words. Please give them as path or as a list. (or check, if given path to file exist)", exc_info=self._logger_traceback)
                     sys.exit()
 
 
@@ -266,15 +289,15 @@ class Streamer(object):
                 stop_words = self._stop_words
                 self.logger.debug("Stop words was read from a given list")
             else:
-                self.logger.error("StopWordsGetterError: Not supported format of stop-words. Please give them as path of as a list.")
+                self.logger.error("StopWordsGetterError: Not supported format of stop-words. Please give them as path of as a list.", exc_info=self._logger_traceback)
                 sys.exit()
 
         elif not self._stop_words and not self._language and not self._terms:
-            self.logger.error("InputError: No filtering parameters was given.")
+            self.logger.error("InputError: No filtering parameters was given.", exc_info=self._logger_traceback)
             sys.exit()
 
         else:
-            self.logger.error("StopWordsGetterError: Something was wrong!")
+            self.logger.error("StopWordsGetterError: Something was wrong!", exc_info=self._logger_traceback)
             sys.exit()
 
 
@@ -293,11 +316,11 @@ class Streamer(object):
 
             if self._language:
                 if not self._terms and self._language not in Streamer.supported_stop_words:
-                    self.logger.error("InputError: Terms or/and stop-words wasn't given. According the Twitter 'Developer Agreement and Policy' -  'terms' or/and 'stop-words' should be given. A Language is just an option and not obligatory for the Streamer. ")
+                    self.logger.error("InputError: Terms or/and stop-words wasn't given. According the Twitter 'Developer Agreement and Policy' -  'terms' or/and 'stop-words' should be given. A Language is just an option and not obligatory for the Streamer. ", exc_info=self._logger_traceback)
                     sys.exit()
             else:
                 if not self._terms:
-                    self.logger.error("InputError: Nothing was given. Streamer need some input to initialize the Filtering. (Please give any terms/stop-words/language)  ")
+                    self.logger.error("InputError: Nothing was given. Streamer need some input to initialize the Filtering. (Please give any terms/stop-words/language)  ", exc_info=self._logger_traceback)
                     sys.exit()
 
         
@@ -314,13 +337,13 @@ class Streamer(object):
                 os.makedirs(self._storage_path)
                 self.logger.info("Following storage directory was created: '{}'. There you will find all streamed data.".format(os.path.join(os.getcwd(),self._storage_path)))
             except:
-                self.logger.error("PathError: It wasn't possible to create following directory: '{}' ".format(os.path.join(os.getcwd(),self._storage_path)))
+                self.logger.error("PathError: It wasn't possible to create following directory: '{}' ".format(os.path.join(os.getcwd(),self._storage_path)), exc_info=self._logger_traceback)
                 sys.exit()
 
     def _validate_filter_strat(self):
         if self._filterStrat:
             if self._filterStrat not in Streamer.supported_filter_strategies:
-                self.logger.error("Given filter-strategies ('{}') is not supported. Please use one of the possible: {}".format(self._filterStrat,Streamer.supported_filter_strategies))
+                self.logger.error("Given filter-strategies ('{}') is not supported. Please use one of the possible: {}".format(self._filterStrat,Streamer.supported_filter_strategies), exc_info=self._logger_traceback)
                 sys.exit()
         elif not self._filterStrat:
             if self._language:
@@ -335,11 +358,11 @@ class Streamer(object):
     def _validate_given_language(self):
         if self._language:
             if self._language not in Streamer.supported_languages:
-                self.logger.error("Given Language ('{}'') is not supported. Please use one of the following languages: {}".format(self._language, Streamer.supported_languages))
+                self.logger.error("Given Language ('{}'') is not supported. Please use one of the following languages: {}".format(self._language, Streamer.supported_languages), exc_info=self._logger_traceback)
                 sys.exit()
 
             # if not self._stop_words:
-            #     self.logger.error("TwitterRestriction: Language cannot be given as stand-alone parameter. It should be given together with the stop-words or terms. ")
+            #     self.logger.error("TwitterRestriction: Language cannot be given as stand-alone parameter. It should be given together with the stop-words or terms. ", exc_info=self._logger_traceback)
             #     sys.exit()
 
 
@@ -359,16 +382,16 @@ class Streamer(object):
 
             elif not self._stop_words:
                 if not self._language:
-                    self.logger.error("InputError: Don't found any stop_words/terms/language. It is not allow to stream Twitter without any stop_words/terms.")      
+                    self.logger.error("InputError: Don't found any 'stop_words/terms/language'. It is not allow to stream Twitter without any stop_words/terms." , exc_info=self._logger_traceback )
                     sys.exit()
                 all_terms_to_track = self._get_stop_words()
 
 
         if len(all_terms_to_track) > 400:
-            self.logger.error("InputError:  The Number of given stop_word/terms are exceeded (Twitter-API restriction). It is allow to track not more as 400 words. It was given '{}' words together. Please give less number of  stop_word/terms.\n\n  Following words was given: \n{} ".format(len(all_terms_to_track), all_terms_to_track) )
+            self.logger.error("InputError:  The Number of given stop_word/terms are exceeded (Twitter-API restriction). It is allow to track not more as 400 words. It was given '{}' words together. Please give less number of  stop_word/terms.\n\n  Following words was given: \n{} ".format(len(all_terms_to_track), all_terms_to_track) , exc_info=self._logger_traceback)
             sys.exit()
         elif len(all_terms_to_track) == 0:
-            self.logger.error("InputError:  Not terms/stop_words for tracking was given.")
+            self.logger.error("InputError:  Not terms/stop_words for tracking was given.", exc_info=self._logger_traceback)
             sys.exit()
         #p(all_terms_to_track)
         return all_terms_to_track
@@ -381,18 +404,18 @@ class Streamer(object):
                 if os.path.isfile(self._terms):
                     self._terms = [line.strip() for line in codecs.open(self._terms, encoding=self._encoding)]
                 else:
-                    self.logger.error("PathError: Given Path ({}) to terms are not exist".format(self._terms))
+                    self.logger.error("PathError: Given Path ({}) to terms are not exist".format(self._terms), exc_info=self._logger_traceback)
                     sys.exit()
 
             elif isinstance(self._terms, list):
                 for term in self._terms:
                     if not isinstance(term, (str,unicode)):
-                        self.logger.error("TypeError: Some of the given terms in the list is not string/unicode.")
+                        self.logger.error("TypeError: Some of the given terms in the list is not string/unicode.", exc_info=self._logger_traceback)
                         sys.exit()
 
 
             else:
-                self.logger.error("InputError:  Not supported format of terms. Please give them as path of as a list.")
+                self.logger.error("InputError:  Not supported format of terms. Please give them as path of as a list.", exc_info=self._logger_traceback)
                 sys.exit()
 
 
@@ -408,7 +431,7 @@ class Streamer(object):
 
 
         if self._stop_words and not self._language:
-            self.logger.error("ToolRestriction: Stop-words cannot be given as stand-alone parameter. It should be given together with the any languages. If you want to give stop-words alone, please use for it parameter with the name 'terms'. ")
+            self.logger.error("ToolRestriction: Stop-words cannot be given as stand-alone parameter. It should be given together with the any languages. If you want to give stop-words alone, please use for it parameter with the name 'terms'. ", exc_info=self._logger_traceback)
             sys.exit()
 
         elif not self._stop_words and  self._language:
@@ -418,11 +441,11 @@ class Streamer(object):
             pass
 
         elif not self._stop_words and not self._language and not self._terms:
-            self.logger.error("InputError: No filtering parameters was given.")
+            self.logger.error("InputError: No filtering parameters was given.", exc_info=self._logger_traceback)
             sys.exit()
 
         # else:
-        #     self.logger.error("StopWordsGetterError: Something was wrong!")
+        #     self.logger.error("StopWordsGetterError: Something was wrong!", exc_info=self._logger_traceback)
         #     sys.exit()
 
 
@@ -431,7 +454,7 @@ class Streamer(object):
 
     def _validate_given_encoding(self):
         if self._encoding not in Streamer.supported_encodings_types:
-            self.logger.error("Given encoding ({}) is not supported. Choice one of the following encodings: {}".format(self._encoding, Streamer.supported_encodings_types))
+            self.logger.error("Given encoding ({}) is not supported. Choice one of the following encodings: {}".format(self._encoding, Streamer.supported_encodings_types), exc_info=self._logger_traceback)
             sys.exit()
 
     def get_supported_platforms(self):
@@ -516,7 +539,7 @@ class Streamer(object):
 
 
         # longer timeout to keep SSL connection open even when few tweets are coming in
-        stream = tweepy.streaming.Stream(auth, CustomStreamListener(streamer_settings=self._streamer_settings,language=self._language, ignore_retweets=self._ignore_retweets), timeout=1000.0)
+        stream = tweepy.streaming.Stream(auth, CustomStreamListener(streamer_settings=self._streamer_settings,language=self._language, ignore_retweets=self._ignore_retweets, logger_level=self._logger_level, logger_folder_to_save=self._logger_folder_to_save, logger_usage=self._logger_usage, logger_save_logs=self._logger_save_logs,  ext_tb=self._ext_tb), timeout=1000.0)
         terms = self.get_track_terms()
         self.logger.info("{} terms/stop_words used for tacking.".format(len(terms)))
         #p(terms)
@@ -545,13 +568,13 @@ class Streamer(object):
 
                 if self._filterStrat == "t+l":
                     if not self._language:
-                        self.logger.error("FilterStrategieError: Language is not given! But selected Strategy ('{}') requires an language. Please select  another Strategy or give an language. ".format(self._filterStrat))
+                        self.logger.error("FilterStrategieError: Language is not given! But selected Strategy ('{}') requires an language. Please select  another Strategy or give an language. ".format(self._filterStrat), exc_info=self._logger_traceback)
                         sys.exit()
                     else:
                         log_msg_settings = "{} (l+t)".format(msg_settings)
                         logfile.write( "    {} \n".format(log_msg_settings) )
-                        global_logger.info(log_msg_settings)
-                        global_logger.info(msg_to_log)
+                        self.logger.info(log_msg_settings)
+                        self.logger.info(msg_to_log)
                         self._initialize_status_bar()
                         #stream = tweepy.streaming.Stream(auth, CustomStreamListener(), timeout=30)
                         stream.filter(languages=[self._language], track=terms, stall_warnings=True)
@@ -559,8 +582,8 @@ class Streamer(object):
                 elif self._filterStrat == "t":
                     log_msg_settings = "{} (t)".format(msg_settings)
                     logfile.write( "    {} \n".format(log_msg_settings) )
-                    global_logger.info(log_msg_settings)
-                    global_logger.info(msg_to_log)
+                    self.logger.info(log_msg_settings)
+                    self.logger.info(msg_to_log)
                     self._initialize_status_bar()
                     #stream = tweepy.streaming.Stream(auth, CustomStreamListener(), timeout=30)
                     stream.filter(track=terms, stall_warnings=True) # , async=True
@@ -568,8 +591,9 @@ class Streamer(object):
 
                 
             except KeyboardInterrupt:
+                print_exc_plus() if self._ext_tb else ""
                 paste_new_line()
-                global_logger.info("Streaming was aborted. stopping all processes.....")
+                self.logger.info("Streaming was aborted. stopping all processes.....")
                 log_msg = "    {} Stream was aborted by user 'KeyboardInterrupt' \n" 
                 logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())))  )
 
@@ -594,22 +618,23 @@ class Streamer(object):
                 #         theard.daemon = True
                 #         self.logger.info("'{}'-Theard was stopped!!!".format(theard.name))
 
-                global_logger.info("All processes was correctly closed.")
+                self.logger.info("All processes was correctly closed.")
                 sys.exit(1)
                 #os._exit(1)
 
             except Exception, e:
+                print_exc_plus() if self._ext_tb else ""
                 if "Failed to establish a new connection" in str(e):
                     log_msg = "     {} No Internet Connection. Wait 15 sec.....  \n" 
                     logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())))  )
                     paste_new_line()
-                    global_logger.critical("No Internet Connection. Wait 15 sec.....")
+                    self.logger.critical("No Internet Connection. Wait 15 sec.....")
                     time.sleep(5)
                 else:
                     log_msg = "     {} Stream get an Error: '{}' \n" 
                     logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())),e)  )
                     paste_new_line()
-                    global_logger.critical("Streaming get an Error......‘{}‘".format(e))
+                    self.logger.critical("Streaming get an Error......‘{}‘".format(e))
 
                 if "IncompleteRead" not in str(e):
                     last_5_error.append(str(e))
@@ -623,13 +648,11 @@ class Streamer(object):
                         subject = "TwitterStreamer was stopped (Reason: last 5 errors are same)"
                         paste_new_line()
                         send_email(email_addresse, subject, msg)
-                        global_logger.error("Stream was stopped after 5 same errors in stack")
+                        self.logger.error("Stream was stopped after 5 same errors in stack")
                         #os._exit(1)
                         sys.exit()
                     else:
                         last_5_error = []
-
-
 
                 if last_error != str(e):
                     msg = "Hey,</br></br> Something was Wrong!  Streamer throw the following error-message:</br> <p style='margin-left: 50px;''><strong><font color='red'>{}</strong> </font> </p> Please  check if everything is fine with this Process. </br></br> Greeting, </br>Your Streamer".format(e)
@@ -645,7 +668,7 @@ class Streamer(object):
 
             # except tweepy.TweepError, e:
             #     paste_new_line()
-            #     global_logger.info("Streaming geted an error: '{}'".format(e))
+            #     self.logger.info("Streaming geted an error: '{}'".format(e))
             #     log_msg = "    Streaming geted an error: {} \n" 
             #     logfile.write(  log_msg.format(e) )
 
@@ -657,7 +680,10 @@ class Streamer(object):
 
 class CustomStreamListener(tweepy.StreamListener):
 
-    def __init__(self, streamer_settings=False, language=False, ignore_retweets = False):
+    def __init__(self, streamer_settings=False, language=False, ignore_retweets = False,
+                logger_level=logging.INFO, logger_folder_to_save="logs", logger_usage=True,
+                logger_traceback=False,logger_save_logs=False, 
+                ext_tb=False ):
         global logfile
         global num_tweets_all_saved_for_this_session
         global num_tweets_saved_on_the_disk_for_one_day
@@ -669,8 +695,22 @@ class CustomStreamListener(tweepy.StreamListener):
         global num_original_tweets_for_one_day 
         #global runing_theards
 
-        logger = Logger()
-        self.logger = Logger().myLogger("CustomStreamListener")
+        ## Developing Mode: Part 1
+        # self._devmode = devmode
+        # self._logger_level = logger_level 
+        # if self._devmode:
+        #     self._logger_level = logging.DEBUG
+        #     logger_traceback = True
+
+
+        ## Logger Initialisation 
+        self._logger_traceback =logger_traceback
+        self._logger_folder_to_save = logger_folder_to_save
+        self._logger_usage = logger_usage
+        self._logger_save_logs = logger_save_logs
+        self.logger = main_logger(self.__class__.__name__, level=logger_level, folder_for_log=logger_folder_to_save, use_logger=logger_usage, save_logs=logger_save_logs)
+
+
         self._ignore_retweets = ignore_retweets
 
 
@@ -678,6 +718,7 @@ class CustomStreamListener(tweepy.StreamListener):
         self._language = language
         self._streamer_settings = streamer_settings
         self._ignore_retweets = ignore_retweets
+        self._ext_tb = ext_tb
         if platform.uname()[0].lower() !="windows":
             self.t = Terminal()
         else:
@@ -863,6 +904,8 @@ class CustomStreamListener(tweepy.StreamListener):
 
             # filter out all retweets
             lang = langid.classify(text)[0]
+            # if len(data) ==2:
+            #     p(data)
             if lang == self._language:
                 num_tweets_selected_for_one_day += 1
                 if self._ignore_retweets:
@@ -905,6 +948,7 @@ class CustomStreamListener(tweepy.StreamListener):
 
             #self._output_file_other_tweets.write(  data["created_at"]+ data["id_str"]+ data["text"] + "\n"  )
         except KeyError, ke:
+            print_exc_plus() if self._ext_tb else ""
             #p(data)
             if "limit" in str(data):
                 #{u'limit': {u'track': 233, u'timestamp_ms': u'1527958183844'}}
@@ -919,6 +963,7 @@ class CustomStreamListener(tweepy.StreamListener):
                 paste_new_line()
                 self.logger.critical(str(repr(ke)))
         except Exception, e:
+            print_exc_plus() if self._ext_tb else ""
 
             log_msg = "Encountered error with status code: '{}' \n"
             logfile.write(  log_msg.format(time.asctime(time.localtime(time.time())),e)  )
@@ -958,7 +1003,7 @@ class CustomStreamListener(tweepy.StreamListener):
             #print status_code
             logger_msg = "UnauthorizedError401: Your credentials are invalid or your system time is wrong.\nTry re-creating the credentials correctly again following the instructions here (https://developer.twitter.com/en/docs/basics/authentication/guides/access-tokens). \nAfter recreation you need to retype your data. Use: $ zas-rep-tools retypeTwitterData"
             paste_new_line()
-            self.logger.error(logger_msg)
+            self.logger.error(logger_msg, exc_info=self._logger_traceback)
             #return False
             #os._exit(1)
 
@@ -969,7 +1014,7 @@ class CustomStreamListener(tweepy.StreamListener):
 
         else:
             paste_new_line()
-            self.logger.critical(log_msg)
+            self.logger.critical(log_msg.format(time.asctime(time.localtime(time.time())),status_code))
 
         return True
 

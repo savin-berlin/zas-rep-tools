@@ -9,9 +9,14 @@ setup(name='zas-rep-tools',
       author_email='science@savin.berlin',
       license='MIT',
       packages=['zas_rep_tools'],
-      install_requires=[ 'sure','nose', 'rednose', 'blessings', 'testfixtures', 'click', 'regex', 'scipy', 'cached_property', 'raven', "email",  "tweepy", "nltk", "langid", "unicodecsv", "coloredlogs", "pysqlcipher"],
+      install_requires=[ 'sure','nose', 'rednose', 'blessings', 'testfixtures',
+      'click', 'regex',  'cached_property', 'raven', "email",  "tweepy", "nltk",
+      "langid",  "lxml", "logutils", "pyhashxx", "colored_traceback", "colorama",
+      "unicodecsv","psutil","execnet","validate_email","console-menu","python-twitter", "twitter",
+      "enlighten", "emoji", "textblob","textblob_de", "textblob_fr", "kitchen", "uniseg",
+      "pysqlcipher", ],
       zip_safe=False,
-      test_suite='nose.collector', # test by installation
+      test_suite='nose.collector', # test by installationls
       tests_require=['nose'], #test by installation
       entry_points={
           'console_scripts': [

@@ -28,20 +28,29 @@ from nose.plugins.attrib import attr
 from testfixtures import tempdir, TempDirectory
 from distutils.dir_util import copy_tree 
 #import glob
-import sys
-
-from zas_rep_tools.src.classes.exporter import Exporter
-from zas_rep_tools.src.classes.reader import Reader
 
 from zas_rep_tools.src.classes.configer import Configer
+from zas_rep_tools.src.classes.stats import Stats
+from zas_rep_tools.src.classes.corpus import Corpus
+
+#from zas_rep_tools.src.utils.recipes_test_db import *
 from zas_rep_tools.src.utils.debugger import p, wipd, wipdn, wipdl, wipdo
 from zas_rep_tools.src.utils.logger import *
-#from zas_rep_tools.src.utils.recipes_test_db import *
+
+
+
+import platform
+if platform.uname()[0].lower() !="windows":
+    import colored_traceback
+    colored_traceback.add_hook()
+else:
+    import colorama
 
 
 
 
-class TestZAScorpusExporterExporter(unittest.TestCase):
+
+class TestZASstatsStats(unittest.TestCase):
     #_multiprocess_can_split_ = True
     _multiprocess_shared_  = True
     @classmethod 
@@ -197,21 +206,13 @@ class TestZAScorpusExporterExporter(unittest.TestCase):
     ##### xx :0== ######
 
 
-    @attr(status='stable')
-    #@wipd
-    def test_exporter_initialisation_with_list_000(self):
-        exporter = Exporter(self.input_list_fake_blogger_corpus, mode="test")
-        exporter.should.be.a(Exporter)
+    #@attr(status='stable')
+    @wipd
+    def test_initialization_of_the_stats_instance_000(self):
+        stats = Stats(mode="test")
+        stats.should.be.a(Stats)
 
         
-
-    @attr(status='stable')
-    #@wipd
-    def test_exporter_initialisation_with_reader_obj_001(self):
-        reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_hightrepetativ_set), "txt", regex_template="blogger", mode="test")
-        exporter = Exporter(reader.getlazy(), mode="test")
-        exporter.should.be.a(Exporter)
-
 
     ##### throws_exceptions:050  ######
 
@@ -226,11 +227,7 @@ class TestZAScorpusExporterExporter(unittest.TestCase):
 
     ###### ***** ######
 
-    #@attr(status='stable')
-    #@wipd
-    #def test_XXX_name_100(self):
-    ##self.logger_initialisation()
-    #   pass
+
 
     ###### ***** ######
 
@@ -258,176 +255,140 @@ class TestZAScorpusExporterExporter(unittest.TestCase):
 #####################################################################################
 
 
-###################    :500############################################ 
-    ###### ***** ######
+###################  Corpus Initialization :500############################################ 
+    @attr(status='stable')
+    #@wipd
+    def test_new_plaintext_corpus_initialization_500(self):
+
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["stats"]
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "stats"
+
+
+        stats = Stats(mode="test")
+        #stats = Corpus(logger_level=logging.DEBUG)
+        stats.init(self.tempdir_project_folder, name, language, visibility,  corpus_id=corpus_id,  version= version)
+   
+        assert stats.exist()
+   
+    @attr(status='stable')
+    #@wipd
+    def test_new_encrypted_corpus_initialization_501(self):
+
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["stats"]
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "stats"
+
+
+        stats = Stats(mode="test")
+        #stats = Corpus(logger_level=logging.DEBUG)
+        stats.init(self.tempdir_project_folder, name, language, visibility,  corpus_id=corpus_id,  version= version, encryption_key=encryption_key)
+   
+        assert stats.exist()
+        
+        
+
+    @attr(status='stable')
+    #@wipd
+    def test_open_plaintext_blogger_corpus_502(self):
+
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["stats"]
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        typ= "stats"
+
+
+        stats = Stats(mode="test")
+        stats.open(os.path.join(self.tempdir_testdbs,self.db_blogger_plaintext_stats_en))
+  
+        #p(stats.db.get_all_attr("main"))
+        stats.db.get_all_attr("main")['name'].should.be.equal(name)
+        #stats.db.get_all_attr("main")['language'].should.be.equal(language)
+        stats.db.get_all_attr("main")['visibility'].should.be.equal(visibility)
+        #stats.db.get_all_attr("main")['platform_name'].should.be.equal(platform_name)
+        stats.db.get_all_attr("main")['typ'].should.be.equal(typ)
+        stats.db.get_all_attr("main")['id'].should.be.equal(stats_id)
+        stats.db.get_all_attr("main")['version'].should.be.equal(version)
+
+        assert stats.exist()
+   
+    @attr(status='stable')
+    #@wipd
+    def test_open_encrypted_twitter_corpus_503(self):
+
+        name = self.configer.init_info_data["twitter"]["name"]
+        language = self.configer.init_info_data["twitter"]["language"]
+        visibility = self.configer.init_info_data["twitter"]["visibility"]
+        platform_name = self.configer.init_info_data["twitter"]["platform_name"]
+        license = self.configer.init_info_data["twitter"]["license"]
+        template_name = self.configer.init_info_data["twitter"]["template_name"]
+        version = self.configer.init_info_data["twitter"]["version"]
+        source = self.configer.init_info_data["twitter"]["source"]
+        encryption_key = self.configer.init_info_data["twitter"]["encryption_key"]["stats"]
+        corpus_id = self.configer.init_info_data["twitter"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
+        typ= "stats"
+        #p(encryption_key)
+
+        stats = Stats(mode="test")
+        stats.open(os.path.join(self.tempdir_testdbs,self.db_twitter_encrypted_stats_de), encryption_key=encryption_key)
+    
+
+    
+        stats.db.get_all_attr("main")['name'].should.be.equal(name)
+        #stats.db.get_all_attr("main")['language'].should.be.equal(language)
+        stats.db.get_all_attr("main")['visibility'].should.be.equal(visibility)
+        #stats.db.get_all_attr("main")['platform_name'].should.be.equal(platform_name)
+        stats.db.get_all_attr("main")['typ'].should.be.equal(typ)
+        stats.db.get_all_attr("main")['id'].should.be.equal(stats_id)
+        stats.db.get_all_attr("main")['version'].should.be.equal(version)
+
+        assert stats.exist()
    
 
-    @attr(status='stable')
-    #@wipd
-    def test_export_to_csv_from_list_000(self):
-        #real_fold = os.path.join(self.path_to_zas_rep_tools, "data/tests_data/Corpora/BloggerCorpus/txt")
-        exporter = Exporter(self.input_list_fake_blogger_corpus, mode="test")
-        #exporter = Exporter(self.input_list_fake_blogger_corpus, mode="test")
-        #exporter.should.be.a(Exporter)
-        exporter.tocsv(self.tempdir_project_folder, "blogger_corpus",self.fieldnames, rows_limit_in_file=1)
-        #exporter.tocsv(real_fold, "blogger_corpus",self.fieldnames, rows_limit_in_file=1)
-
-        i=0
-        for item in os.listdir(self.tempdir_project_folder):
-            if ".csv" in item:
-                i+=1
-
-        #p((len(self.input_list_fake_blogger_corpus), i))
-        if len(self.input_list_fake_blogger_corpus) != i:
-            assert False
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_export_to_csv_from_reader_001(self):
-        reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_hightrepetativ_set), "txt", regex_template="blogger", mode="test")
-        exporter = Exporter(reader.getlazy(), mode="test")
-
-        exporter.tocsv(self.tempdir_project_folder, "blogger_corpus",self.fieldnames, rows_limit_in_file=1)
-
-        i=0
-        for item in os.listdir(self.tempdir_project_folder):
-            if ".csv" in item:
-                i+=1
-
-        if len(list(reader.getlazy())) != i:
-            assert False
 
 
 
 
-    @attr(status='stable')
-    #@wipd
-    def test_export_to_xml_from_list_002(self):
-        #real_fold = os.path.join(self.path_to_zas_rep_tools, "data/tests_data/Corpora/BloggerCorpus/xml")
-        exporter = Exporter(self.input_list_fake_blogger_corpus, mode="test")
-        #exporter = Exporter(self.input_list_fake_blogger_corpus, mode="test")
+###################    :550############################################ 
+    #@attr(status='stable')
+    @wipd
+    def test_single_stream_insert_550(self):
+        corp = Corpus(mode="dev")
+        corp.open(os.path.join(self.tempdir_testdbs,self.db_blogger_plaintext_corp_en))
+        p(list(corp.docs()))
 
-        exporter.toxml(self.tempdir_project_folder, "blogger_corpus", rows_limit_in_file=1)
-        #exporter.toxml(real_fold, "blogger_corpus", rows_limit_in_file=1)
+        stats = Stats(mode="dev")
+        stats.corp_attributes= corp.db.get_all_attr()
+        stats._insert(corp.docs(output="dict"))
+        #stats.insert(corp)
 
-        i=0
-        for item in os.listdir(self.tempdir_project_folder):
-            if ".xml" in item:
-                i+=1
-
-        if len(self.input_list_fake_blogger_corpus) != i:
-            assert False
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_export_to_xml_from_reader_003(self):
-        reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_hightrepetativ_set), "txt", regex_template="blogger", mode="test")
-        exporter = Exporter(reader.getlazy(), mode="test")
-
-        exporter.toxml(self.tempdir_project_folder, "blogger_corpus", rows_limit_in_file=1)
-
-        i=0
-        for item in os.listdir(self.tempdir_project_folder):
-            if ".xml" in item:
-                i+=1
-
-
-        if len(list(reader.getlazy())) != i:
-            assert False
-
-
-
-
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_export_to_json_from_list_004(self):
-        #real_fold = os.path.join(self.path_to_zas_rep_tools, "data/tests_data/Corpora/BloggerCorpus/json")
-        #exporter = Exporter( , mode="dev", rewrite=True)
-        exporter = Exporter(self.input_list_fake_blogger_corpus, mode="test", rewrite=True, silent_ignore = True)
-        exporter.tojson(self.tempdir_project_folder, "blogger_corpus", rows_limit_in_file=1)
-        #exporter.tojson(real_fold, "blogger_corpus", rows_limit_in_file=1)
-        i=0
-        for item in os.listdir(self.tempdir_project_folder):
-            if ".json" in item:
-                i+=1
-
-        #p((len(self.input_list_fake_blogger_corpus), i, j))
-        if len(self.input_list_fake_blogger_corpus) != i:
-            assert False
-
-
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_export_to_json_from_reader_005(self):
-        reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_hightrepetativ_set), "txt", regex_template="blogger", mode="test")
-        exporter = Exporter(reader.getlazy(), mode="test")
-
-        exporter.tojson(self.tempdir_project_folder, "blogger_corpus", rows_limit_in_file=1)
-
-        i=0
-        for item in os.listdir(self.tempdir_project_folder):
-            if ".json" in item:
-                i+=1
-
-        #p((len(self.input_list_fake_blogger_corpus), i))
-        if len(list(reader.getlazy())) != i:
-            assert False
-
-
-
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_export_to_sqlite_from_list_006(self):
-        #real_fold = os.path.join(self.path_to_zas_rep_tools, "data/tests_data/Corpora/BloggerCorpus/")
-        exporter = Exporter(self.input_list_fake_blogger_corpus, mode="test")
-
-        dbname = "blogger_corpus"
-        #p(self.fieldnames)
-        exporter.tosqlite(self.tempdir_project_folder, dbname, self.fieldnames)
-        #exporter.tosqlite(real_fold, dbname, self.fieldnames)
-
- 
-        for item in os.listdir(self.tempdir_project_folder):
-            if ".db" in item:
-                if dbname not in item:
-                    assert False
-
-
-
-
-    @attr(status='stable')
-    #@wipd
-    def test_export_to_sqlite_from_reader_007(self):
-        reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_hightrepetativ_set), "txt", regex_template="blogger", mode="test")
-        exporter = Exporter(reader.getlazy(), mode="test")
-        dbname = "blogger_corpus"
-
-        exporter.tosqlite(self.tempdir_project_folder, dbname, self.fieldnames)
-
- 
-        for item in os.listdir(self.tempdir_project_folder):
-            if ".db" in item:
-                if dbname not in item:
-                    assert False
-
-
-
-    # #@attr(status='stable')
-    # @wipd
-    # def test_export_to_json_from_reader_(self):
-    #     real_fold = os.path.join(self.path_to_zas_rep_tools, "data/tests_data/Corpora/BloggerCorpus/xml")
-    #     reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_hightrepetativ_set), "txt", regex_template="blogger", mode="test")
-    #     exporter = Exporter(reader.getlazy())
-
-    #     exporter.tojson(real_fold, "blogger_corpus", rows_limit_in_file=100)
 
 
 

@@ -17,96 +17,111 @@
 # But it will only do a few dozen transactions per second. 
 # avoid cursore.executescript() becuase it makes commit first 
 # By default, the sqlite module opens transactions implicitly before a Data Modification Language (DML) statement (i.e. INSERT/UPDATE/DELETE/REPLACE), and commits transactions implicitly before a non-DML, non-query statement (i. e. anything other than SELECT or the aforementioned).
-
+from __future__ import absolute_import
 
 
 import os
 import copy
 import sys
-import regex
+#import regex
 import logging
+import json
+import traceback
 
 
-from collections import defaultdict, OrderedDict
+from collections import defaultdict#, OrderedDict
 from raven import Client
-from cached_property import cached_property
+#from cached_property import cached_property
 #import sqlite3 as sqlite
-import pysqlcipher
+#import pysqlcipher
 from pysqlcipher import dbapi2 as sqlite
-import glob
-import shutil
+#import glob
+#import shutil
 from time import gmtime, strftime
-import coloredlogs
+#import coloredlogs
+import random
 
-
-from zas_rep_tools.src.utils.logger import Logger
-#from zas_rep_tools.src.utils.sql_helper import *
-from zas_rep_tools.src.utils.db_helper import *
+#from zas_rep_tools.src.classes.configer import Configer  
+from zas_rep_tools.src.utils.logger import *       
+import  zas_rep_tools.src.utils.db_helper as db_helper
+from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, path_to_zas_rep_tools
 from zas_rep_tools.src.utils.debugger import p
-#from zas_rep_tools.src.utils.sql_qearies import * 
-#from zas_rep_tools.src.utils.encryption import Encryptor, AESCipher
-from zas_rep_tools.src.utils.helpers import path_to_zas_rep_tools
+
 from zas_rep_tools.src.utils.error_tracking import initialisation
+from zas_rep_tools.src.utils.traceback_helpers import print_exc_plus
 
-
+import platform
+if platform.uname()[0].lower() !="windows":
+    import colored_traceback
+    colored_traceback.add_hook()
+else:
+    import colorama
 
 
 
 class DBHandler(object):
-    __metaclass__ = DBErrorCatcher
-    DBErrorCatcher = False
+    __metaclass__ = db_helper.DBErrorCatcher
+    #DBErrorCatcher = True
 
-    default_attributs = {
-                        "corpus":attributs_names_corpus,
-                        "stats":attributs_names_stats
-                        }
 
     templates = {
-            "twitter":extended_columns_and_types_for_corpus_documents_twitter,
-            "blogger":extended_columns_and_types_for_corpus_documents_blogger
+            "twitter":db_helper.default_tables["corpus"]["documents"]["twitter"],
+            "blogger":db_helper.default_tables["corpus"]["documents"]["blogger"]
             }
 
     supported_db_typs = ["stats", "corpus"]
+    path_to_json1 = os.path.join(path_to_zas_rep_tools, "src/extensions/json1/json1")
+    def __init__(self,  lazyness_border=50000, rewrite= False, stop_if_db_already_exist=False,
+                logger_folder_to_save=False,  logger_usage=True, logger_level=logging.INFO,
+                logger_save_logs=True, logger_num_buffered=5, error_tracking=True,
+                ext_tb=False, logger_traceback=False, mode="free"):
 
-    def __init__(self,  folder_for_log_files=False,
-                use_logger=True, logger_level=logging.INFO, error_tracking=True,
-                developingMode = False, lazyness_border=50000):
+        
+        ## Set Mode: Part 1
+        self._mode = mode
+        #p(self._mode, c="r")
+        if mode != "free":
+            _logger_level, _logger_traceback, _logger_save_logs = set_class_mode(self._mode)
+            logger_level = _logger_level if _logger_level!=None else logger_level
+            logger_traceback = _logger_traceback if _logger_traceback!=None else logger_traceback
+            logger_save_logs = _logger_save_logs if _logger_save_logs!=None else logger_save_logs
+        #p((logging.INFO, logging.DEBUG, logging.ERROR)) #-> (20, 10, 40)
+        #p((logger_level, logger_traceback, logger_save_logs))
+        ## Logger Initialisation
+        self._logger_level = logger_level
+        self._logger_traceback =logger_traceback
+        self._logger_folder_to_save = logger_folder_to_save
+        self._logger_usage = logger_usage
+        self._logger_save_logs = logger_save_logs
+        self.logger = main_logger(self.__class__.__name__, level=self._logger_level, folder_for_log=self._logger_folder_to_save, use_logger=self._logger_usage, save_logs=self._logger_save_logs)
 
-        #p(Metaclass.__dict__)
-        ## Developing Mode: Part 1
-        self._developingMode = developingMode
-        self._logger_level = logger_level 
-        if self._developingMode:
-            self._logger_level = logging.DEBUG
+        ## Set Mode: Part 2:
+        print_mode_name(self._mode, self.logger)
 
 
-        # Logger Initialisation 
-        logger = Logger()
-        self._folder_for_log_files = folder_for_log_files
-        self._use_logger = use_logger
-        self.logger = logger.myLogger("DBHandler", self._folder_for_log_files, use_logger=self._use_logger, level=self._logger_level)
-        self.logger.debug('Beginn of creating an instance of DB()')
+        self.logger.debug('Beginn of creating an instance of {}()'.format(self.__class__.__name__))
 
 
-        ## Developing Mode: Part 2:
-        if self._developingMode:
-            self.logger.info("DEVELOPING_MODE: was started")
 
 
         #Input: Incaplusation:
         self._error_tracking = error_tracking
-
+        self._ext_tb = ext_tb
+        self._rewrite = rewrite
+        self._stop_if_db_already_exist = stop_if_db_already_exist
 
         #InstanceAttributes: Initialization
         self._db = False
         self._encryption_key = False
         self.is_encrypted = False
+        self.compile_options = False
 
 
 
         self._attachedDBs_config = []
         self._attachedDBs_config_from_the_last_session = [] 
         self._tables_dict = {}
+        self._indexes_dict = {}
         self._attributs_dict = {}
         self.dbnames = [] 
 
@@ -158,6 +173,7 @@ class DBHandler(object):
                 self.logger.info("Connection with DB was closed without commits. ({} insertion was waiting for commit)".format(self.number_of_new_inserts_after_last_commit))
 
         self.logger.debug("DB-Instance was destructed")
+        # self.logger.newline(1)
 
 
 
@@ -192,7 +208,7 @@ class DBHandler(object):
         typ = typ.lower()
         if typ == "corpus":
             if not platform_name:
-                self.logger.error("'Platform_name' wasn't given. 'Corpus' initialization need 'platform_name'.")
+                self.logger.error("'Platform_name' wasn't given. 'Corpus' initialization need 'platform_name'.", exc_info=self._logger_traceback)
                 return False
 
             if not self.init_corpus(prjFolder, DBname, language,  visibility, platform_name, encryption_key=encryption_key,fileName=fileName, source=source, license=license, template_name=template_name, version=version, corpus_id=corpus_id, additional_columns_with_types_for_documents=additional_columns_with_types_for_documents):
@@ -202,7 +218,7 @@ class DBHandler(object):
 
         elif typ == "stats":
             if not corpus_id:
-                self.logger.error("'Corpus_id' wasn't given. 'Stats' initialization need Corpus_id.")
+                self.logger.error("'Corpus_id' wasn't given. 'Stats' initialization need Corpus_id.", exc_info=self._logger_traceback)
                 return False
                 
             if not self.init_stats(prjFolder, DBname, language, visibility, corpus_id, encryption_key=encryption_key,fileName=fileName, version=version, stats_id=stats_id):
@@ -211,7 +227,7 @@ class DBHandler(object):
             return True
 
         else:
-            self.logger.error("Given DB-Typ is not supported! Please one of the following  types: '{}'.".format(typ, supported_typs))
+            self.logger.error("Given DB-Typ is not supported! Please one of the following  types: '{}'.".format(typ, supported_typs), exc_info=self._logger_traceback)
             return False
 
 
@@ -234,11 +250,17 @@ class DBHandler(object):
         
         
         if not corpus_id:
-            corpus_id= create_id(DBname,language, typ, visibility)
-        
-        fileName,path_to_db = get_file_name(prjFolder,corpus_id,DBname,
+            corpus_id= db_helper.create_id(DBname,language, typ, visibility)
+        #p((self._rewrite, self._stop_if_db_already_exist))
+        fileName,path_to_db = db_helper.get_file_name(prjFolder,corpus_id,DBname,
                             language,visibility, typ,fileName, platform_name,
-                            encrypted= True if encryption_key else False)
+                            encrypted= True if encryption_key else False,
+                            rewrite=self._rewrite,
+                            stop_if_db_already_exist=self._stop_if_db_already_exist)
+        
+        if path_to_db is None:
+            self.logger.info("InitCorpusDBProblem: DB with the same Name '{}' is already exist. InitProcess was stopped.".format(fileName))
+            return False 
 
         
         ### Initialisation of DB
@@ -248,56 +270,58 @@ class DBHandler(object):
         if os.path.isdir(prjFolder):
 
             if self._encryption_key:
-                self._db = sqlite.connect(path_to_db)
-                self._load_json1_extention(self._db)
+                self._db = sqlite.connect(path_to_db, check_same_thread=False)
+                self._check_db_compilation_options(self._db)
                 try:
                     c = self._db.cursor()
                     c.execute("PRAGMA key='{}'".format(self._encryption_key))
                     self._commit()
                     self.is_encrypted = True
                 except Exception as  exception:
-                    self.logger.error("Something happens while initialization of Corpus '{}'".format( exception))
+                    print_exc_plus() if self._ext_tb else ""
+                    self.logger.error("Something happens while initialization of Corpus '{}'".format( exception), exc_info=self._logger_traceback)
                     return False
 
             else:
-                self._db = sqlite.connect(path_to_db)
-                self._load_json1_extention(self._db)
+                self._db = sqlite.connect(path_to_db, check_same_thread=False)
+                self._check_db_compilation_options(self._db)
 
             self._update_temp_list_with_dbnames_in_instance()
 
 
 
             created_at = strftime("%Y-%m-%d %H:%M:%S", gmtime())
-            attributs_list = DBHandler.default_attributs[typ]
+            attributs_list = db_helper.default_tables[typ]["info"]
             values = [corpus_id, DBname, platform_name, template_name, version, language, created_at, source,license,visibility,typ]
             
             if not self._init_info_table(attributs_list):
-                self.logger.error("CorpusInitialisatioError: Corpus wasn't initialized because  info Table wasn't initialized. ")
+                self.logger.error("CorpusInitialisatioError: Corpus wasn't initialized because  info Table wasn't initialized. ", exc_info=self._logger_traceback)
                 self._close()
                 os.remove(path_to_db)
                 return False
-
-            if not self.add_attributs(attributs_list,values):
-                self.logger.error("CorpusInitialisatioError: Corpus wasn't initialized because attributes wasn't added into   info Table. ")
+            #p(dict(zip([attr[0] for attr in attributs_list],values)))
+            if not self.add_attributs(dict(zip([attr[0] for attr in attributs_list],values))):
+                self.logger.error("CorpusInitialisatioError: Corpus wasn't initialized because attributes wasn't added into   info Table. ", exc_info=self._logger_traceback)
                 self._close()
                 os.remove(path_to_db)
 
                 return False
             #p(template_name)
             if not self._init_default_tables("corpus", template=template_name, additional_columns_with_types=additional_columns_with_types_for_documents):
-                self.logger.error("CorpusInitialisatioError: Corpus wasn't initialized because  default Tables wasn't initialized. ")
+                self.logger.error("CorpusInitialisatioError: Corpus wasn't initialized because  default Tables wasn't initialized. ", exc_info=self._logger_traceback)
                 self._close()
                 os.remove(path_to_db)
                 return False
             #self._init_documents_table_in_corpus()
             self._commit()
             
+            self._update_temp_indexesList_in_instance()
 
-            self.logger.info("Coprus-DB ({}) was initialized and saved on the disk: '{}'. ".format(fileName, path_to_db))
+            self.logger.info("Corpus-DB ({}) was initialized and saved on the disk: '{}'. ".format(fileName, path_to_db))
             self.logger.info("Corpus-DB ({}) was connected.".format(fileName))
             return True
         else:
-            self.logger.error("Given Project Folder is not exist: '{}'. ".format(prjFolder))
+            self.logger.error("Given Project Folder is not exist: '{}'. ".format(prjFolder), exc_info=self._logger_traceback)
             return False
 
 
@@ -314,18 +338,22 @@ class DBHandler(object):
         typ= "stats"
 
         if not stats_id:
-            stats_id= create_id(DBname,language, typ, visibility)
+            stats_id= db_helper.create_id(DBname,language, typ, visibility)
 
         
         if not stats_id:
-            self.logger.error("Id wasn't created. Stats-ID was given without Corpus-ID. This is an illegal input.")
+            self.logger.error("Id wasn't created. Stats-ID was given without Corpus-ID. This is an illegal input.", exc_info=self._logger_traceback)
             return False
 
 
-        fileName,path_to_db = get_file_name(prjFolder,corpus_id,DBname,
+        fileName,path_to_db = db_helper.get_file_name(prjFolder,corpus_id,DBname,
                         language,visibility, typ, fileName, second_id=stats_id,
-                        encrypted= True if encryption_key else False)
-
+                        encrypted= True if encryption_key else False,
+                        rewrite=self._rewrite, stop_if_db_already_exist=self._stop_if_db_already_exist)
+        
+        if path_to_db is None:
+            self.logger.info("InitStatsDBProblem: DB with the same Name '{}' is already exist. InitProcess was stopped.".format(fileName))
+            return False 
 
         ### Initialisation of DB
         if not self._check_db_should_not_exist():
@@ -333,43 +361,44 @@ class DBHandler(object):
 
         if os.path.isdir(prjFolder):
             if self._encryption_key:
-                self._db = sqlite.connect(path_to_db)
-                self._load_json1_extention(self._db)
+                self._db = sqlite.connect(path_to_db, check_same_thread=False)
+                self._check_db_compilation_options(self._db)
                 try:
                     c = self._db.cursor()
                     c.execute("PRAGMA key='{}'".format(self._encryption_key))
                     self._commit()
                     self.is_encrypted = True
                 except Exception as  exception:
-                    self.logger.error("Something happens while initialization of Stats '{}'".format( exception))
+                    print_exc_plus() if self._ext_tb else ""
+                    self.logger.error("Something happens while initialization of Stats '{}'".format( exception), exc_info=self._logger_traceback)
                     return False
 
             else:
-                self._db = sqlite.connect(path_to_db)
-                self._load_json1_extention(self._db)
+                self._db = sqlite.connect(path_to_db, check_same_thread=False)
+                self._check_db_compilation_options(self._db)
 
             self._update_temp_list_with_dbnames_in_instance()
             if not stats_id:
-                stats_id= create_id(DBname,language, typ, visibility,corpus_id=corpus_id)
+                stats_id= db_helper.create_id(DBname,language, typ, visibility,corpus_id=corpus_id)
             created_at = strftime("%Y-%m-%d %H:%M:%S", gmtime())
-            attributs_list = DBHandler.default_attributs[typ]
+            attributs_list = db_helper.default_tables[typ]["info"]
             values = [stats_id,corpus_id, DBname, version,  created_at, visibility,typ]
 
 
             if not self._init_info_table(attributs_list):
-                self.logger.error("StatsInitialisatioError: Stats wasn't initialized because  info Table wasn't initialized. ")
+                self.logger.error("StatsInitialisatioError: Stats wasn't initialized because  info Table wasn't initialized. ", exc_info=self._logger_traceback)
                 self._close()
                 os.remove(path_to_db)
                 return False
 
-            if not self.add_attributs(attributs_list,values):
-                self.logger.error("StatsInitialisatioError: Stats wasn't initialized because attributes wasn't added into   info Table. ")
+            if not self.add_attributs(dict(zip([attr[0] for attr in attributs_list],values))):
+                self.logger.error("StatsInitialisatioError: Stats wasn't initialized because attributes wasn't added into   info Table. ", exc_info=self._logger_traceback)
                 self._close()
                 os.remove(path_to_db)
                 return False
 
             if not self._init_default_tables("stats"):
-                self.logger.error("StatsInitialisatioError: Corpus wasn't initialized because  default Tables wasn't initialized. ")
+                self.logger.error("StatsInitialisatioError: Corpus wasn't initialized because  default Tables wasn't initialized. ", exc_info=self._logger_traceback)
                 self._close()
                 os.remove(path_to_db)
                 return False
@@ -377,12 +406,13 @@ class DBHandler(object):
             self._commit()
             #self.dbnames.append("main")
 
+            self._update_temp_indexesList_in_instance()
             
             self.logger.info("Stats-DB ({}) was initialized and saved on the disk: '{}'. ".format(fileName, path_to_db))
             self.logger.info("Stats-DB ({}) was connected.".format(fileName))
             return True
         else:
-            self.logger.error("Given Project Folder is not exist: '{}'. ".format(prjFolder))
+            self.logger.error("Given Project Folder is not exist: '{}'. ".format(prjFolder), exc_info=self._logger_traceback)
             return False
 
 
@@ -390,64 +420,76 @@ class DBHandler(object):
     def initempty(self, prjFolder, DBname, encryption_key=False):
         ### Preprocessing: Create File_Name
         self._encryption_key = encryption_key
-        fileName,path_to_db = get_file_name_for_empty_DB(prjFolder,DBname,
-                    encrypted= True if encryption_key else False)
+        fileName,path_to_db = db_helper.get_file_name_for_empty_DB(prjFolder,DBname,
+                    encrypted= True if encryption_key else False,
+                    rewrite=self._rewrite, stop_if_db_already_exist=self._stop_if_db_already_exist)
+        
+        if path_to_db is None:
+            self.logger.info("InitEmptyDBProblem: DB with the same Name '{}' is already exist. InitProcess was stopped.".format(fileName))
+            return False 
 
         if os.path.isdir(prjFolder):
 
             if self._encryption_key:
-                self._db = sqlite.connect(path_to_db)
-                self._load_json1_extention(self._db)
+                self._db = sqlite.connect(path_to_db, check_same_thread=False)
+                self._check_db_compilation_options(self._db)
                 try:
                     c = self._db.cursor()
                     c.execute("PRAGMA key='{}'".format(self._encryption_key))
                     self._commit()
                     self.is_encrypted = True
                 except Exception as  exception:
-                    self.logger.error("Something happens while initialization of Corpus '{}'".format( exception))
+                    print_exc_plus() if self._ext_tb else ""
+                    self.logger.error("Something happens while initialization of Corpus '{}'".format( exception), exc_info=self._logger_traceback)
                     return False
 
             else:
-                self._db = sqlite.connect(path_to_db)
-                self._load_json1_extention(self._db)
+                self._db = sqlite.connect(path_to_db, check_same_thread=False)
+                self._check_db_compilation_options(self._db)
 
             self._update_temp_list_with_dbnames_in_instance()
-
+            self._update_temp_indexesList_in_instance()
             
+            #p(self._db)
 
             self.logger.info("Empty-DB ({}) was initialized and saved on the disk: '{}'. ".format(fileName, path_to_db))
             self.logger.info("Empty-DB ({}) was connected.".format(fileName))
             return True
         else:
-            self.logger.error("Given Project Folder is not exist: '{}'. ".format(prjFolder))
+            self.logger.error("Given Project Folder is not exist: '{}'. ".format(prjFolder), exc_info=self._logger_traceback)
             return False
 
 
 
 
+    def init_default_indexes(self):
+        if not self._check_db_should_exist():
+            return False
+        try:
+            for table_name, index_query_list in db_helper.default_indexes[self.typ()].iteritems():  
+                for index_query in index_query_list:
+                    #p(index_query)
+                    c = self._db.cursor()
+                    c.execute(index_query)
+                    self.logger.debug("Index for '{}'-DB, '{}'-Table was initialized.".format(self.typ(), table_name))
+            self._update_temp_indexesList_in_instance()
+        except Exception, e:
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("IndexesInitError: Following Exception was throw: '{}'".format(e), exc_info=self._logger_traceback)
+            return False
 
 
 
-
-
-
-
-
-
-
-
-
-
-##########################DB-Connection#############################
+# ##########################DB-Connection#############################
 
     def connect(self,path_to_db, encryption_key=False, reconnection=False, logger_debug=False):
+        #p(logger_debug, "logger_debug")
         if not self._check_file_existens(path_to_db):
             return False
             # if path_to_db != ":memory:":
             #     return False
             # else:
             #     self.logger.info("DBConnection: Temporary DB will be created in the Working Memory. Please don't forget to save you DB on the disc after that.")
-
 
         if not self._check_db_should_not_exist():
             return False
@@ -456,37 +498,39 @@ class DBHandler(object):
         dbName = os.path.splitext(os.path.basename(path_to_db))[0]
 
         if not self._validation_DBfile( path_to_db, encryption_key=encryption_key):
-            self.logger.error("ValidationError: DB cannot be connected!")
+            self.logger.error("ValidationError: DB cannot be connected!", exc_info=self._logger_traceback)
             return False
 
 
         if self._encryption_key:
             try:
-                self._db = sqlite.connect(path_to_db)
-                self._load_json1_extention(self._db)
+                self._db = sqlite.connect(path_to_db, check_same_thread=False)
+                self._check_db_compilation_options(self._db)
                 c = self._db.cursor()
                 c.execute("PRAGMA key='{}'".format(self._encryption_key))
                 self._commit()
                 self.is_encrypted = True
             except Exception as  exception:
-                self.logger.error("Something happens while DB-Connection '{}'. PathToDB: '{}'. ".format( repr(exception), path_to_db))
+                print_exc_plus() if self._ext_tb else ""
+                self.logger.error("Something happens while DB-Connection '{}'. PathToDB: '{}'. ".format( repr(exception), path_to_db), exc_info=self._logger_traceback)
                 return False
 
         else:
-            self._db = sqlite.connect(path_to_db)
-            self._load_json1_extention(self._db)
+            self._db = sqlite.connect(path_to_db, check_same_thread=False)
+            self._check_db_compilation_options(self._db)
 
         try:
             self._update_temp_list_with_dbnames_in_instance()
             self._update_temp_tablesList_in_instance()
         except sqlite.DatabaseError, e:
-            self.logger.error("DatabaseError: {}".format(e))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("DatabaseError: {}".format(e), exc_info=self._logger_traceback)
             return False
 
         
         self._update_temp_attributsList_in_instance()
         # except Exception, e:
-        #     self.logger.error("Something goes wrong: ('{}')".format(e))
+        #     self.logger.error("Something goes wrong: ('{}')".format(e), exc_info=self._logger_traceback)
         #     return False
         if reconnection:
             msg= "DB ('{}') was RE-connected".format(dbName)
@@ -511,11 +555,11 @@ class DBHandler(object):
             return False
 
         if not self._validation_DBfile( path_to_db, encryption_key=encryption_key):
-            self.logger.error("ValidationError: DB cannot be attached!")
+            self.logger.error("ValidationError: DB cannot be attached!", exc_info=self._logger_traceback)
             return False
 
         ### Check, if it is right DB and get name
-        tempdb = DBHandler(logger_level=logging.ERROR)
+        tempdb = DBHandler(logger_level=logging.ERROR, mode=self._mode)
         tempdb.connect(path_to_db, encryption_key=encryption_key)
         #dbName = "{}_{}".format(tempdb.typ(), tempdb.name())
         del tempdb
@@ -543,10 +587,11 @@ class DBHandler(object):
                 cursor = self._db.cursor()
                 cursor.execute(query)
             except Exception as  exception:
+                print_exc_plus() if self._ext_tb else ""
                 if "unrecognized token" in str(exception):
-                    self.logger.error("DBAttachError:  While attaching of the '{}'-DB attacher get an following error: '{}'. Probably you used not allowed characters in the db or file name. (e.g. '.' not allowed).".format(dbName, repr(exception) ))
+                    self.logger.error("DBAttachError:  While attaching of the '{}'-DB attacher get an following error: '{}'. Probably you used not allowed characters in the db or file name. (e.g. '.' not allowed).".format(dbName, repr(exception) ), exc_info=self._logger_traceback)
                 else:    
-                    self.logger.error("DBAttachError: Something happens while attaching of '{}'-DB: '{}'".format(dbName, repr(exception) ))
+                    self.logger.error("DBAttachError: Something happens while attaching of '{}'-DB: '{}'".format(dbName, repr(exception) ), exc_info=self._logger_traceback)
                 return False
 
             self._attachedDBs_config.append((path_to_db, dbName, encryption_key))
@@ -560,7 +605,7 @@ class DBHandler(object):
                 self.logger.info("DB ('{}') was attached".format(dbName))
             return True
         else:
-            self.logger.error("DB '{}' is already attached. You can not attached same DB more as 1 time!".format(dbName))
+            self.logger.error("DB '{}' is already attached. You can not attached same DB more as 1 time!".format(dbName), exc_info=self._logger_traceback)
             return False
 
 
@@ -587,16 +632,16 @@ class DBHandler(object):
                     encryption_key = configs_list_of_detached_dbs[0][2]
                     dbname_to_retach = configs_list_of_detached_dbs[0][1]
                     if not self.attach(path_to_db, encryption_key=encryption_key):
-                        self.logger.error("'{}' DB wasn't re-attached".format(dbname_to_retach))
+                        self.logger.error("'{}' DB wasn't re-attached".format(dbname_to_retach), exc_info=self._logger_traceback)
 
                 else:
-                    self.logger.error("'{}' DB wasn't detached.".format(attached_db_name))
+                    self.logger.error("'{}' DB wasn't detached.".format(attached_db_name), exc_info=self._logger_traceback)
                 #self.attach()
                 # else:
-                #     self.logger.error("Given Attached DB wasn't detached! DBName: '{}'. ".format(attached_db_name))
+                #     self.logger.error("Given Attached DB wasn't detached! DBName: '{}'. ".format(attached_db_name), exc_info=self._logger_traceback)
                 #     return False
             else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure.".format(attached_db_name))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure.".format(attached_db_name), exc_info=self._logger_traceback)
                 return False
 
 
@@ -636,12 +681,13 @@ class DBHandler(object):
 
                         detached_dbs.append( configs[0])
                     except Exception as  exception:
-                        self.logger.error("Something happens while detaching of '{}'-DB: '{}'".format(attached_db_name, repr(exception) ))
+                        print_exc_plus() if self._ext_tb else ""
+                        self.logger.error("Something happens while detaching of '{}'-DB: '{}'".format(attached_db_name, repr(exception) ), exc_info=self._logger_traceback)
                 else:
-                    self.logger.error("Given Attached DB '{}' is not in the Config-List of AttachedDBs. ".format(attached_db_name))
+                    self.logger.error("Given Attached DB '{}' is not in the Config-List of AttachedDBs. ".format(attached_db_name), exc_info=self._logger_traceback)
                     return False
             else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(attached_db_name))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(attached_db_name), exc_info=self._logger_traceback)
                 return False
 
 
@@ -659,20 +705,18 @@ class DBHandler(object):
 
 
 
-    def add_attributs(self,attributs_names, values, dbname=False):
+    def add_attributs(self,inp_dict, dbname=False):
         if not self._check_db_should_exist():
             return False
         self._commit_if_inserts_was_did()
 
-        if self.insertCV("info", [attr[0] for attr in attributs_names], values, dbname=dbname):
+        if self.insertdict("info", inp_dict, dbname=dbname):
             self._update_temp_attributsList_in_instance()
             return True
         else:
-            self.logger.error("Attributes wasn't added into InfoTable (dbName:{})".format(dbname))
+            self.logger.error("Attributes wasn't added into InfoTable (dbName:{})".format(dbname), exc_info=self._logger_traceback)
             return False
-        #p(attributName_as_str, c="m")
-        #p(values_as_str, c="m")
-        ### Add Attributes
+
 
 
 
@@ -684,19 +728,19 @@ class DBHandler(object):
         self._commit_if_inserts_was_did()
         # Check if attributes and values have the same length
         if not isinstance(attribut_name, (str, unicode)):
-            self.logger.error("Given AttributName should be an string or unicode object.")
+            self.logger.error("Given AttributName should be an string or unicode object.", exc_info=self._logger_traceback)
             return None
 
         # if given attribute exist in the Info_Table
         if not filter(lambda x: unicode(attribut_name) == unicode(x), self.col("info")):
-            self.logger.error("Given Attribute ('{}') is not exist in this DataBase.".format(attribut_name))
+            self.logger.error("Given Attribute ('{}') is not exist in this DataBase.".format(attribut_name), exc_info=self._logger_traceback)
             return None
 
 
         if dbname  in self.dbnames:
             query = 'UPDATE {}.info  \nSET {}="{}";'.format(dbname,attribut_name,value)
         else:
-            self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+            self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
             return None
         
         ### Update Attribute
@@ -708,11 +752,59 @@ class DBHandler(object):
                 self._update_temp_attributsList_in_instance()
                 return True
             except Exception as  exception:
-                self.logger.error("Something happens while detaching of '{}'-DB: '{}'".format(attached_db_name, repr(exception) ))
+                print_exc_plus() if self._ext_tb else ""
+                self.logger.error("Something happens while detaching of '{}'-DB: '{}'".format(attached_db_name, repr(exception) ), exc_info=self._logger_traceback)
                 return False
         else:
-            self.logger.error("Info-Table is wasn't found or not exist. Please initialize the Info Table, bevor you may add any attributes.")
+            self.logger.error("Info-Table is wasn't found or not exist. Please initialize the Info Table, bevor you may add any attributes.", exc_info=self._logger_traceback)
             return False
+
+
+
+    def update_attrs(self, inp_dict_, dbname=False):
+        ### Exception Handling
+        dbname = dbname if dbname else "main"
+        if not self._check_db_should_exist():
+            return False
+        self._commit_if_inserts_was_did()
+        # Check if attributes and values have the same length
+        # Check if attributes and values have the same length
+        if not isinstance(inp_dict_, dict):
+            self.logger.error("UpdateAttributes: InputDict is not an 'dict'.", exc_info=self._logger_traceback)
+            return False
+        inp_dict = copy.deepcopy(inp_dict_)
+
+        # if given attribute exist in the Info_Table
+        col_in_info_table = self.col("info")
+        if not all(elem in col_in_info_table for elem in inp_dict_.keys()):
+            average = list(set(inp_dict_.keys())-set(col_in_info_table))
+            self.logger.error("Some of the given  Attributes ('{}') is not exist in this DataBase. ".format(average ), exc_info=self._logger_traceback)
+            return None
+
+        attrib_to_str = ",".join(["{}='{}'".format(k,v)  for k,v in inp_dict_.iteritems()])
+
+        if dbname  in self.dbnames:
+            query = 'UPDATE {}.info  \nSET {};'.format(dbname,attrib_to_str)
+        else:
+            self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
+            return None
+        
+        ### Update Attribute
+        if "info" in self.tables(dbname=dbname):
+            try:
+                cursor = self._db.cursor()
+                cursor.execute(query)
+                self._commit()
+                self._update_temp_attributsList_in_instance()
+                return True
+            except Exception as  exception:
+                print_exc_plus() if self._ext_tb else ""
+                self.logger.error("Something happens while detaching of '{}'-DB: '{}'".format(attached_db_name, repr(exception) ), exc_info=self._logger_traceback)
+                return False
+        else:
+            self.logger.error("Info-Table is wasn't found or not exist. Please initialize the Info Table, bevor you may add any attributes.", exc_info=self._logger_traceback)
+            return False
+
 
 
 
@@ -721,7 +813,7 @@ class DBHandler(object):
         if not self._check_db_should_exist():
             return False
         if not isinstance(attributName, (str, unicode)):
-            self.logger.error("Given AttributName should be an string or unicode object.")
+            self.logger.error("Given AttributName should be an string or unicode object.", exc_info=self._logger_traceback)
             return None
 
         dbname = dbname if dbname else "main" 
@@ -732,7 +824,7 @@ class DBHandler(object):
 
         # if given attribute exist in the Info_Table
         if attributName not in self._attributs_dict[dbname]:
-            self.logger.error("Given Attribute ('{}') is not exist in this '{}'-DB.".format(attributName,dbname))
+            self.logger.error("Given Attribute ('{}') is not exist in this '{}'-DB.".format(attributName,dbname), exc_info=self._logger_traceback)
             return None
 
 
@@ -740,7 +832,7 @@ class DBHandler(object):
             if dbname  in self.dbnames:
                 return self._attributs_dict[dbname][attributName]
             else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return None
         else:
             #p(self._attributs_dict)
@@ -758,13 +850,13 @@ class DBHandler(object):
                 if dbname  in self.dbnames:
                     return self._attributs_dict[dbname]
                 else:
-                    self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                    self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                     return None
             else:
-                return self._attributs_dict
+                return self._attributs_dict["main"]
 
         else:
-            self.logger.error("Info-Table wasn't found or not exist. Please initialize the Info Table, bevor you may add any attributes.")
+            self.logger.error("Info-Table wasn't found or not exist. Please initialize the Info Table, bevor you may add any attributes.", exc_info=self._logger_traceback)
             return None
 
 
@@ -796,10 +888,12 @@ class DBHandler(object):
             cur = self._db.cursor()
             cur.execute(query)
             self._update_temp_tablesList_in_instance()
+            self._update_temp_indexesList_in_instance()
             return cur
 
         except Exception as  exception:
-            self.logger.error("Something happens while execution of the following query: '{}'. See following Exception: '{}'. ".format(query,str(exception)))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while execution of the following query: '{}'. See following Exception: '{}'. ".format(query,str(exception)), exc_info=self._logger_traceback)
             return False
 
         
@@ -811,9 +905,11 @@ class DBHandler(object):
             cur = self._db.cursor()
             cur.execute(query)
             self._update_temp_tablesList_in_instance()
+            self._update_temp_indexesList_in_instance()
             return cur
         except Exception as  exception:
-            self.logger.error("Something happens while execution of the following query: '{}'. See following Exception: '{}'. ".format(query,str(exception)))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while execution of the following query: '{}'. See following Exception: '{}'. ".format(query,str(exception)), exc_info=self._logger_traceback)
             return False
 
 
@@ -825,9 +921,11 @@ class DBHandler(object):
             cur = self._db.cursor()
             cur.executemany(query, argument)
             self._update_temp_tablesList_in_instance()
+            self._update_temp_indexesList_in_instance()
             return cur
         except Exception as  exception:
-            self.logger.error("Something happens while execution of the following query: '{}'. See following Exception: '{}'. ".format(query,str(exception)))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while execution of the following query: '{}'. See following Exception: '{}'. ".format(query,str(exception)), exc_info=self._logger_traceback)
             return False
 #executemany
 
@@ -891,7 +989,7 @@ class DBHandler(object):
                     return []
 
             else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return []
 
         else:
@@ -902,6 +1000,35 @@ class DBHandler(object):
                 return []
 
 
+    def indexes(self,dbname=False):
+        if not self._check_db_should_exist():
+            return False
+        if dbname:
+            if dbname in self.dbnames:
+                self.logger.debug("Indexes names was returned (dbname: '{}')".format(dbname))
+
+                if len(self._indexes_dict)>0:
+                    return self._indexes_dict[dbname]
+                else:
+                    self.logger.critical("Temporary IndexList is empty!")
+                    return []
+
+            else:
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
+                return []
+
+        else:
+            self.logger.debug("Indexes names was returned for 'main' DB. (from temp list)")
+            if len(self._indexes_dict)>0:
+                return self._indexes_dict["main"]
+            else:
+                return []
+
+
+
+
+        
+
     def fname(self,dbname=False):
         if not self._check_db_should_exist():
             return False
@@ -911,7 +1038,8 @@ class DBHandler(object):
             cur.execute("PRAGMA database_list")
             rows = cur.fetchall()
         except Exception as  exception:
-            self.logger.error("Something happens while getting DB-FileName:  '{}'.".format( repr(exception) ))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while getting DB-FileName:  '{}'.".format( repr(exception) ), exc_info=self._logger_traceback)
             return False
 
         if dbname:
@@ -920,7 +1048,7 @@ class DBHandler(object):
                     if row[1] == dbname:
                         return os.path.basename(row[2])
             else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return None
         else:
             return os.path.basename(rows[0][2])
@@ -936,7 +1064,8 @@ class DBHandler(object):
             cur.execute("PRAGMA database_list")
             rows = cur.fetchall()
         except Exception as  exception:
-            self.logger.error("Something happens while getting DB-Path:  '{}'.".format( repr(exception) ))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while getting DB-Path:  '{}'.".format( repr(exception) ), exc_info=self._logger_traceback)
             return False
         ## check existents of the dbName
         if dbname:
@@ -945,7 +1074,7 @@ class DBHandler(object):
                     if row[1] == dbname:
                         return row[2]
             else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return None
         else:
             return rows[0][2]
@@ -960,7 +1089,8 @@ class DBHandler(object):
             cur.execute("PRAGMA database_list")
             rows = cur.fetchall()
         except Exception as  exception:
-            self.logger.error("Something happens while getting DB-DirName:  '{}'.".format( repr(exception) ))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while getting DB-DirName:  '{}'.".format( repr(exception) ), exc_info=self._logger_traceback)
             return False
 
         ## check existents of the dbName
@@ -970,7 +1100,7 @@ class DBHandler(object):
                     if row[1] == dbname:
                         return os.path.dirname(row[2])
             else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return None
         else:
             return os.path.dirname(rows[0][2])
@@ -985,7 +1115,8 @@ class DBHandler(object):
             cur.execute("PRAGMA database_list")
             rows = cur.fetchall()
         except Exception as  exception:
-            self.logger.error("Something happens while getting Paths of AttachedDBs:  '{}'.".format( repr(exception) ))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while getting Paths of AttachedDBs:  '{}'.".format( repr(exception) ), exc_info=self._logger_traceback)
             return False
 
         return [row[2] for row in rows if row[1]!= "main"]
@@ -1002,7 +1133,8 @@ class DBHandler(object):
             cur.execute("PRAGMA database_list")
             rows = cur.fetchall()
         except Exception as  exception:
-            self.logger.error("Something happens while getting FileName of AttachedDBs:  '{}'.".format( repr(exception) ))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while getting FileName of AttachedDBs:  '{}'.".format( repr(exception) ), exc_info=self._logger_traceback)
             return False
 
         return [ os.path.basename(row[2]) for row in rows if row[1]!= "main"]
@@ -1019,7 +1151,8 @@ class DBHandler(object):
             cur.execute("PRAGMA database_list")
             rows = cur.fetchall()
         except Exception as  exception:
-            self.logger.error("Something happens while getting of AttachedDBs:  '{}'.".format( repr(exception) ))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while getting of AttachedDBs:  '{}'.".format( repr(exception) ), exc_info=self._logger_traceback)
             return False
 
         return [ row[1] for row in rows if row[1]!= "main"]
@@ -1034,7 +1167,7 @@ class DBHandler(object):
         self._commit_if_inserts_was_did()
 
         if not filter(lambda x: unicode(tableName) == unicode(x), self.tables(dbname=dbname)):
-            self.logger.error("Given Table is not exist: ('{}').".format(tableName))
+            self.logger.error("Given Table is not exist: ('{}').".format(tableName), exc_info=self._logger_traceback)
             return None
 
         ## check existents of the dbName
@@ -1042,7 +1175,7 @@ class DBHandler(object):
             if dbname  in self.dbnames:
                 query = "PRAGMA {dbname}.table_info('{table_name}'); ".format(table_name=tableName, dbname=dbname)
             else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return None
         else:
             query = "PRAGMA table_info('{table_name}'); ".format(table_name=tableName)
@@ -1052,7 +1185,8 @@ class DBHandler(object):
             cursor.execute(query)
             columns = cursor.fetchall()
         except Exception as  exception:
-            self.logger.error("Something happens while getting of TableColumns for '{}'-Table:  '{}'.".format(tableName, repr(exception) ))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while getting of TableColumns for '{}'-Table:  '{}'.".format(tableName, repr(exception) ), exc_info=self._logger_traceback)
             return False
 
         self.logger.debug("Columns for Table '{}'  was returned (dbName:'{}')".format(tableName,dbname))
@@ -1066,7 +1200,7 @@ class DBHandler(object):
         self._commit_if_inserts_was_did()
 
         if not filter(lambda x: unicode(tableName) == unicode(x), self.tables(dbname=dbname)):
-            self.logger.error("Given Table is not exist: ('{}').".format(tableName))
+            self.logger.error("Given Table is not exist: ('{}').".format(tableName), exc_info=self._logger_traceback)
             return None
 
         ## check existents of the dbName
@@ -1074,7 +1208,7 @@ class DBHandler(object):
             if dbname  in self.dbnames:
                 query = "PRAGMA {dbname}.table_info('{table_name}'); ".format(table_name=tableName, dbname=dbname)
             else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return None
         else:
             query = "PRAGMA table_info('{table_name}'); ".format(table_name=tableName)
@@ -1084,7 +1218,8 @@ class DBHandler(object):
             cursor.execute(query)
             columns = cursor.fetchall()
         except Exception as  exception:
-            self.logger.error("Something happens while getting of Types of TableColumns for '{}'-Table:  '{}'.".format(tableName, repr(exception) ))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while getting of Types of TableColumns for '{}'-Table:  '{}'.".format(tableName, repr(exception) ), exc_info=self._logger_traceback)
             return False
 
         self.logger.debug("Columns with types for Table '{}'  was returned (dbName:'{}')".format(tableName,dbname))
@@ -1098,7 +1233,7 @@ class DBHandler(object):
         self._commit_if_inserts_was_did()
         ## check existents of the tableName
         if not filter(lambda x: unicode(tableName) == unicode(x), self.tables(dbname=dbname)):
-            self.logger.error("Given Table is not exist: ('{}').".format(tableName))
+            self.logger.error("Given Table is not exist: ('{}').".format(tableName), exc_info=self._logger_traceback)
             return None
 
         ## check existents of the dbName
@@ -1106,7 +1241,7 @@ class DBHandler(object):
             if dbname  in self.dbnames:
                 query = "select count(*) from {dbname}.{table_name}; ".format(table_name=tableName, dbname=dbname)
             else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return None
         else:
             query = "select count(*) from {table_name}; ".format(table_name=tableName)
@@ -1117,7 +1252,8 @@ class DBHandler(object):
             cursor.execute(query)
             number = cursor.fetchone()
         except Exception as  exception:
-            self.logger.error("Something happens while getting of RowsNumber for '{}'-Table:  '{}'.".format(tableName, repr(exception) ))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while getting of RowsNumber for '{}'-Table:  '{}'.".format(tableName, repr(exception) ), exc_info=self._logger_traceback)
             return False
 
         self.logger.debug("Number of Rows was returned")
@@ -1140,265 +1276,142 @@ class DBHandler(object):
 ##########################DB--Getters######################
 
 
-    def lazyget(self, tableName, columns=False,  dbname=False, size_to_get=1000,  where=False, connector_where="AND", output="list"):
+    def getall(self, tableName, columns=False, select=False,  dbname=False, where=False, connector_where="AND", limit=-1, offset=-1):
+        cursor = self._intern_getter(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where,limit=limit, offset=offset)
+
+        if cursor:
+            return cursor.fetchall()
+        else:
+            self.logger.debug("GetterError: Nor Cursor Element was passed from intern getter.")
+            return []
+            
+
+
+
+    def lazyget(self, tableName, columns=False, select=False,  dbname=False, where=False, connector_where="AND", size_to_fetch=1000, output="list", limit=-1, offset=-1):
         if output == "list":
-            for row in  self.getlistlazy(tableName, columns,  dbname, size_to_get,  where, connector_where):
+            for row in  self.getlistlazy(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset):
                 yield row
 
         elif output == "dict":
-            for getted_dict in  self.getdictlazy( tableName, columns,  dbname, size_to_get,  where, connector_where):
+            for getted_dict in  self.getdictlazy( tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset):
                 yield getted_dict
 
         else:
-            self.logger.error("LazyGetter: '{}'-OutputFormat is not supported. Please use one of the following: '['list','dict']' ".format(output))
+            self.logger.error("LazyGetter: '{}'-OutputFormat is not supported. Please use one of the following: '['list','dict']' ".format(output), exc_info=self._logger_traceback)
             yield False
             return 
 
 
-    def getlistlazy(self, tableName, columns=False,  dbname=False, size_to_get=1000,  where=False, connector_where="AND"):
-        if not self._check_db_should_exist():
-            yield False
-            return
-        if not self._check_if_table_exist(tableName, dbname=dbname):
-            yield False
-            return
-        self._commit_if_inserts_was_did()
 
 
+    def getdictlazy(self, tableName, columns=False, select=False,  dbname=False, where=False, connector_where="AND", size_to_fetch=1000, limit=-1, offset=-1):
+        list_with_keys = []
         if columns:
-            if not self._check_if_given_columns_exist(tableName, columns, dbname=dbname):
-                yield False
-                return
-            columns_str = columns_list_to_str(columns)
-            if not  columns_str:
-                self.logger.error("TypeError: Given Columns should be given as a list. '{}' was given. ".format(type(columns)))
-                yield None
-                return
-        else:
-            columns_str = '*'
+            if isinstance(columns, (unicode, str)):
+                columns = [columns]
+            list_with_keys += columns
 
-
-        if where:
-            where_cond_as_str = where_condition_to_str(where, connector=connector_where)
-            if not where_cond_as_str:
-                self.logger.error("GetAllError: Where-Condition(s) wasn't compiled to String!")
-                yield False
-                return 
-
-        if dbname:
-            if dbname  in self.dbnames:
-                if where:
-                    query = 'SELECT {} FROM  {}.{} WHERE {};'.format(columns_str, dbname, tableName, where_cond_as_str)
-                else:
-                    query = 'SELECT {} FROM  {}.{};'.format(columns_str, dbname, tableName)
-            else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
-                yield None
-                return
-        else:
-            if where:
-                query = 'SELECT {} FROM  {} WHERE {};'.format(columns_str, tableName, where_cond_as_str)
-            else:
-                query = 'SELECT {} FROM  {};'.format(columns_str, tableName)
-
-        try:
-            cursor = self._db.cursor()
-            cursor.execute(query)
-        except Exception as  exception:
-            self.logger.error("Something happens by LazyGetter:  '{}'.".format( repr(exception) ))
-            yield False
-            return
-        #i=0
-        while True:
-            # i +=1
-            # p(i)
-            results = cursor.fetchmany(size_to_get)
-            if not results:
-                break
-            for row in results:
-                yield row
-
-
-    def getdictlazy(self, tableName, columns=False,  dbname=False, size_to_get=1000,  where=False, connector_where="AND"):
         if not columns:
             columns = self.col(tableName, dbname=dbname)
-        
-        for row in self.getlistlazy(tableName, columns,  dbname, size_to_get,  where, connector_where):
-            yield { k:v for k,v in zip(columns,row)}
+            list_with_keys += columns
+
+        if select:       
+            if isinstance(select, (unicode, str)):
+                select = [select]
+            list_with_keys += select
+
+        for row in self.getlistlazy( tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset):
+            yield { k:v for k,v in zip(list_with_keys,row)}
 
 
 
-    def getall(self, tableName, columns=False,  dbname=False, where=False, connector_where="AND"):
-        if not self._check_db_should_exist():
-            return False
-        if not self._check_if_table_exist(tableName, dbname=dbname):
-            return False
-        self._commit_if_inserts_was_did()
-        #p(dbname)
-        if columns:
-            if not self._check_if_given_columns_exist(tableName, columns, dbname=dbname):
-                return False
-            columns_str = columns_list_to_str(columns)
-            if not  columns_str:
-                self.logger.error("TypeError: Given Columns should be given as a list. '{}' was given. ".format(type(columns)))
-                return None
+    def getlistlazy(self, tableName, columns=False, select=False,  dbname=False, where=False, connector_where="AND", size_to_fetch=1000, limit=-1, offset=-1):
+        cursor = self._intern_getter(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where,limit=limit, offset=offset)
+
+        if cursor:
+            while True:
+                # i +=1
+                # p(i)
+                results = cursor.fetchmany(size_to_fetch)
+                if not results:
+                    break
+                for row in results:
+                    yield row
         else:
-            columns_str = '*'
-
-
-        if where:
-            where_cond_as_str = where_condition_to_str(where, connector=connector_where)
-            if not where_cond_as_str:
-                self.logger.error("GetAllError: Where-Condition(s) wasn't compiled to String!")
-                return False
-
-        if dbname:
-            if dbname  in self.dbnames:
-                if where:
-                    query = 'SELECT {} FROM  {}.{} \nWHERE {};'.format(columns_str, dbname, tableName, where_cond_as_str)
-                else:
-                    query = 'SELECT {} FROM  {}.{};'.format(columns_str, dbname, tableName)
-            else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
-                return None
-        else:
-            if where:
-                query = 'SELECT {} FROM  {} \nWHERE {};'.format(columns_str, tableName, where_cond_as_str)
-            else:
-                query = 'SELECT {} FROM  {};'.format(columns_str, tableName)
-
-        #p(query)
-        try:
-            cursor = self._db.cursor()
-            cursor.execute(query)
-            results = cursor.fetchall()
-            return results
-        except Exception as  exception:
-            self.logger.error("Something happens at the GetAll-Method:  '{}'.".format( repr(exception) ))
-            return False
-
-        
-
-
-
-
-    def getone(self, tableName, columns=False,  dbname=False, where=False, connector_where="AND"):
-        if not self._check_db_should_exist():
-            yield False
+            self.logger.debug("GetterError: Nor Cursor Element was passed from intern getter.")
+            yield []
             return
-        if not self._check_if_table_exist(tableName, dbname=dbname):
-            yield False
-            return
-        self._commit_if_inserts_was_did()
 
-        if columns:
-            if not self._check_if_given_columns_exist(tableName, columns, dbname=dbname):
-                yield False
-                return
-            columns_str = columns_list_to_str(columns)
-            if not  columns_str:
-                self.logger.error("TypeError: Given Columns should be given as a list. '{}' was given. ".format(type(columns)))
-                yield None
-                return
-        else:
-            columns_str = '*'
+ 
 
-
-        if where:
-            where_cond_as_str =  where_condition_to_str(where, connector=connector_where)
-            if not where_cond_as_str:
-                self.logger.error("GetAllError: Where-Condition(s) wasn't compiled to String!")
-                yield False
-                return 
-
-
-        if dbname:
-            if dbname  in self.dbnames:
-                if where:
-                    query = 'SELECT {} FROM  {}.{} \nWHERE {};'.format(columns_str, dbname, tableName, where_cond_as_str)
-                else:
-                    query = 'SELECT {} FROM  {}.{};'.format(columns_str, dbname, tableName)
-            else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
-                yield None
-                return 
-        else:
-            if where:
-                query = 'SELECT {} FROM  {} \nWHERE {};'.format(columns_str, tableName, where_cond_as_str)
-            else:
-                query = 'SELECT {} FROM  {};'.format(columns_str, tableName)
-
-        try:
-            cursor = self._db.cursor()
-            cursor.execute(query)
-        except Exception as  exception:
-            self.logger.error("Something happens at the GetOne-Method:  '{}'.".format( repr(exception) ))
-            yield False
-            return 
-
-        while True:
-            results = cursor.fetchone()
-            if not results:
-                break
-
-            yield results
-  
-
-
-    def getlimit(self, limit, tableName, columns=False,  dbname=False,  where=False, connector_where="AND"):
+    def _intern_getter(self, tableName, columns=False, select=False,  dbname=False, where=False, connector_where="AND", limit=-1, offset=-1):
+        # return cursor object
         if not self._check_db_should_exist():
             return False
         if not self._check_if_table_exist(tableName, dbname=dbname):
             return False
         self._commit_if_inserts_was_did()
 
+
         if columns:
+            if isinstance(columns, (str, unicode)):
+                columns = [columns]
             if not self._check_if_given_columns_exist(tableName, columns, dbname=dbname):
                 return False
-            columns_str = columns_list_to_str(columns)
-            if not  columns_str:
-                self.logger.error("TypeError: Given Columns should be given as a list. '{}' was given. ".format(type(columns)))
+
+            if select:
+                if isinstance(select, (str, unicode)):
+                    select = [select]
+            else:
+                select = []
+
+            select_conditions = db_helper.list_of_select_objects_to_str(columns+select)
+            if not  select_conditions:
+                self.logger.error("TypeError: Given Columns should be given as a list. '{}' was given. ".format(type(columns)), exc_info=self._logger_traceback)
                 return None
+        elif select:
+            if isinstance(select, (str, unicode)):
+                select = [select]
+            select_conditions = db_helper.list_of_select_objects_to_str(select)
+
+            if not  select_conditions:
+                self.logger.error("TypeError: Given Columns should be given as a list. '{}' was given. ".format(type(columns)), exc_info=self._logger_traceback)
+                return None
+
         else:
-            columns_str = '*'
+            select_conditions = '*'
 
 
         if where:
-            where_cond_as_str = where_condition_to_str(where)
+            where_cond_as_str = db_helper.where_condition_to_str(where, connector=connector_where)
+            #p(where_cond_as_str)
             if not where_cond_as_str:
-                self.logger.error("GetAllError: Where-Condition(s) wasn't compiled to String!")
+                self.logger.error("GetAllError: Where-Condition(s) wasn't compiled to String!", exc_info=self._logger_traceback)
                 return False
 
         if dbname:
-            if dbname  in self.dbnames:
-                if where:
-                    query = 'SELECT {} FROM  {}.{}  \n WHERE {} \n LIMIT {};'.format(columns_str, dbname, tableName, where_cond_as_str,limit)
-                else:
-                    query = 'SELECT {} FROM  {}.{} LIMIT {};'.format(columns_str, dbname, tableName, limit)
-            else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+            if dbname  not in self.dbnames:
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return None
         else:
-            if where:
-                query = 'SELECT {} FROM  {}  \n WHERE {} \n LIMIT {};'.format(columns_str, tableName, where_cond_as_str, limit)
-            else:
-                query = 'SELECT {} FROM  {} LIMIT {};'.format(columns_str, tableName, limit)
+            dbname = "main"
 
-        #p(query)
+        if where:
+            query = 'SELECT {} FROM  {}.{} \nWHERE {} LIMIT {} OFFSET {};'.format(select_conditions, dbname, tableName, where_cond_as_str, limit, offset)
+        else:
+            query = 'SELECT {} FROM  {}.{} LIMIT {} OFFSET {};'.format(select_conditions, dbname, tableName, limit, offset)
+
+
+        #p(query, c="m")
         try:
             cursor = self._db.cursor()
             cursor.execute(query)
-            results = cursor.fetchall()
-            return results
+            return cursor
         except Exception as  exception:
-            self.logger.error("Something happens at the GetLimit-Method:  '{}'.".format( repr(exception) ))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Exception was throw:  '{}' for following query: '{}'".format( repr(exception), query.replace("\n", " ") ), exc_info=self._logger_traceback)
             return False
-  
-
-
-
-
-
 
 
 
@@ -1407,30 +1420,16 @@ class DBHandler(object):
 
 
 
-    def lazyinsert(self, typ, table_name, inp_obj1, inp_obj2=False,  dbname=False):
+    def lazyinsert(self, table_name, inp_obj,  dbname=False):
         
-
-        if typ.lower() == "cv":
-            if inp_obj1 and inp_obj2:
-                if not self.insertCV(table_name,inp_obj1, inp_obj2, dbname):
-                    return False
-            else:
-                self.logger.error("LazyWriterError: Columns_names or Values wasn't given.")
+        if isinstance(inp_obj, dict):
+            if not self.insertdict(table_name, inp_obj, dbname):
                 return False
-
-        elif typ.lower() == "v":
-            if  not self.insertV(table_name, inp_obj1, dbname):
-                return False
-
-        elif typ.lower() == "dict":
-            if not self.insertdict(table_name, inp_obj1, dbname):
-                return False
-
-        elif typ.lower() == "list":
-            if not self.insertlist(table_name, inp_obj1, dbname):
+        elif isinstance(inp_obj, list):
+            if not self.insertlist(table_name, inp_obj, dbname):
                 return False
         else:
-            self.logger.error("Not Supported type of lazy_writer. This type was given: '{}'. Please use one of the supported types: ['cv','v', 'csvs'].".format(typ))
+            self.logger.error("Not Supported type of lazy_writer. This type was given: '{}'. Please use one of the supported types: ['dict','list',].".format(typ), exc_info=self._logger_traceback)
             return False
 
         self._lazy_writer_number_inserts_after_last_commit +=1
@@ -1441,185 +1440,80 @@ class DBHandler(object):
             self._lazy_writer_all_inserts_counter +=  self._lazy_writer_number_inserts_after_last_commit
             self._lazy_writer_number_inserts_after_last_commit = 0
             self.logger.debug("LazyWriter: Last {} inserts was committed in the DB. ".format(self._lazyness_border))
-
-
-
-
-    def insertCV(self,table_name,columns_names,values, dbname=False):
-        # INSERT INTO users (email, user_name, create_date)
-        # VALUES ("foo@bar.com", "foobar", "2009-12-16");
-
-        #p("insertCV")
-        if not self._check_db_should_exist():
-            return False
-        # Check if attributes and values have the same length
-        if len(columns_names) != len(values):
-            self.logger.error("Length of given columns_names and values is not equal.")
-            return False
-
-
-        columnsName_as_str = columns_list_to_str(columns_names)
-        values_as_tuple = values_to_tuple(values)
-
-        number  = len(values)
-
-        if not columnsName_as_str or not values_as_tuple:
-            self.logger.error("Given Columns or Values wasn't packed into the list.")
-            return False
-
-
-        if dbname:
-            if dbname  not in self.dbnames:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
-                return None
-        else:
-            dbname="main"
-
-        query = 'INSERT INTO {dbname}.{tableName} ({columns}) \nVALUES ({values})'.format(columns=columnsName_as_str,values=values_to_placeholder(number), tableName=table_name, dbname=dbname)
-
-        #p((query, values_as_tuple), c="r")
-
-        if table_name in self.tables(dbname=dbname):
-            try:
-                cursor = self._db.cursor()
-                cursor.execute(query, values_as_tuple)
-                if table_name != "info":
-                    self.all_inserts_counter +=1
-                    self.number_of_new_inserts_after_last_commit += 1
-                return True
-            except Exception as  exception:
-                self.logger.debug("Following Query could have an Error: '{}'.".format(query))
-
-                if "has no column named" in str(exception):
-                    self.logger.error("insertCVError: One of the columns is not in the Table. See Exception:  '{}'. Current Insertion is not done.".format( repr(exception) ))
-                else:
-                    self.logger.error("insertCVError: Something happens at the InsertCV-Method:  '{}'. Current Insertion is not done.".format( repr(exception) ))
-                return False
-
-            if dbname:
-                self.logger.debug("Insertion: One row was inserted into '{}.{}'-Table. ".format(table_name, dbname))
-            else:
-                self.logger.debug("Insertion: One row was inserted into '{}'-Table. ".format(table_name))
-            return True
-        else:
-            self.logger.error("insertCVError: Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name))
-            return False
-
-
-
-
-
-
-
+        return True
 
     def insertdict(self,table_name, inp_dict, dbname=False):
-
         if not isinstance(inp_dict, dict):
-            self.logger.error("InsertDictError: Given object in not an dict!")
+            self.logger.error("InsertDictError: Given object in not an dict!", exc_info=self._logger_traceback)
             return False
         #p(inp_dict)
         try:
-            iterator = iter(inp_dict.values())
-            random_value  = next(iterator)
-            #random_value2  = next(iterator)
-            for value in inp_dict.itervalues():
-                if type(random_value) != type(value):
-                    self.logger.error("InsertDictError: Given dict is inconsistent!")
-                    return False
-
-            if isinstance(random_value, (unicode, str)):
-                self.logger.debug("InsertDict: One row was found in the given dict. 'insertCV_one_row_as_dict'-Method will be used.  ")
-                if not self.insertCV_one_row_as_dict(table_name, inp_dict, dbname=dbname):
-                    return False
-                return True
+            random_value  = random.choice(inp_dict.values())
+            type_mask = [type(value) for value in inp_dict.values()]
+            if len(set(type_mask)) == 1:
+                if isinstance(random_value, (list,tuple)):
+                    self.logger.debug("InsertDict: Many rows was found in the given dict. ")
+                    if not self._insertdict_with_many_rows(table_name, inp_dict, dbname=dbname):
+                        return False
+                else:
+                    self.logger.debug("InsertDict: One unique row was found in the given dict. ")
+                    if not self._insertdict_with_one_row(table_name, inp_dict, dbname=dbname):
+                        return False
             else:
-                self.logger.debug("InsertDict: Many rows was found in the given dict. 'insertCV_many_rows_as_dict'-Method will be used.  ")
-                if not self.insertCV_many_rows_as_dict(table_name, inp_dict, dbname=dbname):
+                self.logger.debug("InsertDict: One unique row was found in the given dict. ")
+                if not self._insertdict_with_one_row(table_name, inp_dict, dbname=dbname):
                     return False
+            
+            return True
 
         except Exception, e:
-            self.logger.error("InsertDictError: Following Exception was throw: '{}'".format(e))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("InsertDictError: Following Exception was throw: '{}'".format(e), exc_info=self._logger_traceback)
             return False
 
 
 
+    def _dict_values_to_list_of_tuples(self,inp_dict):
+        dict_as_list = []
+        for rows in inp_dict.itervalues():
+            #p(rows, c="b")
+            #p(tuple(rows), c="b")
+            dict_as_list.append(tuple(rows))
+
+        #p(dict_as_list, "111")
+        output = zip(*dict_as_list)
+        #p(output, "222")
+        return output
 
 
-    def insertCV_one_row_as_dict(self,table_name, inp_dict, dbname=False):
+
+
+    def _insertdict_with_many_rows(self,table_name, inp_dict_, dbname=False):
         if not self._check_db_should_exist():
             return False
         # Check if attributes and values have the same length
-        if not isinstance(inp_dict, dict):
-            self.logger.error("InsertDictError: InputDict is not form 'dict' Format.")
+        if not isinstance(inp_dict_, dict):
+            self.logger.error("InsertDictError: InputDict is not an 'dict'.", exc_info=self._logger_traceback)
             return False
-
+        inp_dict = copy.deepcopy(inp_dict_)
+        if not self._dict_preprocessing_bevore_inserting(inp_dict, "many"):
+            return False
 
         columns = ', '.join(inp_dict.keys())
-        placeholders = ':'+', :'.join(inp_dict.keys())
-
-
-        if dbname:
-            if dbname  not in self.dbnames:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
-                return None
-        else:
-            dbname="main"
-
-        main_query = 'INSERT INTO {}.{} (%s) VALUES (%s)'.format(dbname,table_name) 
-        query = main_query  % (columns, placeholders)
-
-        #p(query, c="r")
-
-        if table_name in self.tables(dbname=dbname):
-            try:
-                cursor = self._db.cursor()
-                cursor.execute(query, inp_dict)
-                if table_name != "info":
-                    self.all_inserts_counter +=1
-                    self.number_of_new_inserts_after_last_commit += 1
-                return True
-            except Exception as  exception:
-                self.logger.debug("Following Query could have an Error: '{}'.".format(query))
-
-                if "has no column named" in str(exception):
-                    self.logger.error("insertCVError: One of the columns is not in the Table. See Exception:  '{}'. Current Insertion is not done.".format( repr(exception) ))
-                else:
-                    self.logger.error("insertCVError: Something happens at the InsertCV-Method:  '{}'. Current Insertion is not done.".format( repr(exception) ))
-                return False
-
-            if dbname:
-                self.logger.debug("Insertion: One row was inserted into '{}.{}'-Table. ".format(table_name, dbname))
-            else:
-                self.logger.debug("Insertion: One row was inserted into '{}'-Table. ".format(table_name))
-            return True
-        else:
-            self.logger.error("insertCVError: Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name))
-            return False
-
-
-
-    def insertCV_many_rows_as_dict(self,table_name, inp_dict, dbname=False):
-        if not self._check_db_should_exist():
-            return False
-        # Check if attributes and values have the same length
-        if not isinstance(inp_dict, dict):
-            self.logger.error("InsertDictError: InputDict is not an 'dict'.")
-            return False
-
-        inp_dict = OrderedDict(inp_dict)
-        columns = ', '.join(inp_dict.keys())
-        placeholders = values_to_placeholder(len(inp_dict))
+        placeholders = db_helper.values_to_placeholder(len(inp_dict))
+        number_of_values = len(random.choice(inp_dict.values()))
+        #p((number_of_values))
 
         data = self._dict_values_to_list_of_tuples(inp_dict)
         #p(data)
         if not data:
-            self.logger.error("InsertMCVdict: Insertion was failed! ")
+            self.logger.error("Insertion: Insertion was failed! ", exc_info=self._logger_traceback)
             return False
  
 
         if dbname:
             if dbname  not in self.dbnames:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return None
         else:
             dbname="main"
@@ -1632,17 +1526,18 @@ class DBHandler(object):
                 cursor = self._db.cursor()
                 cursor.executemany(query, data)
                 if table_name != "info":
-                    self.all_inserts_counter +=1
-                    self.number_of_new_inserts_after_last_commit += 1
+                    self.all_inserts_counter +=number_of_values
+                    self.number_of_new_inserts_after_last_commit += number_of_values
 
                 return True
             except Exception as  exception:
+                print_exc_plus() if self._ext_tb else ""
                 self.logger.debug("Following Query could have an Error: '{}'.".format(query))
 
                 if "has no column named" in str(exception):
-                    self.logger.error("insertCVError: One of the columns is not in the Table. See Exception:  '{}'. Current Insertion is not done.".format( repr(exception) ))
+                    self.logger.error("Insertion: One of the columns is not in the Table. See Exception:  '{}'. Current Insertion is not done.".format( repr(exception) ), exc_info=self._logger_traceback)
                 else:
-                    self.logger.error("insertCVError: Something happens at the InsertCV-Method:  '{}'. Current Insertion is not done.".format( repr(exception) ))
+                    self.logger.error("Insertion: Something happens at the InsertCV-Method:  '{}'. Current Insertion was ignored.".format( repr(exception) ), exc_info=self._logger_traceback)
                 return False
 
             if dbname:
@@ -1651,72 +1546,151 @@ class DBHandler(object):
                 self.logger.debug("Insertion: One row was inserted into '{}'-Table. ".format(table_name))
             return True
         else:
-            self.logger.error("insertCVError: Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name))
+            self.logger.error("Insertion: Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name), exc_info=self._logger_traceback)
             return False
 
 
-
-    def insertlist(self,table_name, inp_list, dbname=False):
-        #p(inp_list)
-        if not isinstance(inp_list, list):
-            self.logger.error("InsertListError: Given object in not an list!")
-            return False
-
+    def _dict_preprocessing_bevore_inserting(self, inp_dict, mode):
         try:
-            iterator = iter(inp_list)
-            random_value  = next(iterator)
-            #p(random_value)
-            #random_value2  = next(iterator)
-            if isinstance(random_value, (list,tuple)):
-                for value in inp_list:
-                    if type(random_value) != type(value):
-                        self.logger.error("InsertListError: Given list is inconsistent!")
-                        return False
-            else:
-                self.logger.error("InsertListError: Given list should contain lists or tuples.!")
-                return False
-
-            if not self.insertV_rows_as_list(table_name, inp_list, dbname=dbname):
-                self.logger.error("InsertListError: Insertion is failed!")
-                return False
-
+            for k,v in inp_dict.iteritems():
+                if mode == "one":
+                    if isinstance(v, (list,dict,tuple)):
+                        inp_dict[k] = json.dumps(v)
+                else:
+                    values_list = []
+                    for item in v:
+                        if isinstance(item, (list,dict,tuple)):
+                            values_list.append(json.dumps(item))
+                        else:
+                            values_list.append(item)
+                    inp_dict[k] = values_list
             return True
-
         except Exception, e:
-            self.logger.error("InsertListError: Following Exception was throw: '{}'".format(e))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("DictPreprocessig: '{}' ".format(e), exc_info=self._logger_traceback)
             return False
 
 
 
-
-
-    def insertV_rows_as_list(self,table_name, inp_list, dbname=False):
-        #p("insertV_rows_as_list")
+    def _insertdict_with_one_row(self,table_name, inp_dict, dbname=False):
         if not self._check_db_should_exist():
             return False
+        # Check if attributes and values have the same length
+        if not isinstance(inp_dict, dict):
+            self.logger.error("InsertDictError: InputDict is not form 'dict' Format.", exc_info=self._logger_traceback)
+            return False
+        inp_dict = copy.deepcopy(inp_dict)
+        if not self._dict_preprocessing_bevore_inserting(inp_dict, "one"):
+            return False
 
-        number  = len(inp_list[0])
+        columns = ', '.join(inp_dict.keys())
+        placeholders = ':'+', :'.join(inp_dict.keys())
 
         if dbname:
             if dbname  not in self.dbnames:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return None
         else:
             dbname="main"
 
-        query = 'INSERT INTO {}.{}  \nVALUES ({});'.format(dbname,table_name, values_to_placeholder(number))
-        #p((query, inp_list), c="m")
+        main_query = 'INSERT INTO {}.{} (%s) VALUES (%s)'.format(dbname,table_name) 
+        query = main_query  % (columns, placeholders)
+
+        #p((query, inp_dict))
         if table_name in self.tables(dbname=dbname):
             try:
                 cursor = self._db.cursor()
-                cursor.executemany(query, inp_list)
+                cursor.execute(query, inp_dict)
                 if table_name != "info":
                     self.all_inserts_counter +=1
                     self.number_of_new_inserts_after_last_commit += 1
                 return True
             except Exception as  exception:
+                print_exc_plus() if self._ext_tb else ""
                 self.logger.debug("Following Query could have an Error: '{}'.".format(query))
-                self.logger.error("Something happens in the InsertV-Method:  '{}'. Item wasn't inserted.".format( repr(exception) ))
+
+                if "has no column named" in str(exception):
+                    self.logger.error("Insertion: One of the columns is not in the Table. See Exception:  '{}'. Current Insertion is not done.".format( repr(exception) ), exc_info=self._logger_traceback)
+                else:
+                    self.logger.error("Insertion: Something happens at the InsertCV-Method:  '{}'. Current Insertion is not done.".format( repr(exception) ), exc_info=self._logger_traceback)
+                return False
+
+            if dbname:
+                self.logger.debug("Insertion: One row was inserted into '{}.{}'-Table. ".format(table_name, dbname))
+            else:
+                self.logger.debug("Insertion: One row was inserted into '{}'-Table. ".format(table_name))
+            return True
+        else:
+            self.logger.error("InsertError: Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name), exc_info=self._logger_traceback)
+            return False
+
+
+
+    def insertlist(self,table_name, inp_list, dbname=False):
+        if not isinstance(inp_list, list):
+            self.logger.error("InsertDictError: Given object in not an list!", exc_info=self._logger_traceback)
+            return False
+        #p(inp_list)
+        try:
+            random_value  = random.choice(inp_list)
+            type_mask = [type(value) for value in inp_list]
+            if len(set(type_mask)) == 1:
+                if isinstance(random_value, (list,tuple)):
+                    self.logger.debug("InsertList: Many rows was found in the given list. ")
+                    if not self._insertlist_with_many_rows(table_name, inp_list, dbname=dbname):
+                        return False
+                else:
+                    self.logger.debug("InsertList: One unique row was found in the given list. ")
+                    if not self._insertlist_with_one_row(table_name, inp_list, dbname=dbname):
+                        return False
+            else:
+                self.logger.debug("InsertList: One unique row was found in the given list. ")
+                if not self._insertlist_with_one_row(table_name, inp_list, dbname=dbname):
+                    return False
+            
+            return True
+
+        except Exception, e:
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("InsertListError: Following Exception was throw: '{}'".format(e), exc_info=self._logger_traceback)
+            return False
+
+
+
+
+    def _insertlist_with_many_rows(self,table_name, inp_list, dbname=False):
+        if not self._check_db_should_exist():
+            return False
+
+        number  = len(inp_list[0])
+        values_as_tuple = db_helper.values_to_tuple(inp_list, "many")
+
+        if  not values_as_tuple:
+            self.logger.error("Given  Values wasn't packet into the list.", exc_info=self._logger_traceback)
+            return False
+
+        if dbname:
+            if dbname  not in self.dbnames:
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
+                return None
+        else:
+            dbname="main"
+
+        query = 'INSERT INTO {}.{}  \nVALUES ({});'.format(dbname,table_name, db_helper.values_to_placeholder(number))
+        #p((query, inp_list), c="m")
+        if table_name in self.tables(dbname=dbname):
+            try:
+                cursor = self._db.cursor()
+                #p((query, inp_list), c="b")
+                cursor.executemany(query, values_as_tuple)
+                if table_name != "info":
+                    self.all_inserts_counter += len(inp_list[0])
+                    self.number_of_new_inserts_after_last_commit += len(inp_list[0])
+                return True
+            except Exception as  exception:
+                print_exc_plus() if self._ext_tb else ""
+                self.logger.debug("Following Query could have an Error: '{}'.".format(query))
+                self.logger.error("Something happens in the insertV_rows_as_list-Method:  '{}'. Item wasn't inserted.".format( repr(exception) ), exc_info=self._logger_traceback)
                 return False
 
             if dbname:
@@ -1726,41 +1700,36 @@ class DBHandler(object):
 
             return True
         else:
-            self.logger.error("Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name))
+            self.logger.error("Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name), exc_info=self._logger_traceback)
             return False
 
 
 
-    def insertV(self,table_name,values, dbname=False):
-        # INSERT INTO users VALUES (
-        # NULL,
-        # "johndoe",
-        # "john@doe.com",
-        # "2009.12.14"
-        # );
+
+    def _insertlist_with_one_row(self,table_name, inp_list, dbname=False):
         if not self._check_db_should_exist():
             return False
 
-        if not isinstance(values, (list, tuple)):
-            self.logger.error("insertVError: Given Obj is not a list!")
+        if not isinstance(inp_list, (list, tuple)):
+            self.logger.error("insertVError: Given Obj is not a list!", exc_info=self._logger_traceback)
             return False
 
-        values_as_tuple = values_to_tuple(values)
-        number  = len(values)
+        values_as_tuple = db_helper.values_to_tuple(inp_list, "one")
+        number  = len(inp_list)
         #p(self.colt("documents"))
         if  not values_as_tuple:
-            self.logger.error("Given  Values wasn't packet into the list.")
+            self.logger.error("Given  Values wasn't packet into the list.", exc_info=self._logger_traceback)
             return False
 
         if dbname:
             if dbname  not in self.dbnames:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return None
         else:
             dbname="main"
-
-        query = 'INSERT INTO {dbname}.{tableName}  \nVALUES ({values});'.format(values=values_to_placeholder(number), tableName=table_name, dbname=dbname)
-        #p(query, c="m")
+        #p(values_as_tuple, c="m")
+        query = 'INSERT INTO {dbname}.{tableName}  \nVALUES ({values});'.format(values=db_helper.values_to_placeholder(number), tableName=table_name, dbname=dbname)
+        #p((query, values_as_tuple), c="b")
         if table_name in self.tables(dbname=dbname):
             try:
                 cursor = self._db.cursor()
@@ -1768,10 +1737,13 @@ class DBHandler(object):
                 if table_name != "info":
                     self.all_inserts_counter +=1
                     self.number_of_new_inserts_after_last_commit += 1
+                #sys.exit()
                 return True
+
             except Exception as  exception:
+                print_exc_plus() if self._ext_tb else ""
                 self.logger.debug("Following Query could have an Error: '{}'.".format(query))
-                self.logger.error("Something happens in the InsertV-Method:  '{}'. Item wasn't inserted.".format( repr(exception) ))
+                self.logger.error("Something happens in the InsertV-Method:  '{}'. Item wasn't inserted.".format( repr(exception) ), exc_info=self._logger_traceback)
                 return False
 
             if dbname:
@@ -1781,9 +1753,8 @@ class DBHandler(object):
 
             return True
         else:
-            self.logger.error("Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name))
+            self.logger.error("Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name), exc_info=self._logger_traceback)
             return False
-
 
 
 
@@ -1813,7 +1784,7 @@ class DBHandler(object):
             if dbname  in self.dbnames:
                 query = "DROP TABLE  {}.{};".format(dbname,table_name)
             else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return None
         else:
             query = "DROP TABLE {};".format(table_name)
@@ -1824,7 +1795,8 @@ class DBHandler(object):
             cursor.execute(query)
             #tables_exist = cursor.fetchall()
         except Exception as  exception:
-            self.logger.error("Something happens while dropping the '{}'-Table:  '{}'.".format(table_name, repr(exception) ))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while dropping the '{}'-Table:  '{}'.".format(table_name, repr(exception) ), exc_info=self._logger_traceback)
             return False
 
         dbname = dbname if dbname else "main"
@@ -1843,19 +1815,19 @@ class DBHandler(object):
         self._commit_if_inserts_was_did()
         # Check if attributes and values have the same length
         if len(columns_names) != len(values):
-            self.logger.error("Length of given columns_names and values is not equal.")
+            self.logger.error("Length of given columns_names and values is not equal.", exc_info=self._logger_traceback)
             return False
 
 
-        columns_and_values_as_str = columns_and_values_to_str(columns_names,values)
+        columns_and_values_as_str = db_helper.columns_and_values_to_str(columns_names,values)
         #p(columnsName_as_str, c="m")
         #p(values_as_str, c="m")
         ### Add Attributes
 
         if where:
-            where_cond_as_str = where_condition_to_str(where, connector=connector_where)
+            where_cond_as_str = db_helper.where_condition_to_str(where, connector=connector_where)
             if not where_cond_as_str:
-                self.logger.error("GetAllError: Where-Condition(s) wasn't compiled to String!")
+                self.logger.error("GetAllError: Where-Condition(s) wasn't compiled to String!", exc_info=self._logger_traceback)
                 return False
 
         if dbname:
@@ -1865,7 +1837,7 @@ class DBHandler(object):
                 else:
                     query = 'UPDATE {dbname}.{tableName}  \nSET {col_and_val};'.format(col_and_val=columns_and_values_as_str, dbname=dbname, tableName=table_name)
             else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return None
         else:
             if where:
@@ -1882,10 +1854,11 @@ class DBHandler(object):
                 self._commit()
                 return True
             except Exception as  exception:
-                self.logger.error("Something happens while updating the '{}'-Table:  '{}'.".format(table_name, repr(exception) ))
+                print_exc_plus() if self._ext_tb else ""
+                self.logger.error("Something happens while updating the '{}'-Table:  '{}'.".format(table_name, repr(exception) ), exc_info=self._logger_traceback)
                 return False
         else:
-            self.logger.error("Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name))
+            self.logger.error("Table ('{}') wasn't found or not exist. Please initialize the Info Table, before you may add any attributes.".format(table_name), exc_info=self._logger_traceback)
             return False
 
 
@@ -1954,13 +1927,14 @@ class DBHandler(object):
             
             self.logger.info(msg)
         except Exception,e:
-            self.logger.error("ClossingError: DB-Closing return an Error: '{}' ".format(e))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("ClossingError: DB-Closing return an Error: '{}' ".format(e), exc_info=self._logger_traceback)
             sys.exit()
 
 
     def _close(self, for_encryption=False):
         try:
-            self.commit()
+            self._commit()
             if self._db:
                 self._db.close()
                 self._clean_all_parameters_after_db_close()
@@ -1974,7 +1948,8 @@ class DBHandler(object):
             self.logger.debug(msg)
 
         except Exception,e:
-            self.logger.error("ClossingError: DB-Closing return an Error: '{}' ".format(e))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("ClossingError: DB-Closing return an Error: '{}' ".format(e), exc_info=self._logger_traceback)
             sys.exit()
 
 
@@ -1982,37 +1957,37 @@ class DBHandler(object):
 
 
 
-    def addtable(self, table_name, attributs_names_with_types_as_list_with_tuples,dbname=False, constrains=False) :
+    def addtable(self, table_name, attributs_names_with_types_as_list_with_tuples,dbname=False, constraints=False) :
         
         if not self._check_db_should_exist():
             return False
         self._commit_if_inserts_was_did()
 
         if table_name not in self.tables(dbname=dbname):
-            attributs_names_with_types_as_str = columns_and_types_in_tuples_to_str(attributs_names_with_types_as_list_with_tuples)
+            attributs_names_with_types_as_str = db_helper.columns_and_types_in_tuples_to_str(attributs_names_with_types_as_list_with_tuples)
             if not attributs_names_with_types_as_str:
-                self.logger.error("Something was wrong by Converting attributes into string. Program was stoped!")
+                self.logger.error("Something was wrong by Converting attributes into string. Program was stoped!", exc_info=self._logger_traceback)
                 return False
 
-            if constrains:
+            if constraints:
                 if dbname:
                     if dbname  in self.dbnames:
-                        query = 'CREATE TABLE {}.{} ({}\n{});'.format(dbname,table_name,attributs_names_with_types_as_str, constrains)
+                        query = 'CREATE TABLE {}.{} ({}\n{});'.format(dbname,table_name,attributs_names_with_types_as_str, constraints)
                     else:
-                        self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                        self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                         return False
                 else:
-                    query = 'CREATE TABLE {} ({}\n{});'.format(table_name,attributs_names_with_types_as_str, constrains)
+                    query = 'CREATE TABLE {} ({}\n{});'.format(table_name,attributs_names_with_types_as_str, constraints)
             else:
                 if dbname:
                     if dbname  in self.dbnames:
                         query = 'CREATE TABLE {}.{} ({});'.format(dbname,table_name,attributs_names_with_types_as_str)
                     else:
-                        self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                        self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                         return False
                 else:
                     query = 'CREATE TABLE {} ({});'.format(table_name,attributs_names_with_types_as_str)
-            
+            #p( query)
             try:
                 cursor = self._db.cursor()
                 cursor.execute(query)
@@ -2022,14 +1997,15 @@ class DBHandler(object):
                 self._update_temp_tablesList_in_instance()
                 return True
             except sqlite.OperationalError, e:
+                print_exc_plus() if self._ext_tb else ""
                 if 'near "-"' in str(e):
-                    self.logger.error("AddTableOperationalError: While adding Table-'{}'. Problem: '{}'. (It may be a Problem with using not allowed Symbols in the column name.  e.g.'-')\nProblem was found in the following query: '{}'.".format(table_name,e, query.replace("\n", "  ")))
+                    self.logger.error("AddTableOperationalError: While adding Table-'{}'. Problem: '{}'. (It may be a Problem with using not allowed Symbols in the column name.  e.g.'-')\nProblem was found in the following query: '{}'.".format(table_name,e, query.replace("\n", "  ")), exc_info=self._logger_traceback)
                 else:
-                    self.logger.error("AddTableOperationalError: While adding Table-'{}'. Problem: '{}'. \nProblem was found in the following query: '{}'.".format(table_name,e, query.replace("\n", " ")))
+                    self.logger.error("AddTableOperationalError: While adding Table-'{}'. Problem: '{}'. \nProblem was found in the following query: '{}'.".format(table_name,e, query.replace("\n", " ")), exc_info=self._logger_traceback)
                 return False
 
         else:
-            self.logger.error("'{}'-Table is already exist in the given DB. You can not initialize it one more time!".format(table_name))
+            self.logger.error("'{}'-Table is already exist in the given DB. You can not initialize it one more time!".format(table_name), exc_info=self._logger_traceback)
             return False
 
 
@@ -2048,7 +2024,8 @@ class DBHandler(object):
                 self.logger.info("Encryption Key was changed!")
                 return True
             except Exception as  exception:
-                self.logger.error("Something happens while changing of the encryption key:  '{}'.".format(repr(exception)))
+                print_exc_plus() if self._ext_tb else ""
+                self.logger.error("Something happens while changing of the encryption key:  '{}'.".format(repr(exception)), exc_info=self._logger_traceback)
                 return False
         else:
             self.logger.warning("You cant change encryption key, because the current DataBase wasn't encrypted. You need first to encrypt the current DB and than you can change the encryption key.")
@@ -2081,7 +2058,8 @@ class DBHandler(object):
             cursor.execute("SELECT sqlcipher_export('temp_encrypted');")
             cursor.execute("DETACH DATABASE temp_encrypted;")
         except Exception as  exception:
-            self.logger.error("Something happens while Encryption:  '{}'.".format(repr(exception)))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while Encryption:  '{}'.".format(repr(exception)), exc_info=self._logger_traceback)
             return False
 
         if os.path.isfile(path_to_temp_db):
@@ -2100,13 +2078,13 @@ class DBHandler(object):
                 #p(self._db, c="m")
                 return True
             else:
-                self.logger.error("Encrypted DB wasn't found/connected. Encryption is fail! Roled back to non-encrypted DB.")
+                self.logger.error("Encrypted DB wasn't found/connected. Encryption is fail! Roled back to non-encrypted DB.", exc_info=self._logger_traceback)
                 os.rename(path_to_current_db+".temp", path_to_current_db)
                 self.connect(path_to_current_db,reconnection=True,  logger_debug=True)
                 return False
 
         else:
-            self.logger.error("ENCRYPTION: TempDB wasn't found. Encryption is failed! Roled back to non-encrypted DB.")
+            self.logger.error("ENCRYPTION: TempDB wasn't found. Encryption is failed! Roled back to non-encrypted DB.", exc_info=self._logger_traceback)
             return False
 
         
@@ -2139,7 +2117,8 @@ class DBHandler(object):
             cursor.execute("SELECT sqlcipher_export('temp_decrypted');")
             cursor.execute("DETACH DATABASE temp_decrypted;")
         except Exception as  exception:
-            self.logger.error("Something happens while Decryption:  '{}'.".format(repr(exception)))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while Decryption:  '{}'.".format(repr(exception)), exc_info=self._logger_traceback)
             return False
 
         if os.path.isfile(path_to_temp_db):
@@ -2156,13 +2135,13 @@ class DBHandler(object):
                 #p(self._db, c="m")
                 return True
             else:
-                self.logger.error("Decrypted DB wasn't found/connected. Decryption is fail! Roled back to encrypted DB.")
+                self.logger.error("Decrypted DB wasn't found/connected. Decryption is fail! Roled back to encrypted DB.", exc_info=self._logger_traceback)
                 os.rename(path_to_current_db+".temp", path_to_current_db)
                 self.connect(path_to_current_db,reconnection=True,  logger_debug=True)
                 return False
 
         else:
-            self.logger.error("DECRYPTION: TempDB wasn't found. Encryption is failed! Roled back to encrypted DB.")
+            self.logger.error("DECRYPTION: TempDB wasn't found. Encryption is failed! Roled back to encrypted DB.", exc_info=self._logger_traceback)
             return False
         
 
@@ -2186,7 +2165,7 @@ class DBHandler(object):
 
     def _check_should_be_str_or_unicode(self, giv_obj):
         if not isinstance(giv_obj, (str, unicode)):
-            self.logger.error("Given Object is not from following type: (str, unicode).")
+            self.logger.error("Given Object is not from following type: (str, unicode).", exc_info=self._logger_traceback)
             return False
         else:
             return True
@@ -2195,21 +2174,22 @@ class DBHandler(object):
     def _check_if_given_columns_exist(self, tableName,columns, dbname=False):
         for column in columns:
             if column not in  self.col(tableName):
-                self.logger.error("Given Column '{}' is not exist in the following Table '{}' (dbname='{}') ".format(column,tableName,dbname))
-                return False
+                if "json_extract" not in column:
+                    self.logger.error("Given Column '{}' is not exist in the following Table '{}' (dbname='{}') ".format(column,tableName,dbname), exc_info=self._logger_traceback)
+                    return False
         
         return True
 
     def _check_if_table_exist(self,tableName, dbname=False):
         if tableName not in self.tables(dbname=dbname):
-            self.logger.error("Given Table '{}' is not exist (dbname='{}')) ".format(tableName,dbname))
+            self.logger.error("Given Table '{}' is not exist (dbname='{}')) ".format(tableName,dbname), exc_info=self._logger_traceback)
             return False
         else:
             return True
 
     def _check_db_should_exist(self):
         if not self._db: 
-            self.logger.error("No active DB was found. You need to connect or initialize a DB first, before you can make any operation on the DB.")
+            self.logger.error("No active DB was found. You need to connect or initialize a DB first, before you can make any operation on the DB.", exc_info=self._logger_traceback)
             return False
         else:
             return True
@@ -2217,7 +2197,7 @@ class DBHandler(object):
 
     def _check_db_should_not_exist(self):
         if self._db: 
-            self.logger.error("An active DB was found. You need to initialize new empty Instance of DB before you can do this operation.")
+            self.logger.error("An active DB was found. You need to initialize new empty Instance of DB before you can do this operation.", exc_info=self._logger_traceback)
             return False
         else:
             return True
@@ -2232,7 +2212,7 @@ class DBHandler(object):
         db_typ = self.get_attr(attributName="typ")
 
         if db_typ != "corpus":
-            self.logger.error("Active DB is from typ '{}'. But it should be from typ 'corpus'. ".format(db_typ))
+            self.logger.error("Active DB is from typ '{}'. But it should be from typ 'corpus'. ".format(db_typ), exc_info=self._logger_traceback)
             return False
         return True
 
@@ -2242,7 +2222,7 @@ class DBHandler(object):
             return False
         db_typ = self.get_attr(attributName="typ")
         if db_typ != "stats":
-            self.logger.error("Active DB is from typ '{}'. But it should be from typ 'stats'. ".format(db_typ))
+            self.logger.error("Active DB is from typ '{}'. But it should be from typ 'stats'. ".format(db_typ), exc_info=self._logger_traceback)
             return False
         return True
 
@@ -2252,32 +2232,120 @@ class DBHandler(object):
 
     def _check_file_existens(self, path_to_file):
         if not os.path.isfile(path_to_file):
-            self.logger.error("DB-File wasn't found: ('{}').".format(path_to_file))
+            self.logger.error("DB-File wasn't found: ('{}').".format(path_to_file), exc_info=self._logger_traceback)
             #os._exit(1)
             return False
         else:
             return True
 
-
-
-
-
-    def _load_json1_extention(self, db):
-        path_to_json1 = os.path.join(path_to_zas_rep_tools, "src/extensions/json1/json1")
+    def _get_compile_options(self, db):
         if not isinstance(db, sqlite.Connection):
-            self.logger.error("ExtensionLoaderError: Passed Obj is not an Sqlite-DB.")
+            self.logger.error("ExtensionLoaderError: Passed Obj is not an Sqlite-DB.", exc_info=self._logger_traceback)
+            sys.exit()
+        try:
+            output_dict = defaultdict(list)            
+            c = db.cursor()
+            c.execute("PRAGMA compile_options;")
+            fetched_data = c.fetchall()
+            #p(fetched_data)
+            for option in  fetched_data:
+                if "=" in option[0]:
+                    #p(option[0])
+                    splitted_option = option[0].split("=")
+                    output_dict[splitted_option[0]] = splitted_option[1]
+                else:
+                    #p(option[0],c="b")
+                    output_dict["parameters"].append(option[0])
+
+            return output_dict
+        except:
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("CompilerOptionsGetterError: Something wrong is happens.See following Exception: '{}' ".format(e), exc_info=self._logger_traceback)
+            sys.exit()
+
+    def _check_if_threads_safe(self):
+        if not self.compile_options:
+            self.logger.error("DB-Compile Options wasn't found.")
+            return False
+        try:
+            if int(self.compile_options["THREADSAFE"]) == 0:
+                self.logger.error("ThreadSafeCheckerError: Given Compilation of SQLITE3 Environment is unsafe to use SQLite in a multithreaded program. Following Tool (zas-rep-tool) was designed to work in multithreaded/multiprocessored Mode and requiring ThreadSafe (1 or 2) compilation of SQLITE3. Please recompile your SQLITE with one of the following options ['SQLITE_CONFIG_MULTITHREAD','SQLITE_CONFIG_SERIALIZED'). Read more here. 'https://www.sqlite.org/compile.html#threadsafe'. ")
+                sys.exit()
+            elif int(self.compile_options["THREADSAFE"]) == 1:
+                self.logger.debug("ThreadSafeChecker: This SQLITE Compilation is safe for use in a multithreaded environment. Mode: Serialized (THREADSAFE=1). In serialized mode, SQLite can be safely used by multiple threads with no restriction. Read more: https://www.sqlite.org/threadsafe.html")
+            
+            elif int(self.compile_options["THREADSAFE"]) == 2:
+                #self.logger.debug("ThreadSafeChecker: This SQLITE Compilation is safe for use in a multithreaded environment. Mode: Multi-thread (THREADSAFE=2). In this mode, SQLite can be safely used by multiple threads provided that no single database connection is used simultaneously in two or more threads. Read more: https://www.sqlite.org/threadsafe.html")
+                self.logger.warning("ThreadSafeChecker: This SQLITE Compilation is safe for use in a multithreaded environment. Mode: Multi-thread (THREADSAFE=2) can be safely used by multiple threads provided that no single database connection is used simultaneously in two or more threads. Read more: https://www.sqlite.org/threadsafe.html")
+
+        except Exception, e:
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("ThreadSafeCheckerError: Something wrong is happens. See following Exception: '{}' ".format(e), exc_info=self._logger_traceback)
+            sys.exit()
+
+
+
+    def _check_db_compilation_options(self, db):
+        self.compile_options = self._get_compile_options(db)
+        self._check_if_threads_safe()
+        self._load_json1_extention_if_needed(db)
+
+
+    def _load_json1_extention(self,db):
+
+        if not isinstance(db, sqlite.Connection):
+            self.logger.error("ExtensionLoaderError: Passed Obj is not an Sqlite-DB.", exc_info=self._logger_traceback)
             sys.exit()
         try:
             db.enable_load_extension(True)
-            db.load_extension(path_to_json1)
+            db.load_extension(DBHandler.path_to_json1)
             self.logger.debug("ExtensionLoader: 'json1'-Extension was loaded into SQLite.")
             return True
         except sqlite.OperationalError,e:
-            self.logger.error("ExtensionLoaderError: 'json1'-Extension wasn't found in '{}'. Probably it wasn't compiled. Please compile this extension  before you can use it.".format(path_to_json1))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("ExtensionLoaderError: 'json1'-Extension wasn't found in '{}'. Probably it wasn't compiled. Please compile this extension  before you can use it.".format(DBHandler.path_to_json1), exc_info=self._logger_traceback)
             sys.exit()
         except Exception, e:
-            self.logger.error("ExtensionLoaderError: Something wrong is happens. 'json1'-Extension wasn't loaded. See following Exception: '{}' ".format(e))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("ExtensionLoaderError: Something wrong is happens. 'json1'-Extension wasn't loaded. See following Exception: '{}' ".format(e), exc_info=self._logger_traceback)
+            return False
+
+
+    def _load_json1_extention_if_needed(self, db):
+        
+
+        if not self.compile_options:
+            self.logger.error("DB-Compile Options wasn't found.")
+            return False
+
+        try:
+            if "ENABLE_JSON1" in self.compile_options["parameters"]:
+                self.logger.debug("JSONExtentionChecker: Given Compilation of SQLITE3 Environment hat already enabled JSON Extension.")
+                return True
+
+            else:
+                if "ENABLE_LOAD_EXTENSION" in self.compile_options["parameters"] or "OMIT_LOAD_EXTENSION" in self.compile_options["parameters"]:
+                    if not self._load_json1_extention(db):
+                        return False
+
+                else:
+                    self.logger.CRITICAL("ExtensionLoaderError: It seems like current Compilation of the SQLITE don't support loading of additional extension. But we will try to force it. ('ZAS-REP-TOOLS' requires loaded 'JSON1' extention. Please recompile your Version of SQLITE with following flags: 'SQLITE_OMIT_LOAD_EXTENSION' or 'SQLITE_ENABLE_JSON1'. See more here: https://www.sqlite.org/compile.html#threadsafe) ")
+                    if not self._load_json1_extention(db):
+                        return False
+            return True
+
+        except Exception, e:
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("ThreadSafeCheckerError: Something wrong is happens. See following Exception: '{}' ".format(e), exc_info=self._logger_traceback)
             sys.exit()
+
+
+
+
+
+
+
+
 
 
 
@@ -2290,75 +2358,73 @@ class DBHandler(object):
 
     def _validation_DBfile(self, path_to_db, encryption_key=False):
         if os.path.isfile(path_to_db):
+            try:
+                _db = sqlite.connect(path_to_db, check_same_thread=False)
+                self._check_db_compilation_options(_db)
+                c = _db.cursor()
+                if encryption_key:
+                    c.execute("PRAGMA key='{}'".format(encryption_key))
+                c.execute("SELECT name FROM sqlite_master WHERE type='table';")
+                tables = c.fetchall()
 
-                try:
-                    _db = sqlite.connect(path_to_db)
-                    self._load_json1_extention(_db)
-                    c = _db.cursor()
-                    if encryption_key:
-                        c.execute("PRAGMA key='{}'".format(encryption_key))
-                    c.execute("SELECT name FROM sqlite_master WHERE type='table';")
-                    tables = c.fetchall()
+            except sqlite.DatabaseError, e:
+                print_exc_plus() if self._ext_tb else ""
+                if encryption_key:
+                    self.logger.error("ValidationError: '{}'. Or maybe a given Key is incorrect. Please give another one.  PathToDB: '{}'. ".format( e, path_to_db), exc_info=self._logger_traceback)
+                else:
+                    self.logger.error("ValidationError: '{}'. PathToDB: '{}'. ".format( e, path_to_db), exc_info=self._logger_traceback)
+                    return False
+            except Exception as  exception:
+                print_exc_plus() if self._ext_tb else ""
+                self.logger.error("Something wrong happens while Validation '{}'. PathToDB: '{}'. ".format( repr(exception), path_to_db), exc_info=self._logger_traceback)
+                return False
 
-                except sqlite.DatabaseError, e:
-                    if encryption_key:
-                        self.logger.error("ValidationError: '{}'. Or maybe a given Key is incorrect. Please give another one.  PathToDB: '{}'. ".format( e, path_to_db))
-                    else:
-                        self.logger.error("ValidationError: '{}'. PathToDB: '{}'. ".format( e, path_to_db))
-                        return False
-                except Exception as  exception:
-                    self.logger.error("Something wrong happens while Validation '{}'. PathToDB: '{}'. ".format( repr(exception), path_to_db))
+
+            try:
+                c.execute("SELECT name FROM sqlite_master WHERE type='table';")
+                tables = c.fetchall()
+
+                ## check Row Numbers
+                rowNumbes = c.execute("select count(*) from info; ").fetchone()[0]
+                if rowNumbes > 1:
+                    self.logger.error("ValidationError: Info-Table has more as 1 row. It is incorrect!", exc_info=self._logger_traceback)
+                    return False
+                elif rowNumbes ==0:
+                    self.logger.error("ValidationError: Info-Table is empty. It is incorrect!", exc_info=self._logger_traceback)
                     return False
 
 
                 try:
-                    c.execute("SELECT name FROM sqlite_master WHERE type='table';")
-                    tables = c.fetchall()
-
-
-
-
-                    ## check Row Numbers
-                    rowNumbes = c.execute("select count(*) from info; ").fetchone()[0]
-                    if rowNumbes > 1:
-                        self.logger.error("ValidationError: Info-Table has more as 1 row. It is incorrect!")
-                        return False
-                    elif rowNumbes ==0:
-                        self.logger.error("ValidationError: Info-Table is empty. It is incorrect!")
-                        return False
-
-
-                    try:
-                        ## Check existents of attribute typ
-                        get_typ= c.execute("SELECT typ FROM info; ")
-                        get_typ = c.fetchone()
-                        if get_typ[0] == "stats":
-                            if not self._validate_statsDB(_db):
-                                self.logger.warning("Validator is failed! Connected/Attached DB can not be used. Please choice another one.")
-                                return False
-                        elif get_typ[0] == "corpus":
-                            if not self._validate_corpusDB(_db):
-                                self.logger.warning("Validator is failed! Connected/Attached DB can not be used. Please choice another one.")
-                                return False
-                        else:
-                            self.logger.error("ValidationError: Unsupported DB-Type '{}' was found.".format(get_typ[0]))
+                    ## Check existents of attribute typ
+                    get_typ= c.execute("SELECT typ FROM info; ")
+                    get_typ = c.fetchone()
+                    if get_typ[0] == "stats":
+                        if not self._validate_statsDB(_db):
+                            self.logger.warning("Validator is failed! Connected/Attached DB can not be used. Please choice another one.")
                             return False
-
-                    except sqlite.OperationalError,  e:
-                        self.logger.error("ValidationError:  '{}'. Impossible to get DB-Typ. PathToDB: '{}'. ".format( e, path_to_db))
+                    elif get_typ[0] == "corpus":
+                        if not self._validate_corpusDB(_db):
+                            self.logger.warning("Validator is failed! Connected/Attached DB can not be used. Please choice another one.")
+                            return False
+                    else:
+                        self.logger.error("ValidationError: Unsupported DB-Type '{}' was found.".format(get_typ[0]), exc_info=self._logger_traceback)
                         return False
 
-
-                except Exception as  exception:
-                    self.logger.error("ValidationError: Something wrong happens while Validation '{}'. PathToDB: '{}'. ".format( repr(exception), path_to_db))
+                except sqlite.OperationalError,  e:
+                    print_exc_plus() if self._ext_tb else ""
+                    self.logger.error("ValidationError:  '{}'. Impossible to get DB-Typ. PathToDB: '{}'. ".format( e, path_to_db), exc_info=self._logger_traceback)
                     return False
 
 
+            except Exception as  exception:
+                print_exc_plus() if self._ext_tb else ""
+                self.logger.error("ValidationError: Something wrong happens while Validation '{}'. PathToDB: '{}'. ".format( repr(exception), path_to_db), exc_info=self._logger_traceback)
+                return False
 
-                return True
+            return True
 
         else:
-            self.logger.error("Given DB-File is not exist: '{}'. ".format(path_to_db))
+            self.logger.error("Given DB-File is not exist: '{}'. ".format(path_to_db), exc_info=self._logger_traceback)
             return False
 
 
@@ -2368,7 +2434,7 @@ class DBHandler(object):
     def _validate_corpusDB(self, db):
 
         ### Step 1: Attributes
-        attributs_and_types = [(attr[0], attr[1].split(' ', 1 )[0])  for attr in attributs_names_corpus]
+        attributs_and_types = [(attr[0], attr[1].split(' ', 1 )[0])  for attr in db_helper.default_tables["corpus"]["info"]]
 
         c = db.cursor()
         c.execute("PRAGMA table_info('info'); ")
@@ -2377,7 +2443,7 @@ class DBHandler(object):
 
 
         if set(columns_and_types) !=set(attributs_and_types):
-            self.logger.error("CorpusDBValidationError: Given Stats-DB contain not correct attributes. Following col_and_types was extracted: '{}' and they are incorrect. Please use following data as golden standard: '{}'. ".format(columns_and_types, attributs_and_types))
+            self.logger.error("CorpusDBValidationError: Given Stats-DB contain not correct attributes. Following col_and_types was extracted: '{}' and they are incorrect. Please use following data as golden standard: '{}'. ".format(columns_and_types, attributs_and_types), exc_info=self._logger_traceback)
             return False
 
 
@@ -2388,7 +2454,7 @@ class DBHandler(object):
         extracted_tnames = [table_name[0] for table_name in tables]
         for defaultTable in default_tables:
             if defaultTable not in extracted_tnames:
-                self.logger.error("CorpusDBValidationError: '{}'-default-Table wasn't found in the given Corpus-DB.".format(defaultTable))
+                self.logger.error("CorpusDBValidationError: '{}'-default-Table wasn't found in the given Corpus-DB.".format(defaultTable), exc_info=self._logger_traceback)
                 return False
 
 
@@ -2399,14 +2465,14 @@ class DBHandler(object):
     def _validate_statsDB(self, db):
 
         ### Step 1: Attributes
-        attributs_and_types = [(attr[0], attr[1].split(' ', 1 )[0])  for attr in attributs_names_stats]
+        attributs_and_types = [(attr[0], attr[1].split(' ', 1 )[0])  for attr in db_helper.default_tables["stats"]["info"]]
         c = db.cursor()
         c.execute("PRAGMA table_info('info'); ")
         columns_and_types = c.fetchall()
         columns_and_types = [(col[1], col[2])for col in columns_and_types]
 
         if set(columns_and_types) !=set(attributs_and_types):
-            self.logger.error("StatsDBValidationError: Given Stats-DB contain not correct attributes. Following col_and_types was extracted: '{}' and they are incorrect. Please use following data as golden standard: '{}'. ".format(columns_and_types, attributs_and_types))
+            self.logger.error("StatsDBValidationError: Given Stats-DB contain not correct attributes. Following col_and_types was extracted: '{}' and they are incorrect. Please use following data as golden standard: '{}'. ".format(columns_and_types, attributs_and_types), exc_info=self._logger_traceback)
             return False
 
 
@@ -2414,11 +2480,11 @@ class DBHandler(object):
         ## Step 2: Table Names
         c.execute("SELECT name FROM sqlite_master WHERE type='table';")
         tables = c.fetchall()
-        default_tables = ["baseline", "replications", "reduplications"]
+        default_tables = ["repl_baseline", "redu_baseline","replications", "reduplications", "info"]
         extracted_tnames = [table_name[0] for table_name in tables]
         for defaultTable in default_tables:
             if defaultTable not in extracted_tnames:
-                self.logger.error("StatsDBValidationError: '{}'-default-Table wasn't found in the given Stats-DB.".format(defaultTable))
+                self.logger.error("StatsDBValidationError: '{}'-default-Table wasn't found in the given Stats-DB.".format(defaultTable), exc_info=self._logger_traceback)
                 return False
         return True
 
@@ -2436,13 +2502,8 @@ class DBHandler(object):
 
     def _reinitialize_logger(self,  level=False):
         level = level if  level else self._logger_level
-        #level=logging.INFO
-        #p(self._logger_level, c="r")
-        #coloredlogs.install(level=self._logger_level)
-        #coloredlogs.install(level=self._logger_level)
-        #self.logger.setLevel(self._logger_level)
-        self.logger = Logger().myLogger("DBHandler", self._folder_for_log_files, use_logger=self._use_logger, level=level)
-        #self.logger.debug('Beginn of creating an instance of DB()')
+        ## Logger Reinitialisation
+        self.logger = main_logger(self.__class__.__name__, level=level, folder_for_log=self._logger_folder_to_save, use_logger=self._logger_usage, save_logs=self._logger_save_logs)
         self.logger.debug("Logger was reinitialized.")
 
 
@@ -2455,33 +2516,28 @@ class DBHandler(object):
                 else:
                     additional_columns_with_types = DBHandler.templates[template]
             else:
-                self.logger.error("Given Template ('{}') is not exist".format(template))
+                self.logger.error("Given Template ('{}') is not exist".format(template), exc_info=self._logger_traceback)
                 return False
         #p(additional_columns_with_types)
         if typ == "corpus":
-            if not self._init_default_table("corpus", "documents", default_columns_and_types_for_corpus_documents, additional_collumns_with_types=additional_columns_with_types, constrains=default_constraints_for_corpus_documents):
+            if not self._init_default_table("corpus", "documents", db_helper.default_tables["corpus"]["documents"]["basic"], additional_collumns_with_types=additional_columns_with_types, constraints=db_helper.default_constraints["corpus"]["documents"]):
                 return False
         
         elif typ == "stats":
-            if not self._init_default_table("stats", "baseline", default_columns_and_types_for_stats_baseline,  additional_collumns_with_types=additional_columns_with_types): 
-                return False
-
-            if not self._init_default_table("stats", "replications", default_columns_and_types_for_stats_replications,  additional_collumns_with_types=additional_columns_with_types, constrains=default_constrains_for_stats_replications):
-                return False
-
-            if not self._init_default_table("stats", "reduplications", default_columns_and_types_for_stats_reduplications,  additional_collumns_with_types=additional_columns_with_types, constrains=default_constrains_for_stats_reduplications):
-                return False
-
+            for table_name, columns in  db_helper.default_tables[typ].iteritems(): #foo = data.get("a",{}).get("b",{}).get("c",False)
+                if table_name == "info":
+                    continue
+                if not self._init_default_table(typ, table_name, columns, constraints=db_helper.default_constraints.get(typ, False).get(table_name, False)):
+                    return False
 
         else:
-            self.logger.error("Given typ of DB ('{}') is not exist.".format(typ))
+            self.logger.error("Given typ of DB ('{}') is not exist.".format(typ), exc_info=self._logger_traceback)
             return False
-
-
         return True
 
 
-    def _init_default_table(self, typ, tableName , default_collumns_with_types, additional_collumns_with_types=False, constrains=False):
+
+    def _init_default_table(self, typ, tableName , default_collumns_with_types, additional_collumns_with_types=False, constraints=False):
         if typ.lower()=="corpus":
             if not self._db_should_be_a_corpus():
                 return False
@@ -2489,17 +2545,17 @@ class DBHandler(object):
             if not self._db_should_be_stats():
                 return False
         else:
-            self.logger.error("Not supported typ ('{}') of DB. Please use one of the following DB-Types: '{}'. ".format(typ, DBHandler.supported_db_typs))
+            self.logger.error("Not supported typ ('{}') of DB. Please use one of the following DB-Types: '{}'. ".format(typ, DBHandler.supported_db_typs), exc_info=self._logger_traceback)
             return False
 
         if additional_collumns_with_types:
             columns_and_types = default_collumns_with_types + additional_collumns_with_types
         else:
             columns_and_types = default_collumns_with_types
-        constrains_in_str = constrains_list_to_str(constrains)
-        #attributs_names_with_types_as_str = columns_and_types_in_tuples_to_str(columns_and_types)
-        if not self.addtable( tableName, columns_and_types,constrains=constrains_in_str):
-            self.logger.error("InitDefaultTableError: '{}'-Table wasn't added into the {}-DB.".format(tableName, typ))
+        constraints_in_str = db_helper.constraints_list_to_str(constraints)
+        #attributs_names_with_types_as_str = db_helper.columns_and_types_in_tuples_to_str(columns_and_types)
+        if not self.addtable( tableName, columns_and_types,constraints=constraints_in_str):
+            self.logger.error("InitDefaultTableError: '{}'-Table wasn't added into the {}-DB.".format(tableName, typ), exc_info=self._logger_traceback)
             return False
 
         self.logger.debug("{}-Table in {} was initialized".format(tableName, typ))
@@ -2513,7 +2569,7 @@ class DBHandler(object):
 
 
     def _init_info_table(self, attributs_names):
-        #str_attributs_names = columns_and_types_in_tuples_to_str(attributs_names)
+        #str_attributs_names = db_helper.columns_and_types_in_tuples_to_str(attributs_names)
         if not self.addtable("info", attributs_names):
             return False
 
@@ -2530,7 +2586,7 @@ class DBHandler(object):
             if dbname  in self.dbnames:
                 query = "SELECT name FROM {}.sqlite_master WHERE type='table';".format(dbname)
             else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return None
         else:
             query = "SELECT name FROM sqlite_master WHERE type='table';"
@@ -2539,8 +2595,10 @@ class DBHandler(object):
             cursor = self._db.cursor()
             cursor.execute(query)
             tables_exist = cursor.fetchall()
+            self._commit()
         except Exception as  exception:
-            self.logger.error("Something happens while Getting Tables:  '{}'.".format(repr(exception)))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while Getting Tables:  '{}'.".format(repr(exception)), exc_info=self._logger_traceback)
             return False
 
         if dbname:
@@ -2549,6 +2607,10 @@ class DBHandler(object):
             self.logger.debug("TableNames was get directly from DB.  (dbname: 'main')")
         
         return [table_name[0] for table_name in tables_exist]
+
+
+
+
 
 
 
@@ -2564,6 +2626,56 @@ class DBHandler(object):
             self._tables_dict['main'] = self._get_tables_from_db(dbname='main')
         
         self.logger.debug("Temporary TableList in the DB-Instance was updated!")
+
+
+
+
+    def _get_indexes_from_db(self,dbname=False):
+        if not self._check_db_should_exist():
+            return False
+        self._commit_if_inserts_was_did()
+        if dbname:
+            if dbname  in self.dbnames:
+                query = "SELECT * FROM {}.sqlite_master WHERE type='index';".format(dbname)
+            else:
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
+                return None
+        else:
+            query = "SELECT * FROM sqlite_master WHERE type='index';"
+
+        try:
+            cursor = self._db.cursor()
+            cursor.execute(query)
+            indexes_exist = cursor.fetchall()
+            self._commit()
+        except Exception as  exception:
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while Getting Indexes:  '{}'.".format(repr(exception)), exc_info=self._logger_traceback)
+            return False
+
+        if dbname:
+            self.logger.debug("IndexesNames was get directly from DB.  (dbname: '{}')".format(dbname))
+        else:
+            self.logger.debug("IndexesNames was get directly from DB.  (dbname: 'main')")
+        
+        #return [index_name[0] for index_name in indexes_exist]
+        #p(indexes_exist, c="r")
+        return indexes_exist
+
+
+    def _update_temp_indexesList_in_instance(self):
+        if not self._check_db_should_exist():
+            return False
+        #p(self.dbnames, c="r")
+        self._indexes_dict = {}
+        if self.dbnames:
+            for DBName in self.dbnames:
+                self._indexes_dict[DBName] = self._get_indexes_from_db(dbname=DBName)
+        else:
+            self._indexes_dict['main'] = self._get_indexes_from_db(dbname='main')
+        
+        self.logger.debug("Temporary IndexesList in the DB-Instance was updated!")
+
 
 
 
@@ -2629,7 +2741,7 @@ class DBHandler(object):
             if dbname  in self.dbnames:
                 query = 'SELECT * FROM  {}.info;'.format( dbname)
             else:
-                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname))
+                self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
                 return None
         else:
             query = 'SELECT * FROM  info;'
@@ -2639,7 +2751,8 @@ class DBHandler(object):
             cursor.execute(query)
             attribut = cursor.fetchall()[0]
         except Exception as  exception:
-            self.logger.error("Something happens while Getting all Attributes from InfoTable of '{}'-DB: '{}'".format(dbname, exception))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while Getting all Attributes from InfoTable of '{}'-DB: '{}'".format(dbname, exception), exc_info=self._logger_traceback)
             return False
 
         number_of_rows_info_table = self.rownum("info",dbname=False)
@@ -2647,10 +2760,10 @@ class DBHandler(object):
             columns = self.col("info", dbname=dbname)
             return dict(zip(columns, list(attribut)))
         elif number_of_rows_info_table ==0:
-            self.logger.error("Table 'info' is empty. Please set attributes bevor!")
+            self.logger.error("Table 'info' is empty. Please set attributes bevor!", exc_info=self._logger_traceback)
             return None
         else:
-            self.logger.error("Table 'info' has more as 1 row. It's not correct. Please delete not needed rows.")
+            self.logger.error("Table 'info' has more as 1 row. It's not correct. Please delete not needed rows.", exc_info=self._logger_traceback)
             return None
 
 
@@ -2669,7 +2782,7 @@ class DBHandler(object):
                 if attributes:
                     self._attributs_dict[DBName] = attributes
                 else:
-                    self.logger.error("Attributes wasn't updated!!!")
+                    self.logger.error("Attributes wasn't updated!!!", exc_info=self._logger_traceback)
                     return False
         else:
             self._attributs_dict['main'] = self._get_all_attr_from_db(dbname='main')
@@ -2691,7 +2804,8 @@ class DBHandler(object):
             cur.execute("PRAGMA database_list")
             rows = cur.fetchall()
         except Exception as  exception:
-            self.logger.error("Something happens while Getting DBNames:  '{}'.".format(repr(exception)))
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("Something happens while Getting DBNames:  '{}'.".format(repr(exception)), exc_info=self._logger_traceback)
             return False
 
         self.logger.debug("All DB-Names was taked directly from a Database.")
@@ -2730,26 +2844,8 @@ class DBHandler(object):
             self.logger.debug("Temporary List with DB-Names in the DB-Instance was updated!")
             return True
         else:
-            self.logger.error("Empty List was returned.")
+            self.logger.error("Empty List was returned.", exc_info=self._logger_traceback)
             return False
-
-    def _dict_values_to_list_of_tuples(self,inp_dict):
-        dict_as_list = []
-        rows_numer = len(next(iter(inp_dict.values())))
-        for rows in inp_dict.itervalues():
-            if rows_numer != len(rows):
-                self.logger.error("DictToListConverterError: Given Dict with rows is inconsistent.")
-                break
-                return False
-            # if isinstance(rows, (str,unicode)):
-            #     self.logger.error("DictToListConverterError: Given Dict with rows is inconsistent.")
-            #     return False
-            dict_as_list.append(tuple(rows))
-
-
-        output = zip(*dict_as_list)
-
-        return output
 
 
 
@@ -2761,6 +2857,7 @@ class DBHandler(object):
         self._attachedDBs_config_from_the_last_session = self._attachedDBs_config
         self._attachedDBs_config = []
         self._tables_dict = {}
+        self._indexes_dict = {}
         self._attributs_dict = {}
         self.dbnames = [] 
         self._lazy_writer_all_inserts_counter = 0
