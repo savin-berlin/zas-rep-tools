@@ -16,6 +16,8 @@ logs
 # sensitiv data
 user-config
 user_config
+tool-config
+tool_config
 *.fs
 user_data
 *.log
