@@ -17,17 +17,12 @@
 import unittest
 import os
 import logging
-
-
-#import codecs
 import sure
-#import inspect
 import copy
 from collections import defaultdict
 from nose.plugins.attrib import attr
 from testfixtures import tempdir, TempDirectory
 from distutils.dir_util import copy_tree 
-#import glob
 import json
 import time
 
@@ -39,9 +34,8 @@ from zas_rep_tools.src.classes.reader import Reader
 
 
 from zas_rep_tools.src.utils.debugger import p, wipd, wipdn, wipdl, wipdo
-from zas_rep_tools.src.utils.logger import *
-from zas_rep_tools.src.utils.helpers import NestedDictValues
-
+from zas_rep_tools.src.utils.helpers import NestedDictValues, levenstein
+from zas_rep_tools.src.utils.basetester import BaseTester
 
 
 import platform
@@ -55,139 +49,23 @@ else:
 
 #Configer(mode="dev", rewrite=True).create_test_data(use_original_classes=True, corp_status_bar=True, corp_log_ignored=True, corp_language="en", corp_lang_classification=False, corp_pos_tagger="tweetnlp")
 
-class TestZASconfigerConfiger(unittest.TestCase):
+class TestZASconfigerConfiger(BaseTester,unittest.TestCase):
     #_multiprocess_can_split_ = True
     _multiprocess_shared_  = True
-    @classmethod 
+    #@classmethod 
     def setUp(self):
-        #print "setup called" #called.append("setup")
-        Configer(mode="test", rewrite=False).create_test_data(use_original_classes=True, corp_status_bar=True, corp_log_ignored=True,  corp_lang_classification=True)
-        self.configer = Configer(mode="test")
-        ######## Folders Creation ##############
-
-        self.tempdir = TempDirectory()
+        #p(str(super))
+        
+        super(type(self), self).setUp()
+        #super(BaseTester, self).__init__()
+        #p(self.__dict__)
         
 
-        #####################
-        #### Test DBs########
-        #######Begin#########
-
-        self.path_to_zas_rep_tools = self.configer.path_to_zas_rep_tools
-        self.path_to_testdbs  =  self.configer.path_to_testdbs 
-        self.db_blogger_plaintext_corp_en = self.configer.test_dbs["plaintext"]["blogger"]["en"]["corpus"]
-        self.db_blogger_plaintext_corp_de = self.configer.test_dbs["plaintext"]["blogger"]["de"]["corpus"]
-        self.db_blogger_plaintext_corp_test = self.configer.test_dbs["plaintext"]["blogger"]["test"]["corpus"]
-        self.db_blogger_plaintext_stats_en = self.configer.test_dbs["plaintext"]["blogger"]["en"]["stats"]
-        self.db_blogger_plaintext_stats_de = self.configer.test_dbs["plaintext"]["blogger"]["de"]["stats"]
-        self.db_blogger_plaintext_stats_test = self.configer.test_dbs["plaintext"]["blogger"]["test"]["stats"]
-          
-
-        self.db_twitter_encrypted_corp_de = self.configer.test_dbs["encrypted"]["twitter"]["de"]["corpus"]
-        self.db_twitter_encrypted_stats_de = self.configer.test_dbs["encrypted"]["twitter"]["de"]["stats"]
-
-
-        ## TempDir
-        self.tempdir.makedir('TestDBs')
-        self.tempdir_testdbs  = self.tempdir.getpath('TestDBs')
-        copy_tree(os.path.join(self.path_to_zas_rep_tools,self.path_to_testdbs ),self.tempdir_testdbs)
-
-        #######End###########
-        #### Test DBs########
-        #####################
-
-
-
-        #####################
-        # Test Blogger Corpus#
-        #######Begin#########
-
-        self.path_to_test_sets_for_blogger_Corpus = "data/tests_data/Corpora/BloggerCorpus"
-        
-        #TXT
-        self.txt_blogger_hightrepetativ_set = "txt/HighRepetativSubSet"
-        self.txt_blogger_small_fake_set = "txt/SmallFakeSubset"
-        #self.txt_blogger_small_sub_set = "txt/SmallSubset"
-
-        #CSV
-        self.csv_blogger_hightrepetativ_set = "csv/HighRepetativSubSet"
-        self.csv_blogger_small_fake_set = "csv/SmallFakeSubset"
-        # #self.csv_blogger_small_sub_set = "csv/SmallSubset"
-
-        #XML
-        self.xml_blogger_hightrepetativ_set = "xml/HighRepetativSubSet"
-        self.xml_blogger_small_fake_set = "xml/SmallFakeSubset"
-        #self.xml_blogger_small_sub_set = "xml/SmallSubset"
-
-        #JSON
-        self.json_blogger_hightrepetativ_set = "json/HighRepetativSubSet"
-        self.json_blogger_small_fake_set = "json/SmallFakeSubset"
-        # #self.json_blogger_small_sub_set = "json/SmallSubset"
-
-
-        ## TempDir
-        #self.path_to_test_corpora  = "data/tests_data/Corpora"
-        self.tempdir.makedir('BloggerCorpus')
-        self.tempdir_blogger_corp  = self.tempdir.getpath('BloggerCorpus')
-        copy_tree(os.path.join(self.path_to_zas_rep_tools,self.path_to_test_sets_for_blogger_Corpus),self.tempdir_blogger_corp)
-
-        #######End###########
-        # Test Blogger Corpus#
-        #####################
-
-
-
-        #####################
-        # Test Twitter Corpus#
-        #######Begin#########
-
-        self.path_to_test_sets_for_twitter_Corpus = "data/tests_data/Corpora/TwitterCorpus"
-        self.json_twitter_set = "JSON/zas-rep-tool/"
-        self.csv_twitter_set = "CSV/zas-rep-tool/"
-        self.xml_twitter_set = "XML/zas-rep-tool/"
-
-        ## TempDir
-        #self.path_to_test_corpora  = "data/tests_data/Corpora"
-        self.tempdir.makedir('TwitterCorpus')
-        self.tempdir_twitter_corp  = self.tempdir.getpath('TwitterCorpus')
-        copy_tree(os.path.join(self.path_to_zas_rep_tools,self.path_to_test_sets_for_twitter_Corpus),self.tempdir_twitter_corp)
-
-        #######End###########
-        # Test Twitter Corpus#
-        #####################
-
-
-
-
-
-
-        #####################
-        #### Test Blogger ####
-        #######Begin#########
-
-        self.input_list_fake_blogger_corpus = [{'rowid':'1' ,'star_constellation': 'Capricorn', 'text': u'Well, the angel won. I went to work today....after alot of internal struggle with the facts. I calculated sick days left this year,', 'working_area': 'Consulting', 'age': '46', 'id': '324114', 'gender': 'female'}, {'rowid':'2' ,'star_constellation': 'Pisces', 'text': u"urlLink Drawing Game  It's PICTIONARY. It's very cool.", 'working_area': 'indUnk', 'age': '24', 'id': '416465', 'gender': 'male'}, {'rowid':'3' ,'star_constellation': 'Virgo', 'text': u'The mango said, "Hi there!!.... \n"Hi there!!.... \n"Hi there!!.... ', 'working_area': 'Non-Profit', 'age': '17', 'id': '322624', 'gender': 'female'}]
-        self.input_list_blogger_corpus_high_repetativ_subset = [{'rowid':'1' ,'star_constellation': 'Capricorn', 'text': u'@lovelypig #direct_to_haven 67666 8997 -))) -) -P Neeeeeeeeeeeeeeeeiiiiiiinnnnn!!!!! Bitte nicht \U0001f602\U0001f602\U0001f602 \nTest Version von einem Tweeeeeeeeet=)))))))\nnoch einen Tweeeeeeeeet=))))))) \U0001f605\U0001f605', 'working_area': 'Consulting', 'age': '46', 'id': '324114', 'gender': 'female'}, {'rowid':'2' ,'star_constellation': 'Pisces', 'text': u'Einen weiteren Thread eingef\xfcgt!!! juHuuuuuuuu=) \U0001f49b\U0001f49b\U0001f49b\nden vierten Threadddddd!!! wooooowwwwww!!! \u263a\ufe0f \U0001f61c\U0001f61c\U0001f61c\nDas ist einnnneeeen Teeeeest Tweeeets, das als "extended" klassifiziert werden sollte!!! Weil es bis 280 Zeichen beinhalten sollte. \U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c Das ist einnnneeeen Teeeeest Tweeeets, das als "extended" klassifiziert werden sollte!!! Weil es bis 280 Zeichen \U0001f61c\U0001f61c\U0001f61c\U0001f61c\nDas ist einnnneeeen Teeeeest Quoted Tweet, das als "extended" klassifiziert werden sollte!!! Weil es bis 280 Zeichen beinhalten sollte. \U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c\U0001f61c Das ist einnnneeeen Teeeeest Tweeeets, das als "extended" klassifiziert werden sollte!!! Weil es bis 280 Zeichen \U0001f61c\U0001f61c h', 'working_area': 'indUnk', 'age': '24', 'id': '416465', 'gender': 'male'}, {'rowid':'3' ,'star_constellation': 'Virgo', 'text': u'Eine Teeeeeest Diskussion wird er\xf6ffnet!!! @zas-rep-tools \nEinen Test Retweet wird gepostet!!!!! Juhuuuuuu=) \U0001f600\U0001f600\U0001f600\U0001f600\nnoooooooch einen Tweeeeeeeeet=)))))))', 'working_area': 'Non-Profit', 'age': '17', 'id': '322624', 'gender': 'female'}]
-        self.fieldnames = self.configer.columns_in_doc_table["blogger"] 
-
-        #######End###########
-        #### Test Blogger ####
-        #####################
-
-
-        #####################
-        #### Test PrjFolder #
-        #######Begin#########
-        ## TempDir
-        self.tempdir.makedir('ProjectFolder')
-        self.tempdir_project_folder  = self.tempdir.getpath('ProjectFolder')
-
-        #######End###########
-       #### Test PrjFolder #
-        #####################  
-
-    @classmethod 
+    #@classmethod 
     def tearDown(self):
-        #print "teardown called"# called.append(‘teardown’)
-        self.tempdir.cleanup()
+        super(type(self), self).tearDown()
+
+
 
 
 
@@ -223,7 +101,8 @@ class TestZASconfigerConfiger(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_init_configer_000(self):
-        configer = Configer(mode="test")
+        self.prj_folder()
+        configer = Configer(mode=self.mode)
 
 
 
@@ -271,47 +150,58 @@ class TestZASconfigerConfiger(unittest.TestCase):
 
 ###################  Corpus Initialization :500############################################ 
    
-    #@attr(status='stable')
-    #@wipd
-    def test_create_all_test_dbs_5(self):
-        c = Configer(mode="dev", rewrite=True)
-        #p(c.text_elements(token=True, unicode_str=True))
-        #c.create_test_dbs(use_original_classes=True, corp_status_bar=True, corp_log_ignored=True,corp_lang_classification=True)
-        p(c._docs_row_dict(token=True, unicode_str=True, all_values=True , lang="all") )
-        # p("fghjl")
-        # time.sleep(2)
-        # p("fghjl")
-        # p("fghjl")
-        # time.sleep(2)
-        # p("fghjl")
-        # p("fghjl")
-        # p("fghjl")
-        # time.sleep(2)
-        # p("fghjl")
-        # p("fghjl")
-        # p("fghjl")
-        # time.sleep(2)
-        # p("fghjl")
-        #c.create_test_dbs(abs_path_to_storage_place=self.tempdir_project_folder, use_original_classes=True, corp_status_bar=True, corp_log_ignored=True, corp_language="en", corp_lang_classification=False, corp_pos_tagger="tweetnlp")
-        #p(Configer(mode="test").self.docs_row_values(token=True, unicode_str=True))
+    # #@attr(status='stable')
+    # #@wipd
+    # def test_create_all_test_dbs_5(self):
+    #     c = Configer(mode=self.mode, rewrite=True)
+    #     #c.logger.info("ghjk")
+    #     #c.logger.outsorted("ghjk")
+    #     #c.logger.log(8, "fghjk")
+    #     #c.logger.log(50, "fghjk")
+    #     #c.logger.outsorted_reader("outsorted_reader")
+    #     #c.logger.outsorted_corpus("outsorted_corpus")
+    #     #c.logger.outsorted_stats("outsorted_corpus")
+    #     #c.logger.outsorted_reader("outsorted_reader")
+    #     #c.logger.outsorted_corpus("outsorted_corpus")
+    #     #c.logger.info("info")
+    #     #c.logger.info("fghjkl")
+    #     #c.logger.error("fghjkl")
+    #     #p(c.text_elements(token=True, unicode_str=True))
+    #     #c.create_test_dbs(use_original_classes=True, corp_status_bar=True, corp_log_ignored=True,corp_lang_classification=True)
+    #     #p(c._docs_row_dict(token=True, unicode_str=True, all_values=True , lang="all") )
+    #     # p("fghjl")
+    #     # time.sleep(2)
+    #     # p("fghjl")
+    #     # p("fghjl")
+    #     # time.sleep(2)
+    #     # p("fghjl")
+    #     # p("fghjl")
+    #     # p("fghjl")
+    #     # time.sleep(2)
+    #     # p("fghjl")
+    #     # p("fghjl")
+    #     # p("fghjl")
+    #     # time.sleep(2)
+    #     # p("fghjl")
+    #     #c.create_test_dbs(abs_path_to_storage_place=self.tempdir_project_folder, use_original_classes=True, corp_status_bar=True, corp_log_ignored=True, corp_language="en", corp_lang_classification=False, corp_pos_tagger="tweetnlp")
+    #     #p(Configer(mode=self.mode).self.docs_row_values(token=True, unicode_str=True))
 
     @attr(status='stable')
     #@wipd
     def test_create_all_test_dbs_created_with_dbhandler_500(self):
+        self.prj_folder()
         #abs_path_to_storage_place=os.path.join(self.path_to_zas_rep_tools, self.path_to_testdbs)
         abs_path_to_storage_place=self.tempdir_project_folder
-        configer = Configer(mode="test", rewrite=True)
+        configer = Configer(mode=self.mode, rewrite=True)
          
         configer.create_test_dbs(rewrite=True, abs_path_to_storage_place=abs_path_to_storage_place, use_original_classes=False)
         #configer.create_test_dbs(rewrite=False, abs_path_to_storage_place=self.path_to_zas_rep_tools)
 
         created_dbs = [filename for filename in os.listdir(abs_path_to_storage_place) if ".db" in filename]
         #number_db_which_should_be_created = len(self.configer.init_info_data) * len(["corpus","stats"]) * len(["plaintext", "encrypted"])
+        #p(os.listdir(abs_path_to_storage_place))
         number_db_which_should_be_created = len(list(NestedDictValues(self.configer._test_dbs)))
-        #p((created_dbs,number_db_which_should_be_created ))
-        #p(number_db_which_should_be_created, "number_db_which_should_be_created")
-        #sys.exit()
-        #p((len(created_dbs), number_db_which_should_be_created))
+
         if len(created_dbs) != number_db_which_should_be_created:
             assert False
 
@@ -324,7 +214,7 @@ class TestZASconfigerConfiger(unittest.TestCase):
             if not encryption:
                 assert False
 
-            db = DBHandler(mode="test")
+            db = DBHandler(mode=self.mode)
             if encryption == "encrypted":
                 encryption_key=self.configer.init_info_data[template_name]["encryption_key"][db_type]
                 db.connect(os.path.join(abs_path_to_storage_place,db_name), encryption_key=encryption_key)
@@ -362,33 +252,40 @@ class TestZASconfigerConfiger(unittest.TestCase):
 
         return ''.join(diff)
 
+
+
+
     @attr(status='stable')
     #@wipd
     def test_create_all_test_dbs_created_with_corpus_and_stats_classes_501(self):
+        self.prj_folder()
+        self.test_dbs()
         #abs_path_to_storage_place=os.path.join(self.path_to_zas_rep_tools, self.path_to_testdbs)
         abs_path_to_storage_place=self.tempdir_project_folder
 
-        configer = Configer(mode="test", rewrite=False)
+        configer = Configer(mode=self.mode, rewrite=True)
         #configer.create_test_dbs(abs_path_to_storage_place=abs_path_to_storage_place, use_original_classes=True, corp_status_bar=True, corp_log_ignored=True,corp_lang_classification=True)
-        configer.create_test_dbs(abs_path_to_storage_place=abs_path_to_storage_place, use_original_classes=True, corp_status_bar=True, corp_log_ignored=True,corp_lang_classification=True)
+        configer.create_test_dbs(abs_path_to_storage_place=abs_path_to_storage_place, use_original_classes=True, corp_status_bar=True, corp_log_ignored=True,corp_lang_classification=True, use_test_pos_tagger=False)
 
         created_dbs = [filename for filename in os.listdir(abs_path_to_storage_place) if ".db" in filename]
         number_db_which_should_be_created = len(list(NestedDictValues(self.configer._test_dbs)))
         if len(created_dbs) != number_db_which_should_be_created:
             assert False
 
+        #p(created_dbs ," created_dbs")
         for db_name in created_dbs:
             #p(db_name)
             encryption, template_name, language, db_type= self._get_meta_data_by_db_file_name(db_name)
             #p((encryption, template_name, language, db_type))
             #sys.exit()
             #p(encryption)
-            if not encryption:
-                assert False
+            #if not encryption:
+            #    assert False
 
-            db = DBHandler(mode="test")
+            db = DBHandler(mode=self.mode)
             if encryption == "encrypted":
                 encryption_key=self.configer.init_info_data[template_name]["encryption_key"][db_type]
+                #p(encryption_key,"encryption_key", c="r")
                 db.connect(os.path.join(abs_path_to_storage_place,db_name), encryption_key=encryption_key)
             else:
                 db.connect(os.path.join(abs_path_to_storage_place,db_name))
@@ -399,7 +296,8 @@ class TestZASconfigerConfiger(unittest.TestCase):
                 #p(self.configer.docs_row_values(token=True, unicode_str=True, lang="all"))
                 #sys.exit()
                 for item1, item2 in zip(self.configer.docs_row_values(token=True, unicode_str=True, lang=language)[template_name], db.getall("documents")):
-                    #p((item1, item2), "item1, item2")
+                    if len(item1)!=len(item2):
+                        assert False
                     for i1,i2 in zip(item1, item2):
                         if isinstance(i1, (list,tuple,dict)):
                             # #p(i1)
@@ -408,20 +306,36 @@ class TestZASconfigerConfiger(unittest.TestCase):
                             i1 = "".join(i1)
                             i2 = "".join(i2)
                             if i1!=i2:
-                                #p((i1,i2))
+                                str_len1 = len(i1)
+                                str_len2 = len(i2)
+                                percent = int((str_len1 *20)/100)
+                                distance = levenstein(i1, i2)
+                                #p(abs(str_len1-str_len2), "abs(str_len1-str_len2)")
+                                #p((str_len1,percent), "percent")
+                                if (abs(str_len1-str_len2) <= 10) and (distance <= percent):
+                                    assert True
+                                else:
+                                    #p(abs(str_len1-str_len2), "abs(str_len1-str_len2)")
+                                    #p((str_len1,percent), "percent")
+                                    assert False
+                            else:
+                                assert True
+                        else:
+                            if  i1 == False :
+                                i1=0
+                            if  i1 == True :
+                                i1=1
+                            if unicode(i1) != unicode(i2):
+                                #p((i1, i2), "i1, i2", c="r")
                                 assert False
-                        if  i1 == False :
-                            i1=0
-                        if  i1 == True :
-                            i1=1
-                        if unicode(i1) != unicode(i2):
-                            #p((i1, i2), "i1, i2", c="r")
-                            assert False
                 #sys.exit()
             elif db_type == "stats":
                 ### Here for stats
                 pass
-
+                #p((db.rownum("replications"), db.rownum("reduplications"), db.rownum("baseline")))
+                assert db.rownum("replications") > 1
+                assert db.rownum("reduplications") > 1
+                assert db.rownum("baseline") > 1
 
 
 
@@ -430,15 +344,16 @@ class TestZASconfigerConfiger(unittest.TestCase):
     @attr(status='stable')
     #@wipd
     def test_create_all_test_cases_for_diff_fileformats_502(self):
-        configer = Configer(mode="test")
+        self.prj_folder()
+        configer = Configer(mode=self.mode)
         abs_path_to_storage_place=self.tempdir_project_folder
 
         #sys.exit()
         #configer.create_testsets_in_diff_file_formats(rewrite=True,abs_path_to_storage_place=abs_path_to_storage_place)  
         returned_flags = set(list(configer.create_testsets_in_diff_file_formats(rewrite=False,abs_path_to_storage_place=abs_path_to_storage_place)))
         #p(returned_flags)
-        #if  not (len(returned_flags) > 1) or True not in returned_flags:
-        #    return False
+        if  not (len(returned_flags) > 1) or True not in returned_flags:
+           return False
         #sys.exit()
         for  file_format, test_sets in configer.types_folder_names_of_testsets.iteritems():
             for  name_of_test_set, folder_for_test_set in test_sets.iteritems():
@@ -457,8 +372,8 @@ class TestZASconfigerConfiger(unittest.TestCase):
                 #p(configer._types_folder_names_of_testsets)
                 path_to_txt_corpus = os.path.join(configer.path_to_zas_rep_tools,configer._path_to_testsets["blogger"] , configer._types_folder_names_of_testsets["txt"][name_of_test_set] )
                 #p(path_to_txt_corpus)
-                reader_txt = Reader(path_to_txt_corpus, "txt", regex_template="blogger", mode="test")
-                reader_current_set = Reader(abs_path_to_current_test_case, file_format,  mode="test")
+                reader_txt = Reader(path_to_txt_corpus, "txt", regex_template="blogger",send_end_file_marker=False, mode=self.mode)
+                reader_current_set = Reader(abs_path_to_current_test_case, file_format, send_end_file_marker=False, mode=self.mode)
                 #p((list(reader_txt.getlazy()), ))
                 data_from_txt = defaultdict(list)
                 data_from_current_set = defaultdict(list)
@@ -485,37 +400,76 @@ class TestZASconfigerConfiger(unittest.TestCase):
 
 
 
-
-
-    #@attr(status='stable')
+    @attr(status='stable')
     #@wipd
-    def test_get_user_data_for_error_tracking(self):
-        configer = Configer(mode="test")        
+    def test_create_test_data_503(self):
+        self.prj_folder()
+        #abs_path_to_storage_place=os.path.join(self.path_to_zas_rep_tools, self.path_to_testdbs)
+        abs_path_to_storage_place=self.tempdir_project_folder
+        configer = Configer(mode=self.mode, rewrite=False)
+        configer.create_test_data(abs_path_to_storage_place= abs_path_to_storage_place, use_original_classes=True,
+                            corp_status_bar=True, corp_log_ignored=True,corp_lang_classification=True,
+                            corp_pos_tagger=False, corp_sentiment_analyzer=False,  use_test_pos_tagger=True)
+        #p(os.listdir(abs_path_to_storage_place))
+
+        # 1
+        ###DBs
+        ### Check Number of created DBs
+        created_dbs = [filename for filename in os.listdir(abs_path_to_storage_place) if ".db" in filename]
+        number_db_which_should_be_created = len(list(NestedDictValues(self.configer._test_dbs)))
+        #p(created_dbs)
+
+        # 2
+        ## Other OutputFiles
+        ### Check Number of Created ZIP Archive 
+        created_zips = [filename for filename in os.listdir(os.path.join(abs_path_to_storage_place, configer._path_to_testsets["blogger"])) if ".zip" in filename]
+        created_folders = [filename for filename in os.listdir(os.path.join(abs_path_to_storage_place, configer._path_to_testsets["blogger"])) if os.path.isdir(os.path.join(abs_path_to_storage_place, configer._path_to_testsets["blogger"],  filename))]
+
+        if len(created_zips) != len(created_folders):
+            assert False
+
+        for folder in created_folders:
+            for folder_for_corpus_set in os.listdir(os.path.join(abs_path_to_storage_place, configer._path_to_testsets["blogger"], folder)):
+                #p((folder_for_corpus_set), "folder_for_corpus_set", c="r")
+                if folder == "sqlite":
+                    extention = "db"
+                else:
+                    extention = folder
+                files = [file for file in os.listdir(os.path.join(abs_path_to_storage_place, configer._path_to_testsets["blogger"], folder, folder_for_corpus_set)) if extention in file ] #
+                if len(files)== 0:
+                    #p((folder,extention, files ))
+                    assert False
+
+
+    # #@attr(status='stable')
+    # #@wipd
+    # def test_get_user_data_for_error_tracking(self):
+    #     configer = Configer(mode=self.mode)        
         
-        #p(configer._cli_menu_error_agreement())
-        #p(configer._user_data)
+    #     #p(configer._cli_menu_error_agreement())
+    #     #p(configer._user_data)
 
-        #p(configer._cli_menu_get_from_user_twitter_credentials())
-        #p(configer._user_data)
+    #     #p(configer._cli_menu_get_from_user_twitter_credentials())
+    #     #p(configer._user_data)
 
-        #p(configer._cli_menu_get_from_user_emails())
-        #p(configer._user_data)
+    #     #p(configer._cli_menu_get_from_user_emails())
+    #     #p(configer._user_data)
 
-        # p(configer._cli_menu_get_from_user_project_folder())
-        # p(configer._user_data)
+    #     # p(configer._cli_menu_get_from_user_project_folder())
+    #     # p(configer._user_data)
 
      
-        #p(configer._user_data.clean())
-        # p(configer._user_data)
+    #     #p(configer._user_data.clean())
+    #     # p(configer._user_data)
 
-        #configer.get_data_from_user()
-        # p(configer._user_data)
+    #     #configer.get_data_from_user()
+    #     # p(configer._user_data)
 
-        #configer.get_data_from_user(rewrite=True)
-        #p(configer._user_data)
+    #     #configer.get_data_from_user(rewrite=True)
+    #     #p(configer._user_data)
 
-        # configer.get_data_from_user("email", rewrite=True)
-        # p(configer._user_data)
+    #     # configer.get_data_from_user("email", rewrite=True)
+    #     # p(configer._user_data)
 
 
 
