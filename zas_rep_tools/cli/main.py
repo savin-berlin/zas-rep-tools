@@ -330,7 +330,7 @@ def extractRep(corpus_name, rep_type, output_file_name, output_file_format,stats
     splitted_rep_type = rep_type.split("+")
     repl = True if "repl" in splitted_rep_type else False
     redu = True if "redu" in splitted_rep_type else False
-    if search_pattern
+    if search_pattern:
         splitted_search_pattern_syntagma = search_pattern.split(syntagma_delimiter)
         splitted_search_pattern_paradigma = [syntagma.split(paradima_delimiter) for syntagma in splitted_search_pattern_syntagma]
     scope = len(splitted_search_pattern_paradigma) if search_pattern else scope
