@@ -31,20 +31,16 @@ import json
 import inspect
 import traceback
 
-
 from collections import defaultdict
 from raven import Client
-#from cached_property import cached_property
 
-#from zas_rep_tools.src.classes.configer import Configer
-
-from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, LenGen, path_to_zas_rep_tools
+from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, LenGen, path_to_zas_rep_tools,instance_info, SharedCounterExtern, SharedCounterIntern, Status, function_name
 from zas_rep_tools.src.classes.dbhandler import DBHandler
-
-from zas_rep_tools.src.utils.logger import *
+from zas_rep_tools.src.utils.zaslogger import ZASLogger
 from zas_rep_tools.src.utils.debugger import p
 from zas_rep_tools.src.utils.error_tracking import initialisation
 from zas_rep_tools.src.utils.traceback_helpers import print_exc_plus
+from zas_rep_tools.src.classes.basecontent import BaseContent
 
 
 
@@ -56,66 +52,26 @@ else:
     import colorama
 
 
-class Exporter(object):
+class Exporter(BaseContent):
 
-    supported_file_formats = ["csv", "json", "csv", "txt", "xml"]
+    supported_file_formats = ["csv", "json", "sqlite",  "xml"]
+    unsupported_file_formats = ["txt",]
 
-    def __init__(self, inpdata, rewrite=False, silent_ignore=False,
-                logger_folder_to_save=False,  logger_usage=True, logger_level=logging.INFO,
-                logger_save_logs=True, logger_num_buffered=5, error_tracking=True,
-                ext_tb=False, logger_traceback=False, mode="prod"):
-
-        
-        ## Set Mode: Part 1
-        self._mode = mode
-        if mode != "free":
-            _logger_level, _logger_traceback, _logger_save_logs = set_class_mode(self._mode)
-            logger_level = _logger_level if _logger_level!=None else logger_level
-            logger_traceback = _logger_traceback if _logger_traceback!=None else logger_traceback
-            logger_save_logs = _logger_save_logs if _logger_save_logs!=None else logger_save_logs
-
-    
-    
-        ## Logger Initialisation
-        self._logger_level = logger_level
-        self._logger_traceback =logger_traceback
-        self._logger_folder_to_save = logger_folder_to_save
-        self._logger_usage = logger_usage
-        self._logger_save_logs = logger_save_logs
-        self.logger = main_logger(self.__class__.__name__, level=self._logger_level, folder_for_log=self._logger_folder_to_save, use_logger=self._logger_usage, save_logs=self._logger_save_logs)
-
-        ## Set Mode: Part 2:
-        print_mode_name(self._mode, self.logger)
+    def __init__(self, inpdata, rewrite=False, silent_ignore=False,**kwargs):
+        super(type(self), self).__init__(**kwargs)
 
 
-        self.logger.debug('Beginn of creating an instance of {}()'.format(self.__class__.__name__))
-
-
-
-        #Input: Incaplusation:
+        #Input: Encapsulation:
         self._inpdata = inpdata
-        self._numbers_of_alredy_created_files = defaultdict(lambda: defaultdict(int))
-        self._number_of_inserts_in_the_current_file = 0
-        self._ext_tb = ext_tb
-        #self._fieldnames = fieldnames
-        self.sqlite_db = False
         self._rewrite = rewrite
         self._silent_ignore = silent_ignore
-
-        self._error_tracking = error_tracking
-
-        #p(inpdata)
+        
 
         #InstanceAttributes: Initialization
         self._used_fnames = {}
-
-
-
-        ## Error-Tracking:Initialization #1
-        if self._error_tracking:
-            self.client = initialisation()
-            self.client.context.merge({'InstanceAttributes': self.__dict__})
-
+        self.sqlite_db = False
+        self._numbers_of_alredy_created_files = defaultdict(lambda: defaultdict(int))
+        self._number_of_inserts_in_the_current_file = 0
 
         self.logger.debug('Intern InstanceAttributes was initialized')
 
@@ -126,12 +82,18 @@ class Exporter(object):
 
         self.logger.debug('An instance of Exporter() was created ')
 
+
+        ## Log Settings of the Instance
+        self._log_settings(attr_to_flag = False,attr_to_len = False)
+
+
+
         ############################################################
         ####################__init__end#############################
         ############################################################
 
     # def __del__(self):
-    #     self.logger.newline(1)
+    #     super(type(self), self).__del__()
 
 ####################################################################################
 ####################################################################################
@@ -158,6 +120,8 @@ class Exporter(object):
         self.current_csvfile = False
         rows_was_exported = 0
         for row in self._inpdata:
+            if row == -1:
+                continue
             #p(row)
             try:
                 if not self._write_to_csv_files(row, fieldnames, path_to_export_dir, fname, rows_limit_in_file=rows_limit_in_file, encoding=encoding):
@@ -184,6 +148,8 @@ class Exporter(object):
         self.current_xmlfile = False
         rows_was_exported = 0
         for row in self._inpdata:
+            if row == -1:
+                continue
             try:
                 if not self._write_to_xml_files(row,  path_to_export_dir, fname, rows_limit_in_file=rows_limit_in_file, encoding=encoding, root_elem_name=root_elem_name, row_elem_name=row_elem_name):
                     if self._silent_ignore:
@@ -235,7 +201,8 @@ class Exporter(object):
         self.current_jsonfile = False
         rows_was_exported = 0
         for row in self._inpdata:
-            #p(row)
+            if row == -1:
+                continue
             try:
             #p((row,  path_to_export_dir, fname))
                 if not self._write_to_json_files(row,  path_to_export_dir, fname, rows_limit_in_file=rows_limit_in_file, encoding=encoding, unicode_encode=unicode_encode):
@@ -269,10 +236,13 @@ class Exporter(object):
             attributs_names_with_types_as_str = self._create_list_with_columns_and_types_for_sqlite(fieldnames)
             #p(attributs_names_with_types_as_str)
 
+        if not os.path.isdir(path_to_export_dir):
+            os.makedirs(path_to_export_dir)
+
         if not self.sqlite_db: 
             self.sqlite_db = DBHandler( rewrite=self._rewrite, stop_if_db_already_exist=True, logger_level= self._logger_level,logger_traceback=self._logger_traceback, logger_folder_to_save=self._logger_folder_to_save,logger_usage=self._logger_usage, logger_save_logs= self._logger_save_logs, mode=self._mode ,  error_tracking=self._error_tracking,  ext_tb= self._ext_tb) 
             
-            if not self.sqlite_db.initempty(path_to_export_dir, dbname, encryption_key=encryption_key):
+            if not self.sqlite_db.initempty(path_to_export_dir, dbname, encryption_key=encryption_key)["status"]:
                 if self._silent_ignore:
                     self.logger.debug("toSQLLITE: File is already exist and extraction was stopped. ('silent_ignore' is 'on')")
                 else:    
@@ -282,6 +252,8 @@ class Exporter(object):
             self.sqlite_db.addtable(table_name, attributs_names_with_types_as_str)
 
         for row in self._inpdata:
+            if row == -1:
+                continue
             #p(row)
             #try:
             self._write_to_sqliteDB(row,  path_to_export_dir, table_name,  encoding=encoding)
@@ -370,22 +342,26 @@ class Exporter(object):
         new_fname_with_extention =new_fname_without_extention+ "." + file_extention
         path_to_file = os.path.join(path_to_dir, new_fname_with_extention)
         #p(count_of_existing_files, c="r")
-        if count_of_existing_files ==0:
-            if os.path.isfile(path_to_file):
-                if self._rewrite:
-                    exist_fnames_in_dir = os.listdir(path_to_dir)
-                    #p(exist_fnames_in_dir )
-                    for exist_fname in  exist_fnames_in_dir:
-                        if fname in exist_fname:
-                            #p(exist_fname)
+
+        if not os.path.isdir(path_to_dir):
+            os.makedirs(path_to_dir)
+            self.logger.warning("NewFileGetterProblem: '{}' Folder are not exist. It was created.".format(path_to_file))
+        
+        else:
+            if count_of_existing_files == 0:
+                exist_fnames_in_dir = os.listdir(path_to_dir)
+                for exist_fname in  exist_fnames_in_dir:
+                     if fname in exist_fname:
+                        if self._rewrite:
                             os.remove(os.path.join(path_to_dir, exist_fname))
                             self.logger.debug("NewFileRewriter: '{}' File is already exist and  was removed from '{}'.  ('rewrite'-option is enabled.)".format(exist_fname, path_to_file))
-                else:
-                    if not self._silent_ignore:
-                        self.logger.debug("NewFileGetterProblem: '{}' File is already exist in '{}'.  Please delete it before you can start extraction.".format(new_fname_with_extention, path_to_file))
-                    else:
-                        self.logger.debug("NewFileGetter: '{}' File is already exist in '{}' and was silent ignored.".format(new_fname_with_extention, path_to_file))
-                    return False
+                        else:
+                            if not self._silent_ignore:
+                                self.logger.info("NewFileGetterProblem: '{}' File is already exist in '{}'.  Please delete it before you can do Export.".format(new_fname_with_extention, path_to_file))
+                                #return False
+                            else:
+                                self.logger.debug("NewFileGetter: '{}' File is already exist in '{}' and was silent ignored.".format(new_fname_with_extention, path_to_file))
+                            return False
 
         if open_file_with_codecs:
             current_file = codecs.open(path_to_file, 'w', encoding)

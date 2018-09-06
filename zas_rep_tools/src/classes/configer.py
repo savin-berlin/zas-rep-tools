@@ -25,9 +25,6 @@ import traceback
 import shelve
 import time
 import json
-
-
-
 from collections import defaultdict
 from raven import Client
 from cached_property import cached_property
@@ -39,308 +36,61 @@ import urllib2
 import twitter
 from nltk.tokenize import TweetTokenizer
 
-#import types
-#from collections import OrderedDict
-from zas_rep_tools.src.utils.debugger import p
 
-from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, MyZODB,transaction, path_to_zas_rep_tools, internet_on
-from zas_rep_tools.src.utils.logger import main_logger
+from zas_rep_tools.src.utils.debugger import p
+from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, MyZODB,transaction, path_to_zas_rep_tools, internet_on, make_zipfile, instance_info, SharedCounterExtern, SharedCounterIntern, Status, function_name,statusesTstring
 import zas_rep_tools.src.utils.db_helper as db_helper
 from zas_rep_tools.src.utils.error_tracking import initialisation
 from zas_rep_tools.src.utils.traceback_helpers import print_exc_plus
-
 from zas_rep_tools.src.classes.exporter import Exporter
 from zas_rep_tools.src.classes.reader import Reader
 from zas_rep_tools.src.classes.dbhandler import DBHandler
 from zas_rep_tools.src.classes.corpus import Corpus
 from zas_rep_tools.src.classes.stats import Stats
+from zas_rep_tools.src.utils.zaslogger import ZASLogger
+from zas_rep_tools.src.classes.basecontent import BaseContent
+from zas_rep_tools.src.utils.configer_helpers import ConfigerData
 
-#logger_level= self._logger_level,logger_traceback=self._logger_traceback, logger_folder_to_save=self._logger_folder_to_save,logger_usage=self._logger_usage, logger_save_logs= self._logger_save_logs, mode=self._mode ,  error_tracking=self._error_tracking,  ext_tb= self._ext_tb
-
-class Configer(object):
-
-
-    def __init__(self, rewrite=False,stop_if_db_already_exist = True,
-                logger_folder_to_save=False,  logger_usage=True, logger_level=logging.INFO,
-                logger_save_logs=True, logger_num_buffered=5, error_tracking=True,
-                ext_tb=False, logger_traceback=False, mode="prod", ):
-
-
-        #p(logger_save_logs)
-        ## Set Mode: Part 1
-
-        self._mode = mode
-        #p(self._mode)
-        if mode != "free":
-            _logger_level, _logger_traceback, _logger_save_logs = set_class_mode(self._mode)
-            logger_level = _logger_level if _logger_level!=None else logger_level
-            logger_traceback = _logger_traceback if _logger_traceback!=None else logger_traceback
-            logger_save_logs = _logger_save_logs if _logger_save_logs!=None else logger_save_logs
-        #p((logger_save_logs,_logger_save_logs), c="r")
-        ## Logger Initialisation
-        self._logger_level = logger_level
-        self._logger_traceback =logger_traceback
-        self._logger_folder_to_save = logger_folder_to_save
-        self._logger_usage = logger_usage
-        self._logger_save_logs = logger_save_logs
-        self.logger = main_logger(self.__class__.__name__, level=self._logger_level, folder_for_log=self._logger_folder_to_save, use_logger=self._logger_usage, save_logs=self._logger_save_logs)
-
-        ## Set Mode: Part 2:
-        print_mode_name(self._mode, self.logger)
-
-
-        self.logger.debug('Beginn of creating an instance of {}()'.format(self.__class__.__name__))
-
-
-        #Input: Incaplusation:
-        self._error_tracking = error_tracking
-        self._ext_tb = ext_tb
+class Configer(BaseContent,ConfigerData):
+    def __init__(self, rewrite=False,stop_if_db_already_exist = True,**kwargs):
+        super(type(self), self).__init__(**kwargs)
+        #p((self._mode,self._logger_save_logs), "self._logger_save_logs", c="b")
+        #Input: Encapsulation:
         self._rewrite = rewrite
         self._stop_if_db_already_exist = stop_if_db_already_exist
 
-        #p(inpdata)
 
         #InstanceAttributes: Initialization
-
         self._path_to_zas_rep_tools = path_to_zas_rep_tools
         self._path_to_user_config_data = os.path.join(self._path_to_zas_rep_tools, "user_config/user_data.fs")
         self._user_data= self._get_user_config_db()
         if not self._user_data:
             sys.exit()
-        #self._myzodb = False
-        
-        self._suported_user_info = ["error_tracking", "project_folder", "twitter_creditials", "email"]
-
-
-
-        self._path_to_testdbs =  "data/tests_data/testDBs/testFolder"
-
-        self._path_to_testsets = {
-                    "blogger":"data/tests_data/Corpora/BloggerCorpus",
-                    "twitter":"data/tests_data/Corpora/TwitterCorpus"
-                    }
-
-        self._types_folder_names_of_testsets = {
-                                "txt":{
-                                        "highrepetativ":"txt/HighRepetativSubSet",
-                                        "fake":"txt/SmallFakeSubset",
-                                        "small":"txt/SmallSubset"
-                                    },
-                                "csv":{
-                                    "highrepetativ":"csv/HighRepetativSubSet",
-                                    "fake":"csv/SmallFakeSubset",
-                                    "small":"csv/SmallSubset"
-                                },
-                                "xml":{
-                                    "highrepetativ":"xml/HighRepetativSubSet",
-                                    "fake":"xml/SmallFakeSubset",
-                                    "small":"xml/SmallSubset"
-                                },
-                                "json":{
-                                    "highrepetativ":"json/HighRepetativSubSet",
-                                    "fake":"json/SmallFakeSubset",
-                                    "small":"json/SmallSubset"
-                                },
-                                "sqlite":{
-                                    "highrepetativ":"sqlite/HighRepetativSubSet",
-                                    "fake":"sqlite/SmallFakeSubset",
-                                    "small":"sqlite/SmallSubset"
-                                }
-                            }
-
-
-        self._test_dbs = {
-                    "plaintext":{
-                                "blogger":{
-                                            "en":{
-                                                    "corpus":"7614_corpus_blogs_bloggerCorpus_en_extern_plaintext.db",
-                                                    "stats":"7614_3497_stats_bloggerCorpus_en_extern_plaintext.db"
-                                                  },
-
-                                            "de":{
-                                                    "corpus":"7614_corpus_blogs_bloggerCorpus_de_extern_plaintext.db",
-                                                    "stats":"7614_3497_stats_bloggerCorpus_de_extern_plaintext.db"
-                                                 },
-
-                                            "ru":{},
-                                            "test":{
-                                                    "corpus":"7614_corpus_blogs_bloggerCorpus_test_extern_plaintext.db",
-                                                    "stats":"7614_3497_stats_bloggerCorpus_test_extern_plaintext.db"
-                                                   },
-
-
-                                        },
-                                "twitter":{
-                                            "en":{},
-                                            "de":{
-                                                    #"corpus":"9588_corpus_twitter_streamed_de_intern_plaintext.db",
-                                                    #"stats": "9588_6361_stats_streamed_de_intern_plaintext.db"
-                                                  },
-                                            "ru":{},
-                                            "test":{},
-
-                                        }
-                                },
-                    "encrypted":{
-                                "blogger":{
-                                            "en":{
-                                                    #"corpus":"7614_corpus_blogs_bloggerCorpus_en_extern_encrypted.db",
-                                                    #"stats":"7614_3497_stats_bloggerCorpus_en_extern_encrypted.db"
-                                                 },
-                                            "de":{},
-                                            "ru":{},
-                                            "test":{},
-
-                                        },
-                                "twitter":{
-                                            "en":{},
-                                            "de":{
-                                                    "corpus":"9588_corpus_twitter_streamed_de_intern_encrypted.db",
-                                                    "stats": "9588_6361_stats_streamed_de_intern_encrypted.db"
-                                                 },
-                                            "ru":{},
-                                            "test":{},
-
-                                        }
-                                }
-                    }
-                
-
-
-        self._init_info_data = {
-                "blogger":{ "id":{"corpus":7614, "stats":3497},
-                            "name":"bloggerCorpus",
-                            "platform_name":"blogs",
-                            "version":"1",
-                            "language":"en",
-                            "created_at":None,
-                            "source":"LanguageGoldMine",
-                            "license":"CreativCommon",
-                            "visibility":"extern",
-                            "template_name":"blogger",
-                            "encryption_key": {"corpus":"corpus", "stats":"stats"}
-                          },
-
-                "twitter":{ "id":{"corpus":9588, "stats":6361},
-                            "name":"streamed",
-                            "platform_name":"twitter",
-                            "version":"1",
-                            "language":"de",
-                            "created_at":None,
-                            "source":"Twitter API",
-                            "license":"Twitter Developer Agreement",
-                            "visibility":"intern",
-                            "template_name":"twitter",
-                            "encryption_key": {"corpus":"corpus", "stats":"stats"}
-                          },
-                }
-
-
-
-
-
-        self._columns_in_doc_table = {
-                    "blogger": [column[0]  for column in db_helper.default_columns_and_types_for_corpus_documents+db_helper.extended_columns_and_types_for_corpus_documents_blogger],
-                    "twitter": [column[0]  for column in db_helper.default_columns_and_types_for_corpus_documents+db_helper.extended_columns_and_types_for_corpus_documents_twitter]
-                        }
-        #p(self._columns_in_doc_table )
-        self._columns_in_info_tabel = {
-                    "corpus": [column[0]  for column in db_helper.attributs_names_corpus],
-                    "stats": [column[0]  for column in db_helper.attributs_names_stats]
-                        }
-
-        self._columns_in_stats_tables = {
-                        "redu": [column[0]  for column in db_helper.default_columns_and_types_for_stats_reduplications],
-                        "repl" : [column[0]  for column in db_helper.default_columns_and_types_for_stats_replications],
-                        "baseline":{
-                                    "repl":[column[0]  for column in db_helper.default_columns_and_types_for_stats_repl_baseline],
-                                    "redu":[column[0]  for column in db_helper.default_columns_and_types_for_redu_baseline]
-                                    }
-                        }
-
-        # text_elements = [
-        #         ["schöööööönen", "taaaaaag", "dirrrrrr"],
-        #         ["kliiiiitze", "kliiiiiittttzzzzeee", "kleeeeeinnn", "kleinnn"],
-        #         ["üblich", "üüüüübbbbblllliiiiiichhh", "essss"],
-        #         ["😀", "😀", "😀", "😀", "😀"],
-        #         ["pitty", "piiittyyy", "day"],
-        #         ["доооооооброоооооггггоо", "доброоогооо ", "дняяяяяяяяяяяяя"]
-        #         ]
-        
-        self._tokenizer = TweetTokenizer()
-
-        self._lang_order = ["en", "de", "ru", "other"]
-        self._text_elements_collection = {
-                "en":[
-                        "It was verrrryyyyy vvveRRRRRRrry very piiiiiiiiity for me -((((( @real_trump #sheetlife #readytogo http://www.absurd.com", # [u'It', u'was', u'verrrryyyyy', u'vvveRRRRRRrry', u'very', u'piiiiiiiiity', u'for', u'me', u'-', u'(', u'(', u'(', u'@real_trump', u'#sheetlife', u'#readytogo', u'http://www.absurd.com']
-                        "glaaaaaaad to seeeeeeeee you -))))", #[u'glaaaaaaad', u'to', u'seeeeeeeee', u'you', u'-', u')', u')', u')']
-                        "a baddddd bad bbbbbbbaaaaaa bbbbaaaaddddd baaaaaaad news, which we can not accept. -(((( 😫😫😫😫 😫😫😫😫😫 😫😫😫 #sheetlife #sheetlife http://www.noooo.com", #[u'a', u'baddddd', u'bad', u'bbbbbbbaaaaaa', u'bbbbaaaaddddd', u'baaaaaaad', u'news', u'-', u'(', u'(', u'(', u'\ud83d', u'\ude2b', u'\ud83d', u'\ude2b', u'\ud83d', u'\ude2b', u'\ud83d', u'\ude2b', u'\ud83d', u'\ude2b', u'\ud83d', u'\ude2b', u'\ud83d', u'\ude2b', u'\ud83d', u'\ude2b', u'\ud83d', u'\ude2b', u'\ud83d', u'\ude2b', u'\ud83d', u'\ude2b', u'\ud83d', u'\ude2b', u'#sheetlife', u'#sheetlife', u'http://www.noooo.com']
-                        "Tiny tiny tiny tiny tiny tiny mooooooodelllllll, which we can use for explain a biiig biiiiiiiiiiiiiiig things.", #[u'Tiny', u'tiny', u'tiny', u'tiny', u'tiny', u'tiny', u'mooooooodelllllll']
-                        "tiny model, but a big explanation.",
-                        "tinnnyy tiny tiny surprise",
-                        "it was really bad surprise for me 😫😫😫😫, buuuuuuuuuut i really reallly reeeeeallllyyy liked it =)))))))))) 😀😀😀😀😀🌈🌈🌈🌈🌈🌈🌈😀",
-                    ],
-
-                "de":[
-                        "Klitze kliiiitze kleEEEEine kleinnne Überaschung -)))) -))) ",  # [u'Klitze', u'kliiiitze', u'kleEEEEine', u'\xdcberaschung', u'-', u')', u')', u')', u'-', u')', u')', u')']
-                        "einen wunderschönen Taaaaaagggggg wünsche ich euch 😀😀😀😀😀🌈🌈🌈🌈🌈🌈🌈", #[u'einnennnnnn', u'toooolllleeeeen', u'Taaaaaagggggg', u'\ud83d', u'\ude00', u'\ud83d', u'\ude00', u'\ud83d', u'\ude00', u'\ud83d', u'\ude00', u'\ud83d', u'\ude00', u'\ud83c', u'\udf08', u'\ud83c', u'\udf08', u'\ud83c', u'\udf08', u'\ud83c', u'\udf08', u'\ud83c', u'\udf08', u'\ud83c', u'\udf08', u'\ud83c', u'\udf08'], [u'\ud83d', u'\ude00', u'\ud83d', u'\ude00', u'\ud83d', u'\ude00', u'\ud83d', u'\ude00', u'\ud83d', u'\ude00', u'\ud83d', u'\ude00', u'\ud83d', u'\ude00', u'\ud83d', u'\ude00', u'\ud83d', u'\ude00']
-                        "eine klitzeeee kleine Überrrraschung",
-                        "eine klitzeeee kleine Sache",
-                        "eine klitze klitze klitze klitze kleine Überrrraschung, die ich mal gerne hatte.",
-                    ],
-
-                "ru":[
-                        "Oчень оооооченнннь ооооччччееееннннньььь хорошееего дняяяяяяяяя", #[u'O\u0447\u0435\u043d\u044c', u'\u043e\u043e\u043e\u0447\u0435\u043d\u043d\u043d\u044c', u'\u043e\u043e\u043e\u0447\u0447\u0447\u0435\u0435\u0435\u043d\u043d\u043d\u044c\u044c\u044c', u'\u0445\u043e\u0440\u043e\u0448\u0435\u0435\u0435\u0433\u043e', u'\u0434\u043d\u044f\u044f\u044f']
-                        "самммооово сааамово  приятногооооо прииииииииятного  ужииииина 🥡🍽🍽🍽🍽🍽🍽🍽🍽🍽🍽", #[u'\u0441\u0430\u043c\u043c\u043c\u043e\u043e\u043e\u0432\u043e', u'\u0441\u0430\u0430\u0430\u043c\u043e\u0432\u043e', u'\u043f\u0440\u0438\u044f\u0442\u043d\u043e\u0433\u043e\u043e\u043e', u'\u043f\u0440\u0438\u0438\u0438\u044f\u0442\u043d\u043e\u0433\u043e', u'\u0443\u0436\u0438\u0438\u0438\u043d\u0430', u'\ud83e', u'\udd61', u'\ud83c', u'\udf7d', u'\ud83c', u'\udf7d', u'\ud83c', u'\udf7d', u'\ud83c', u'\udf7d', u'\ud83c', u'\udf7d', u'\ud83c', u'\udf7d', u'\ud83c', u'\udf7d', u'\ud83c', u'\udf7d', u'\ud83c', u'\udf7d', u'\ud83c', u'\udf7d']
-                    ],
-
-                "other":[
-                        "اللغة العربية رائعة",
-                    ],
-
-                }
-
-        # self._text_elements_as_byte_str_untokenized = [text_item for lang, text_items in self._text_elements.iteritems() for text_item in text_items]
-
-        # self._text_elements_as_unicode_str_untokenized  = [t_elem.decode("utf-8") for t_elem in self._text_elements_as_byte_str_untokenized ]
-
-        # self._text_elements_as_byte_str_tokenized = [self._tokenizer.tokenize(t_elem)  for t_elem in self._text_elements_as_byte_str_untokenized]
-        # self._text_elements_as_unicode_str_tokenized = [self._tokenizer.tokenize(t_elem)  for t_elem in self._text_elements_as_unicode_str_untokenized]
-        
 
 
         self._get_user_config_db() 
-
-
-        ## Error-Tracking:Initialization #1
-        if self._error_tracking:
-            self.client = initialisation()
-            self.client.context.merge({'tags': self.__dict__})
-
-        #p(self._docs_row_values(token=False, unicode_str=True), c="r")
-        #p(self._text_elements_as_unicode_str_untokenized)
         if not self._check_correctness_of_the_test_data():
             self.logger.error("TestDataCorruption: Please check test data.", exc_info=self._logger_traceback)
             sys.exit()
 
         self.logger.debug('Intern InstanceAttributes was initialized')
 
-
         self.logger.debug('An instance of {}() was created '.format(self.__class__.__name__))
 
 
-    def __del__(self):
-        pass
-        # if self._user_data:
-        #     self._user_data.close()
-        # if self._user_data:
-        #     transaction.commit()
-        #     if self._myzodb:
-        #         self._myzodb.close()
-        #     self.logger.debug("UserDataDB was closed.")
+        ## Log Settings of the Instance
+        attr_to_flag = ["_types_folder_names_of_testsets","_test_dbs", "_init_info_data", "_columns_in_doc_table", "_columns_in_info_tabel", "_columns_in_stats_tables", "_text_elements_collection"]
+        attr_to_len = False
+        self._log_settings(attr_to_flag =attr_to_flag,attr_to_len =attr_to_len)
+
+
         ############################################################
         ####################__init__end#############################
         ############################################################
+
+    def __del__(self):
+        super(type(self), self).__del__()
+
 
 
 ####################################################################################
@@ -377,168 +127,6 @@ class Configer(object):
         '''
         return copy.deepcopy(self._docs_row_dicts(token=token, unicode_str=unicode_str, lang=lang))
 
-
-
-
-
-    def _row_text_elements(self, lang="all"):
-        if lang == "test":
-            lang ="all"
-        if lang == "all":
-            return [text_item for lang in self._lang_order for text_item in self._text_elements_collection[lang]]
-        else:
-            if lang in self._text_elements_collection:
-                return self._text_elements_collection[lang]
-            else:
-                self.logger.error("No test-text-elements exist for given language: '{}'.".format(lang))
-
-
-    def _text_elements(self, token=True, unicode_str=True, lang="all"):
-        if lang == "test":
-            lang ="all"
-        if token:
-            if unicode_str:
-                    #sys.exit()
-                return [t_elem.split()  for t_elem in self._text_elements(token=False, unicode_str=True,lang=lang)]
-                #return [self._tokenizer.tokenize(t_elem)  for t_elem in self._text_elements(token=False, unicode_str=True,lang=lang)]
-                #return self._text_elements_as_unicode_str_tokenized
-            else:
-                return [t_elem.split()  for t_elem in self._text_elements(token=False, unicode_str=False,lang=lang)]
-                #return [self._tokenizer.tokenize(t_elem)  for t_elem in self._text_elements(token=False, unicode_str=False,lang=lang)]
-                #return self._text_elements_as_byte_str_tokenized
-
-        elif not token:
-            if unicode_str:
-                #for t_elem in self._row_text_elements(lang=lang):
-                #    p((t_elem, type(t_elem)))
-                #sys.exit()
-                #json.loads(t_elem)
-                return [json.loads(r'"{}"'.format(t_elem)) for t_elem in self._row_text_elements(lang=lang) ]
-                #return [t_elem.decode("utf-8") for t_elem in self._row_text_elements(lang=lang) ]
-                #return self._text_elements_as_unicode_str_untokenized
-            else:
-                return self._row_text_elements(lang=lang)
-
-
-
-    def _docs_row_values(self,token=True, unicode_str=True, lang="all"):
-        if lang == "test":
-            lang ="all"
-        text_element = self._text_elements(token=token, unicode_str=unicode_str, lang=lang)
-        #self.logger.critical(text_element)
-        if lang == "en":
-            text_element = self._text_elements(token=token, unicode_str=unicode_str, lang=lang)
-            docs_row_values_en = {
-                    "blogger":[
-                        [1, 1111, text_element[0], u'w', 37, u'IT', u'lion' ],
-                        [2, 2222, text_element[1], u'm', 23, u'Care', u'fish' ],
-                        [3, 3333, text_element[2], u'w', 22, u'Finance', u'aquarius' ],
-                        [4, 4444, text_element[3], u'm', 27, u'IT', u'gemini' ],
-                        [5, 5555, text_element[4], u'w', 35, u'Air Industry', u'lion' ],
-                        [6, 6666, text_element[5], u'm', 21, u'Industry', "crawfish"  ],
-                        [7, 7777, text_element[6], u'w', 37, u'IT', u'lion' ],
-                        ],
-
-                    "twitter":[
-                        [1 ,1111, text_element[0], u"20/06/2014", u"en", u"Iphone", u"22/03/2014", u"Die Welt ist schön", 45, 76, 765, 34567890, u"en", u"MotherFucker", u"realBro", u"True", "planet Earth", False, False, False ],
-                        [2 ,2222, text_element[1], u"03/02/2013", u"en", u"Iphone", u"29/06/2012", u"Kein Plan", 45, 76, 765, 34567890, u"en", u"MotherFucker", u"realBro", u"True", "planet Earth", False, False, False ],
-                        [3 ,3333, text_element[2], u"21/06/2014", u"en", u"WebAPI", u"21/07/2017", u"Neiiiiin", 45, 76, 765, 34567890, u"en", u"MotherFucker", u"realBro", u"True", "planet Earth", False, False, False ],
-                        [4 ,4444, text_element[3], u"20/04/2014", u"fr", u"Iphone", u"12/06/2011", u"Nööö", 45, 76, 765, 98765, u"en", u"Lighter", u"LivelyLife", u"True", "planet Earth", False, False, False ],
-                        [5 ,5555, text_element[4], u"20/06/2011", u"ru", u"Android", u"12/06/2012", u"Was willste, alter?", 45, 76, 765, 98765, u"en", u"Lighter", u"LivelyLife", u"True", "planet Earth", False, False, False ],
-                        [6 ,6666, text_element[5], u"30/09/2014", u"ru", u"Iphone", u"20/03/2013", u"Neiiiiin", 45, 76, 765, 98765, u"en", u"Lighter", u"LivelyLife", u"True", "planet Earth", False, False, False ],
-                        [7 ,7777, text_element[6], u"01/06/2014", u"de", u"Android", u"22/06/2011", u"Neiiiiin", 45, 76, 765, 98765, u"en", u"Lighter", u"LivelyLife", u"True", "planet Earth", False, False, False ],
-                        ]
-                    }
-            return docs_row_values_en
-        
-        elif lang == "de":
-            text_element = self._text_elements(token=token, unicode_str=unicode_str, lang=lang)
-            #p((text_element))
-            docs_row_values_de = {
-                    "blogger":[
-                        [8, 8888, text_element[0], u'm', 23, u'Care', u'fish' ],
-                        [9, 9999, text_element[1], u'w', 22, u'Finance', u'aquarius' ],
-                        [10, 10000, text_element[2], u'w', 35, u'Air Industry', u'lion' ],
-                        [11, 11111, text_element[3], u'm', 21, u'Industry', "crawfish"  ],
-                        [12, 12222, text_element[4], u'w', 37, u'IT', u'lion' ],
-                        ],
-
-                    "twitter":[
-                        [8 ,8888, text_element[0], u"20/06/2007", u"de", u"Iphone", u"20/02/2009", u"Jööööö", 45, 76, 765, 98765, u"en", u"Lighter", u"LivelyLife", u"True", "planet Earth", False, False, False ],
-                        [9 ,9999, text_element[1], u"20/04/2014", u"it", u"WebAPI", u"01/06/2011", u"Neiiiiin", 45, 76, 765, 98765, u"en", u"Lighter", u"LivelyLife", u"True", "planet Earth", False, False, False ],
-                        [10 ,10000, text_element[2], u"21/06/2014", u"en", u"WebAPI", u"21/07/2017", u"Neiiiiin", 45, 76, 765, 34567890, u"en", u"MotherFucker", u"realBro", u"True", "planet Earth", False, False, False ],
-                        [11 ,11111, text_element[3], u"20/04/2014", u"fr", u"Iphone", u"12/06/2011", u"Nööö", 45, 76, 765, 98765, u"en", u"Lighter", u"LivelyLife", u"True", "planet Earth", False, False, False ],
-                        [12 ,12222, text_element[4], u"20/06/2011", u"ru", u"Android", u"12/06/2012", u"Was willste, alter?", 45, 76, 765, 98765, u"en", u"Lighter", u"LivelyLife", u"True", "planet Earth", False, False, False ],
-                        ]
-                    }
-            return docs_row_values_de
-
-        elif lang == "ru":
-            text_element = self._text_elements(token=token, unicode_str=unicode_str, lang=lang)
-            docs_row_values_ru = {
-                    "blogger":[
-                        [13, 13333, text_element[0], u'm', 23, u'Care', u'fish' ],
-                        [14, 14444, text_element[1], u'w', 22, u'Finance', u'aquarius' ],
-                        ],
-
-                    "twitter":[
-                        [13 ,13333, text_element[0], u"30/09/2014", u"ru", u"Iphone", u"20/03/2013", u"Neiiiiin", 45, 76, 765, 98765, u"en", u"Lighter", u"LivelyLife", u"True", "planet Earth", False, False, False ],
-                        [14 ,14444, text_element[1], u"01/06/2014", u"de", u"Android", u"22/06/2011", u"Neiiiiin", 45, 76, 765, 98765, u"en", u"Lighter", u"LivelyLife", u"True", "planet Earth", False, False, False ],
-                        ]
-                    }
-            return docs_row_values_ru
-
-        elif lang == "other":
-            text_element = self._text_elements(token=token, unicode_str=unicode_str, lang=lang)
-            docs_row_values_other = {
-                "blogger":[
-                    [15, 15555, text_element[0], u'w', 22, u'Finance', u'aquarius' ],
-                    ],
-
-                "twitter":[
-                    [15 ,16666, text_element[0], u"20/04/2014", u"it", u"WebAPI", u"01/06/2011", u"Neiiiiin", 45, 76, 765, 98765, u"en", u"Lighter", u"LivelyLife", u"True", "planet Earth", False, False, False ]
-                    ]
-                }
-            return docs_row_values_other
-
-        elif lang == "all":
-            temp_dict = defaultdict(list)
-            for language in ["en", "de", "ru", "other"]:
-                output_for_current_lang = self._docs_row_values(token=token, unicode_str=unicode_str, lang=language)
-
-                for k,v in output_for_current_lang.iteritems():
-                    temp_dict[k] += v
-
-            return temp_dict
-
-
-
-
-
-    def _docs_row_dict(self, token=True, unicode_str=True, all_values=True , lang="all"):
-        '''
-        just one dict with colums as key and list of all values as values for each columns()key
-        '''
-        if lang == "test":
-            lang ="all"
-        docs_row_values = self._docs_row_values(token=token, unicode_str=unicode_str, lang=lang)
-        #p(docs_row_values,"docs_row_values")
-        if all_values:
-            return {template_name:{k:v for k,v in zip(columns, zip(*docs_row_values[template_name]))} for template_name, columns in  self._columns_in_doc_table.iteritems()}
-        else:
-            return {template_name:{col:row[0] for col, row in data.iteritems()}  for template_name, data in  self._docs_row_dict(token=token, unicode_str=unicode_str,lang=lang,all_values=True).iteritems()}
-
-
-
-    def _docs_row_dicts(self, token=True, unicode_str=True, lang="all"):
-        '''
-        list of dicts  with colums and values for each row
-        '''
-        if lang == "test":
-            lang ="all"
-        docs_row_values = self._docs_row_values(token=token, unicode_str=unicode_str, lang=lang)
-        docs_row_dicts = { template_name:[dict(zip(columns, row)) for row in docs_row_values[template_name]] for template_name, columns in  self._columns_in_doc_table.iteritems()}
-        return docs_row_dicts
 
 
     ###########################Config Values#######################
@@ -638,80 +226,34 @@ class Configer(object):
                 self.logger.critical("Not supported user_data_getter ('{}').".format(user_info_name))
 
 
-
-
-
-
-        self._test_dbs = {
-                    "plaintext":{
-                                "blogger":{
-                                            "en":{
-                                                    "corpus":"7614_corpus_blogs_bloggerCorpus_en_extern_plaintext.db",
-                                                    "stats":"7614_3497_stats_bloggerCorpus_en_extern_plaintext.db"
-                                                  },
-
-                                            "de":{
-                                                    "corpus":"7614_corpus_blogs_bloggerCorpus_de_extern_plaintext.db",
-                                                    "stats":"7614_3497_stats_bloggerCorpus_de_extern_plaintext.db"
-                                                 },
-
-                                            "ru":{},
-                                            "test":{
-                                                    "corpus":"7614_corpus_blogs_bloggerCorpus_test_extern_plaintext.db",
-                                                    "stats":"7614_3497_stats_bloggerCorpus_test_extern_plaintext.db"
-                                                   },
-
-
-                                        },
-                                "twitter":{
-                                            "en":{},
-                                            "de":{
-                                                    #"corpus":"9588_corpus_twitter_streamed_de_intern_plaintext.db",
-                                                    #"stats": "9588_6361_stats_streamed_de_intern_plaintext.db"
-                                                  },
-                                            "ru":{},
-                                            "test":{},
-
-                                        }
-                                },
-                    "encrypted":{
-                                "blogger":{
-                                            "en":{
-                                                    #"corpus":"7614_corpus_blogs_bloggerCorpus_en_extern_encrypted.db",
-                                                    #"stats":"7614_3497_stats_bloggerCorpus_en_extern_encrypted.db"
-                                                 },
-                                            "de":{},
-                                            "ru":{},
-                                            "test":{},
-
-                                        },
-                                "twitter":{
-                                            "en":{},
-                                            "de":{
-                                                    "corpus":"9588_corpus_twitter_streamed_de_intern_encrypted.db",
-                                                    "stats": "9588_6361_stats_streamed_de_intern_encrypted.db"
-                                                 },
-                                            "ru":{},
-                                            "test":{},
-
-                                        }
-                                }
-                    }
-                
+    def create_test_data(self, abs_path_to_storage_place=False, use_original_classes = True, corp_lang_classification=False, 
+                         corp_pos_tagger=True, corp_sent_splitter=True, corp_sentiment_analyzer=True, corp_status_bar=True,
+                         corp_log_ignored=False, use_test_pos_tagger=False):
+        #if not  corp_language:
+        #    corp_language = "de"
+        self.create_testsets(rewrite=False,abs_path_to_storage_place=abs_path_to_storage_place,silent_ignore = True)
+        self.create_test_dbs(rewrite=False, abs_path_to_storage_place=abs_path_to_storage_place, use_original_classes=use_original_classes, 
+                            corp_lang_classification=corp_lang_classification, corp_log_ignored=corp_log_ignored,
+                            corp_pos_tagger=corp_pos_tagger, corp_sent_splitter=corp_sent_splitter,
+                            corp_sentiment_analyzer=corp_sentiment_analyzer, corp_status_bar=corp_status_bar,
+                            use_test_pos_tagger=use_test_pos_tagger)
+        self.logger.info("Test Data was initialized.")
 
 
  
     def create_test_dbs(self, rewrite=False, abs_path_to_storage_place = False,corp_log_ignored=False,
-                        use_original_classes = True, corp_lang_classification=True, 
+                        use_original_classes = True, corp_lang_classification=True, use_test_pos_tagger=False,
                         corp_pos_tagger=True, corp_sent_splitter=True, corp_sentiment_analyzer=True, corp_status_bar=True):
         #p(abs_path_to_storage_place, "abs_path_to_storage_place")
         if not abs_path_to_storage_place:
             abs_path_to_storage_place = os.path.join(self._path_to_zas_rep_tools, self._path_to_testdbs)
-        
+        #p(abs_path_to_storage_place, "abs_path_to_storage_place")
         #sys.exit()
         if not  rewrite:
             rewrite = self._rewrite
         #for 
+
+        activ_corp_dbs = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(dict))) )
         for template_name, init_data in  self._init_info_data.iteritems():
             #p(template_name)
             for encryption in ["plaintext", "encrypted"]:
@@ -772,7 +314,7 @@ class Configer(object):
                             self.logger.error("See Exception: '{}'. (line 703). Creation of the TestDBs was aborted.".format(e), exc_info=self._logger_traceback)
                             sy.exit()
 
-                        self.logger.debug("2222{}:{}:{}:{}".format(dbname, language, platform_name, dbtype))
+                        #self.logger.debug("2222{}:{}:{}:{}".format(dbname, language, platform_name, dbtype))
                         db_id = corpus_id if dbtype == "corpus" else stats_id
                         self.logger.info("TestDBCreationProcess: Was started for DB with following attributes: 'dbtype='{}'; id='{}'; encryption='{}'; template_name='{}'; language='{}'. ".format(dbtype, db_id,encryption,template_name,language ))
                         if dbtype=="corpus":
@@ -783,7 +325,7 @@ class Configer(object):
                                         logger_save_logs= self._logger_save_logs, mode=self._mode,
                                         error_tracking=self._error_tracking,  ext_tb= self._ext_tb,
                                         stop_if_db_already_exist=self._stop_if_db_already_exist, rewrite=self._rewrite)
-                                was_initialized = db.init(dbtype, abs_path_to_storage_place, dbname, language, visibility, platform_name=platform_name, license=license , template_name=template_name, version=version , source=source, corpus_id=corpus_id, stats_id=stats_id, encryption_key=encryption_key)
+                                was_initialized = db.init(dbtype, abs_path_to_storage_place, dbname, language, visibility, platform_name=platform_name, license=license , template_name=template_name, version=version , source=source, corpus_id=corpus_id, stats_id=stats_id, encryption_key=encryption_key)["status"]
                                 # self.logger.critical("was_initialized={}".format(was_initialized))
                                 # sys.exit()
                                 #!!!!
@@ -809,6 +351,8 @@ class Configer(object):
                                 if "Connection" not in str(type(db)):
                                     pass
 
+                                #p((len(db.getall("documents")) , len(rows_to_insert)), c="r")
+                                
                                 if len(db.getall("documents")) != len(rows_to_insert):
                                     
                                     #db.close()
@@ -819,17 +363,25 @@ class Configer(object):
                                     #sys.exit()
                                     sys.exit()
                                     continue
+                                db.commit()
+                                db.close()
+
                             else:
+                                #if use_test_pos_tagger and language == "en":
+                                #    corp_pos_tagger = "tweetnlp" if corp_pos_tagger else corp_pos_tagger
+                                #else:
+                                #    corp_pos_tagger = True if corp_pos_tagger else False
                                 #if corp_language:
                                 #    language = corp_language
+                                #p((corp_pos_tagger,language), "pos_tagger")
                                 corp = Corpus(language=language, lang_classification=corp_lang_classification,
                                     pos_tagger=corp_pos_tagger, sent_splitter=corp_sent_splitter,
-                                    sentiment_analyzer=corp_sentiment_analyzer,
+                                    sentiment_analyzer=corp_sentiment_analyzer,#log_content=False,
                                     logger_level=logging.ERROR, logger_traceback=self._logger_traceback,
-                                    logger_folder_to_save=self._logger_folder_to_save,
+                                    logger_folder_to_save=self._logger_folder_to_save, use_test_pos_tagger=use_test_pos_tagger,
                                     logger_usage=self._logger_usage, logger_save_logs= self._logger_save_logs,
                                     mode=self._mode ,  error_tracking=self._error_tracking,  ext_tb= self._ext_tb,
-                                    stop_if_db_already_exist=self._stop_if_db_already_exist, rewrite=self._rewrite)
+                                    stop_if_db_already_exist=self._stop_if_db_already_exist, status_bar=corp_status_bar,rewrite=self._rewrite)
                                 #p(corp.info())
                                 self.logger.debug("444{}:{}:{}:{}".format(dbname, language, platform_name, dbtype))
                                 was_initialized = corp.init(abs_path_to_storage_place,dbname, language, visibility,platform_name,
@@ -837,7 +389,7 @@ class Configer(object):
                                     corpus_id=corpus_id, encryption_key=encryption_key)
                                 self.logger.debug("555{}:{}:{}:{}".format(dbname, language, platform_name, dbtype))
                                 #self.logger.critical("was_initialized={}".format(was_initialized))
-                                
+                                #p(corp.info())
                                 if not was_initialized:
                                     if self._stop_if_db_already_exist:
                                         self.logger.debug("DBInitialisation: DBName for '{}:{}:{}:{}' wasn't initialized. Since 'self._stop_if_db_already_exist'-Option is on, current Script will ignore current DB and will try to create next one.".format(encryption,template_name,language,dbtype))
@@ -845,31 +397,23 @@ class Configer(object):
                                     else:
                                         self.logger.error("DBInitialisationError: DB for '{}:{}:{}:{}' wasn't initialized. TestDBCreation was aborted.".format(encryption,template_name,language,dbtype))
                                         return False
-                                self.logger.debug("666{}:{}:{}:{}".format(dbname, language, platform_name, dbtype))
-                                #
-                                #rows_to_insert = self._docs_row_values[template_name]
-                                #self.docs_row_values(token=False, unicode_str=True)[template_name]
+
                                 rows_as_dict_to_insert = self.docs_row_dicts(token=False, unicode_str=True)[template_name]
-                                #p(rows_as_dict_to_insert,"rows_as_dict_to_insert")
-                                #self.logger.critical(rows_as_dict_to_insert)
-                                path_to_db = corp.db.path()
-                                fname_db = corp.db.fname()
-                                self.logger.debug("777{}:{}:{}:{}".format(dbname, language, platform_name, dbtype))
+
+                                path_to_db = corp.corpdb.path()
+                                fname_db = corp.corpdb.fname()
+                                #self.logger.debug("777{}:{}:{}:{}".format(dbname, language, platform_name, dbtype))
                                 if not path_to_db or not fname_db:
                                     self.logger.error("Path or FileName for current CorpusDB wasn't getted. (lang='{}', dbname='{}', id='{}',platform_name='{}', visibility='{}', encryption_key='{}') Probably current corpus has InitializationError. TestDBCreation was aborted.".format(language, dbname,corpus_id, platform_name, visibility, encryption_key))
                                     sys.exit()
                                 #p((path_to_db,fname_db))
-                                was_inserted = corp.insert(rows_as_dict_to_insert, status_bar=corp_status_bar, log_ignored=corp_log_ignored)
-                                #p(was_inserted , "was_inserted ")
-                                self.logger.debug("888{}:{}:{}:{}".format(dbname, language, platform_name, dbtype))
-                                self.logger.critical("'{}': Following rows was inserted:\n '{}'. \n\n".format(fname_db, '\n'.join("--->"+str(v) for v in  list(corp.docs())  )  ))
-                                #p(list(corp.docs()), "fname_db")
-                                #if encryption == "encrypted":
-                                #    sys.exit()
-                                #sys.exit()
+                                was_inserted = corp.insert(rows_as_dict_to_insert, log_ignored=corp_log_ignored)
+
                                 if not was_inserted:
                                     os.remove(path_to_db)
-                                    self.logger.error("Rows wasn't inserted into the '{}'-DB. This DB was deleted and script of creating testDBs was aborted.".format(fname_db))
+                                    msg = "Rows wasn't inserted into the '{}'-DB. This DB was deleted and script of creating testDBs was aborted.".format(fname_db)
+                                    self.logger.error(msg)
+                                    raise Exception, msg
                                     sys.exit()
                                     return False
                                     #continue
@@ -878,33 +422,71 @@ class Configer(object):
                                         if len(corp.docs()) != len(rows_as_dict_to_insert):
                                             os.remove(path_to_db)
                                             #shutil.rmtree(path_to_db)
-                                            self.logger.error("TestDBsCreation(InsertionError): Not all rows was correctly inserted into DB. This DB was deleted and script of creating testDBs was aborted.", exc_info=self._logger_traceback)
+                                            msg = "TestDBsCreation(InsertionError): Not all rows was correctly inserted into DB. This DB was deleted and script of creating testDBs was aborted."
+                                            self.logger.error(msg, exc_info=self._logger_traceback)
                                             #sys.exit()
-                                            sys.exit()
-                                            return False
+                                            raise Exception, msg
                                             #continue
+                                    if corp.total_error_insertion_during_last_insertion_process:
+                                        msg = "TestDBsCreation(InsertionError): '{}'-ErrorInsertion was found!!! Not all rows was correctly inserted into DB. This DB was deleted and script of creating testDBs was aborted.".format(corp.total_error_insertion_during_last_insertion_process)
+                                        self.logger.error(msg, exc_info=self._logger_traceback)
+                                        raise Exception, msg
+                                        return False
                                     else:
                                         self.logger.debug("'{}'-TestDB was created. Path: '{}'.".format(fname_db,path_to_db))
+                                #corp.commit()
+                                self.logger.debug("'{}': Following rows was inserted:\n '{}'. \n\n".format(fname_db, '\n'.join("--->"+str(v) for v in  list(corp.docs())  )  ))
+                                activ_corp_dbs[template_name][encryption][dbtype][language] = corp
+
+                                ### get SENTS
+                                # corp.corpdb.commit()
+                                # if language== "de":
+                                #     p(list(corp.docs()), "de", c="r")
+
+                                # elif language== "en":
+                                #     p(list(corp.docs()), "en", c="m")
+                                #     time.sleep(15)
+                                #else:
+                                #    time.sleep(15)
+
+
                                 
 
                         elif dbtype=="stats":
                             ## here insert all rows into stats dbs
-                            db = DBHandler(logger_level=logging.ERROR,logger_traceback=self._logger_traceback, logger_folder_to_save=self._logger_folder_to_save,logger_usage=self._logger_usage, logger_save_logs= self._logger_save_logs, mode=self._mode ,  error_tracking=self._error_tracking,  ext_tb= self._ext_tb, stop_if_db_already_exist=self._stop_if_db_already_exist, rewrite=self._rewrite)
-                            db.init(dbtype, abs_path_to_storage_place, dbname, language, visibility, platform_name=platform_name, license=license , template_name=template_name, version=version , source=source, corpus_id=corpus_id, stats_id=stats_id, encryption_key=encryption_key)
-            
+                            if not use_original_classes:
+                                stats = DBHandler(logger_level=logging.ERROR,logger_traceback=self._logger_traceback, logger_folder_to_save=self._logger_folder_to_save,logger_usage=self._logger_usage, logger_save_logs= self._logger_save_logs, mode=self._mode ,  error_tracking=self._error_tracking,  ext_tb= self._ext_tb, stop_if_db_already_exist=self._stop_if_db_already_exist, rewrite=self._rewrite)
+                                stats.init(dbtype, abs_path_to_storage_place, dbname, language, visibility, platform_name=platform_name, license=license , template_name=template_name, version=version , source=source, corpus_id=corpus_id, stats_id=stats_id, encryption_key=encryption_key)
+                                stats.close()
+                            else:
+                                #p(activ_corp_dbs, "activ_corp_dbs")
+                                #p((template_name,encryption,dbtype,language))
+                                stats = Stats(case_sensitiv=False,logger_level=logging.ERROR, logger_traceback=self._logger_traceback,
+                                    logger_folder_to_save=self._logger_folder_to_save, logger_usage=self._logger_usage,
+                                    logger_save_logs= self._logger_save_logs, mode=self._mode, error_tracking=self._error_tracking, 
+                                    ext_tb= self._ext_tb, stop_if_db_already_exist=self._stop_if_db_already_exist,
+                                    status_bar=corp_status_bar,rewrite=self._rewrite)
+                                #p(corp.info())
+                                was_initialized = stats.init(abs_path_to_storage_place,dbname, language, visibility, 
+                                                         version=version, corpus_id=corpus_id,  stats_id=stats_id,encryption_key=encryption_key)
+                                #p((encryption_key,dbtype,dbname,language,visibility,platform_name ), "encryption_key____stats")
+                                corp =  activ_corp_dbs[template_name][encryption]["corpus"][language]
+                                #p(corp, "corp")
+                                if isinstance(corp, Corpus):
+                                    stats.compute(corp)
+
+                                    corp.corpdb.commit()
+                                    stats.statsdb.commit()
+                                    corp.close()
+                                    stats.close()
+                                else:
+                                    self.logger.error("Given CorpObj ('{}') is invalid".format(corp))
+                                    return False
+
         self.logger.info("TestDBs was initialized.")
 
 
-    def create_test_data(self, abs_path_to_storage_place=False, use_original_classes = True, corp_lang_classification=False, 
-                         corp_pos_tagger=True, corp_sent_splitter=True, corp_sentiment_analyzer=True, corp_status_bar=True, corp_log_ignored=False):
-        #if not  corp_language:
-        #    corp_language = "de"
-        self.create_testsets(rewrite=False,abs_path_to_storage_place=abs_path_to_storage_place,silent_ignore = True)
-        self.create_test_dbs(rewrite=False, abs_path_to_storage_place=abs_path_to_storage_place, use_original_classes=use_original_classes, corp_log_ignored=corp_log_ignored,
-                            corp_lang_classification=corp_lang_classification,
-                            corp_pos_tagger=corp_pos_tagger, corp_sent_splitter=corp_sent_splitter,
-                            corp_sentiment_analyzer=corp_sentiment_analyzer, corp_status_bar=corp_status_bar)
-        self.logger.info("Test Data was initialized.")
+
 
     def create_testsets(self, rewrite=False, abs_path_to_storage_place=False, silent_ignore = True):
         return list(self.create_testsets_in_diff_file_formats(rewrite=rewrite, abs_path_to_storage_place=abs_path_to_storage_place,silent_ignore=silent_ignore))
@@ -917,7 +499,7 @@ class Configer(object):
         if not abs_path_to_storage_place:
             abs_path_to_storage_place = self._path_to_zas_rep_tools
         #p("fghjk")
-
+        created_sets = []
         try:
             # make test_sets for Blogger Corp 
             for  file_format, test_sets in self._types_folder_names_of_testsets.iteritems():
@@ -925,8 +507,8 @@ class Configer(object):
                     if file_format == "txt":
                         continue
                     abs_path_to_current_test_case = os.path.join(abs_path_to_storage_place, self._path_to_testsets["blogger"], folder_for_test_set)
-                    #p((file_format, name_of_test_set))
-                    #p(abs_path_to_current_test_case)
+                    # p((file_format, name_of_test_set))
+                    # p(abs_path_to_current_test_case)
                     if rewrite:
                         if os.path.isdir(abs_path_to_current_test_case):
                             shutil.rmtree(abs_path_to_current_test_case)
@@ -935,13 +517,9 @@ class Configer(object):
                     if not os.path.isdir(abs_path_to_current_test_case):
                         os.makedirs(abs_path_to_current_test_case)
 
-                    #
-                    #sys.exit()
-                    #p(self._types_folder_names_of_testsets)
-                    path_to_txt_corpus = os.path.join(self.path_to_zas_rep_tools,self._path_to_testsets["blogger"] , self._types_folder_names_of_testsets["txt"][name_of_test_set] )
-                    #p(path_to_txt_corpus, c="r")
 
-                    #sys.exit()
+                    path_to_txt_corpus = os.path.join(self.path_to_zas_rep_tools,self._path_to_testsets["blogger"] , self._types_folder_names_of_testsets["txt"][name_of_test_set] )
+
                             
 
                     reader = Reader(path_to_txt_corpus, "txt", regex_template="blogger",logger_level= self._logger_level,logger_traceback=self._logger_traceback, logger_folder_to_save=self._logger_folder_to_save,logger_usage=self._logger_usage, logger_save_logs= self._logger_save_logs, mode=self._mode ,  error_tracking=self._error_tracking,  ext_tb= self._ext_tb)
@@ -953,12 +531,14 @@ class Configer(object):
                             if not flag:
                                 yield False
                             else:
+                                created_sets.append("csv")
                                 yield True
                         else:
                             flag= exporter.tocsv(abs_path_to_current_test_case, "blogger_corpus",self._columns_in_doc_table["blogger"], rows_limit_in_file=2)
                             if not flag:
                                 yield False
                             else:
+                                created_sets.append("csv")
                                 yield True
                         
                     
@@ -969,12 +549,14 @@ class Configer(object):
                             if not flag:
                                 yield False
                             else:
+                                created_sets.append("xml")
                                 yield True
                         else:
                             flag = exporter.toxml(abs_path_to_current_test_case, "blogger_corpus", rows_limit_in_file=2)
                             if not flag:
                                 yield False
                             else:
+                                created_sets.append("xml")
                                 yield True
 
 
@@ -984,6 +566,7 @@ class Configer(object):
                             if not flag:
                                 yield False
                             else:
+                                created_sets.append("json")
                                 yield True
                         
                         else:
@@ -991,6 +574,7 @@ class Configer(object):
                             if not flag:
                                 yield False
                             else:
+                                created_sets.append("json")
                                 yield True
   
 
@@ -1000,7 +584,15 @@ class Configer(object):
                         if not flag:
                             yield False
                         else:
+                            created_sets.append("sqlite")
                             yield True
+
+            #p(created_sets, "created_sets")
+            for created_set in set(created_sets):
+                path_to_set = os.path.join(abs_path_to_storage_place, self._path_to_testsets["blogger"], created_set)
+                #p(path_to_set)
+                #p(os.path.join(os.path.split(path_to_set)[0], created_set+".zip"))
+                make_zipfile(os.path.join(os.path.split(path_to_set)[0], created_set+".zip"), path_to_set)
 
             self.logger.info("TestSets (diff file formats) was initialized.")
         except Exception, e:

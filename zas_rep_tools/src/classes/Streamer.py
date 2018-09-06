@@ -61,13 +61,15 @@ if platform.uname()[0].lower() !="windows":
 else:
     import colorama
 
-
-from zas_rep_tools.src.utils.logger import main_logger
+from zas_rep_tools.src.utils.zaslogger import ZASLogger
+#from zas_rep_tools.src.utils.logger import main_logger
 from zas_rep_tools.src.utils.debugger import p
 from zas_rep_tools.src.utils.error_tracking import initialisation
-from zas_rep_tools.src.utils.helpers import write_data_to_json, paste_new_line, send_email, set_class_mode, print_mode_name, path_to_zas_rep_tools
+from zas_rep_tools.src.utils.helpers import write_data_to_json, paste_new_line, send_email, set_class_mode, print_mode_name, path_to_zas_rep_tools, instance_info
 from zas_rep_tools.src.utils.traceback_helpers import print_exc_plus
-from zas_rep_tools.src.classes.configer import Configer
+from zas_rep_tools.src.classes.basecontent import BaseContent
+
+#from zas_rep_tools.src.classes.configer import Configer
 
 abs_paths_to_stop_words = os.path.join(path_to_zas_rep_tools, "data/stop_words/")
 
@@ -87,10 +89,7 @@ num_retweets_for_one_day = 0
 num_original_tweets_for_one_day = 0
 #runing_theards = []
 
-
-
-class Streamer(object):
-
+class Streamer(BaseContent):
     supported_languages_by_langid = [u'af', u'am', u'an', u'ar', u'as', u'az', u'be', u'bg', u'bn', u'br', u'bs', u'ca', u'cs', u'cy', u'da', u'de', u'dz', u'el', u'en', u'eo', u'es', u'et', u'eu', u'fa', u'fi', u'fo', u'fr', u'ga', u'gl', u'gu', u'he', u'hi', u'hr', u'ht', u'hu', u'hy', u'id', u'is', u'it', u'ja', u'jv', u'ka', u'kk', u'km', u'kn', u'ko', u'ku', u'ky', u'la', u'lb', u'lo', u'lt', u'lv', u'mg', u'mk', u'ml', u'mn', u'mr', u'ms', u'mt', u'nb', u'ne', u'nl', u'nn', u'no', u'oc', u'or', u'pa', u'pl', u'ps', u'pt', u'qu', u'ro', u'ru', u'rw', u'se', u'si', u'sk', u'sl', u'sq', u'sr', u'sv', u'sw', u'ta', u'te', u'th', u'tl', u'tr', u'ug', u'uk', u'ur', u'vi', u'vo', u'wa', u'xh', u'zh', u'zu']
     supported_languages_by_twitter = [u'fr', u'en', u'ar', u'ja', u'es', u'de', u'it', u'id', u'pt', u'ko', u'tr', u'ru', u'nl', u'fil', u'msa', u'zh-tw', u'zh-cn', u'hi', u'no', u'sv', u'fi', u'da', u'pl', u'hu', u'fa', u'he', u'ur', u'th', u'en-gb']
     NLTKlanguages= {u'ru': u'russian', u'fr': u'french', u'en': u'english', u'nl': u'dutch', u'pt': u'portuguese', u'no': u'norwegian', u'sv': u'swedish', u'de': u'german', u'tr': u'turkish', u'it': u'italian', u'hu': u'hungarian', u'fi': u'finnish', u'da': u'danish', u'es': u'spanish'}
@@ -104,45 +103,16 @@ class Streamer(object):
 
     supported_stop_words = [k for k in stop_words_collection] # language naming should be the same as in this module "langid.classify(data["text"])[0]""
 
-
-
-
     supported_platforms= ["twitter"]
     #p(path_to_zas_rep_tools)
 
     def __init__(self, consumer_key, consumer_secret, access_token, access_token_secret, storage_path,
                 platfrom="twitter", language=False, terms=False, stop_words=False, encoding="utf_8",
-                email_addresse=False, ignore_rt=False, save_used_terms=False, filterStrat=False,
-                logger_folder_to_save=False,  logger_usage=True, logger_level=logging.INFO,
-                logger_save_logs=True, logger_num_buffered=5, error_tracking=True,
-                ext_tb=False, logger_traceback=False, mode="prod"):
-
-        ## Set Mode: Part 1
-        self._mode = mode
-        if mode != "free":
-            _logger_level, _logger_traceback, _logger_save_logs = set_class_mode(self._mode)
-            logger_level = _logger_level if _logger_level!=None else logger_level
-            logger_traceback = _logger_traceback if _logger_traceback!=None else logger_traceback
-            logger_save_logs = _logger_save_logs if _logger_save_logs!=None else logger_save_logs
-    
-
-    
-        ## Logger Initialisation
-        self._logger_level = logger_level
-        self._logger_traceback =logger_traceback
-        self._logger_folder_to_save = logger_folder_to_save
-        self._logger_usage = logger_usage
-        self._logger_save_logs = logger_save_logs
-        self.logger = main_logger(self.__class__.__name__, level=self._logger_level, folder_for_log=self._logger_folder_to_save, use_logger=self._logger_usage, save_logs=self._logger_save_logs)
-
-        ## Set Mode: Part 2:
-        print_mode_name(self._mode, self.logger)
-
-
-        self.logger.debug('Beginn of creating an instance of {}()'.format(self.__class__.__name__))
-
-
+                email_addresse=False, ignore_rt=False, save_used_terms=False, filterStrat=False, **kwargs):
         
+        #super(Streamer, self).__init__(**kwargs)
+        super(type(self), self).__init__(**kwargs)
+        #super(BaseContent, self).__init__(**kwargs)
         global num_tweets_all_saved_for_this_session
         global num_tweets_all_getted_for_one_day 
         global num_tweets_saved_on_the_disk_for_one_day
@@ -152,11 +122,8 @@ class Streamer(object):
         global num_retweets_for_one_day 
         global num_original_tweets_for_one_day 
 
-
-
-
-        #Input: Incaplusation:
-
+        
+        #Input: Instance Encapsulation:
         self._consumer_key = consumer_key
         self._consumer_secret = consumer_secret
         self._access_token = access_token
@@ -166,7 +133,6 @@ class Streamer(object):
         self._language = language # 
         self._terms = terms 
         self._stop_words = stop_words
-        self._error_tracking = error_tracking
         self._encoding = encoding
         self._email_addresse = email_addresse
         self._ignore_retweets = ignore_rt
@@ -176,9 +142,6 @@ class Streamer(object):
                      "terms":True if self._terms else False,
                      "stop_words":True if self._stop_words else False ,
                      "filter":self._filterStrat  }
-        
-        # p(self._streamer_settings)
-        self._ext_tb = ext_tb
 
 
         # make Variable global for tweepy
@@ -186,19 +149,8 @@ class Streamer(object):
             self.t = Terminal()
         else:
             self.t = False
-        #p(inpdata)
-        #p(email_addresse)
-        #InstanceAttributes: Initialization
 
-
-        ## Error-Tracking:Initialization #1
-        if self._error_tracking:
-            self.client = initialisation()
-            self.client.context.merge({'tags':  self.cleaned_instance_attributes()})
-            global client
-            client =self.client
-
-
+        
 
         # Validation 
         self._validate_input()
@@ -212,9 +164,12 @@ class Streamer(object):
             self.logger.error("Given Platform({}) is not supported. Please choice one of the following platforms: {}".format(platfrom,Streamer.supported_platforms), exc_info=self._logger_traceback)
             sys.exit()
 
+        ## Log Settings of the Instance
+        self._log_settings(attr_to_flag = False,attr_to_len = False)
 
-        # if platfrom == "twitter":
-        #     self.stream_twitter()
+
+    def __del__(self):
+        super(type(self), self).__del__()
 
 
     def _get_stop_words(self):
@@ -708,7 +663,14 @@ class CustomStreamListener(tweepy.StreamListener):
         self._logger_folder_to_save = logger_folder_to_save
         self._logger_usage = logger_usage
         self._logger_save_logs = logger_save_logs
-        self.logger = main_logger(self.__class__.__name__, level=logger_level, folder_for_log=logger_folder_to_save, use_logger=logger_usage, save_logs=logger_save_logs)
+        self._logger_level = logger_level
+        self.L = ZASLogger(self.__class__.__name__, level=self._logger_level,
+                            folder_for_log=self._logger_folder_to_save,
+                            logger_usage=self._logger_usage,
+                            save_logs=self._logger_save_logs)
+        self.logger = self.L.getLogger()
+
+
 
 
         self._ignore_retweets = ignore_retweets

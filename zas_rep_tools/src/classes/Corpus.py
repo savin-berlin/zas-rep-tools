@@ -18,14 +18,10 @@ from __future__ import absolute_import
 import os
 import copy
 import sys
-#import regex
 import logging
 import threading
-#import multiprocessing
 import time
-#import datetime
 import Queue
-#import cPickle as pickle
 import json
 import traceback
 from textblob import TextBlob
@@ -33,32 +29,24 @@ from textblob_fr import PatternTagger, PatternAnalyzer
 from textblob_de import TextBlobDE
 import langid
 from decimal import Decimal, ROUND_HALF_UP, ROUND_UP, ROUND_HALF_DOWN, ROUND_DOWN
-
-
-
 from collections import defaultdict
 from raven import Client
-#from cached_property import cached_property
-#import types
 import execnet
 from nltk.tokenize import TweetTokenizer
-#import subprocess
 import enlighten
 
+
 from  zas_rep_tools.src.extensions.tweet_nlp.ark_tweet_nlp.CMUTweetTagger import check_script_is_present, runtagger_parse
-#from somajo import Tokenizer, SentenceSplitter
-#from zas_rep_tools.src.classes.configer import Configer
-
-
-from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, LenGen, path_to_zas_rep_tools, char_is_emoji, text_has_emoji, char_is_punkt, text_has_punkt, text_is_punkt, text_is_emoji, categorize_token_list, removetags, remove_html_codded_chars, get_number_of_streams_adjust_cpu, Rle
+from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, LenGen, path_to_zas_rep_tools, is_emoji, text_has_emoji, char_is_punkt, text_has_punkt, text_is_punkt, text_is_emoji, categorize_token_list, recognize_emoticons_types,removetags, remove_html_codded_chars, get_number_of_streams_adjust_cpu, Rle, instance_info, MyThread, SharedCounterExtern, SharedCounterIntern, Status,function_name,statusesTstring,rle
 from zas_rep_tools.src.utils.traceback_helpers import print_exc_plus
 from zas_rep_tools.src.classes.dbhandler import DBHandler
 from zas_rep_tools.src.classes.reader import Reader
-from zas_rep_tools.src.utils.logger import *
+from zas_rep_tools.src.utils.zaslogger import ZASLogger
 from zas_rep_tools.src.utils.debugger import p
 from zas_rep_tools.src.utils.error_tracking import initialisation
-
-
+from zas_rep_tools.src.classes.basecontent import BaseContent, BaseDB
+from zas_rep_tools.src.utils.corpus_helpers import CorpusData
+from zas_rep_tools.src.utils.custom_exceptions import  ZASCursorError, ZASConnectionError,DBHandlerError,ProcessError,ErrorInsertion,ThreadsCrash
 
 import platform
 if platform.uname()[0].lower() !="windows":
@@ -73,240 +61,15 @@ else:
 
 
 
-class Corpus(object):
-
-    info = {
-            "tagger":{
-                        "tweetnlp":{
-                                    "url": "http://www.cs.cmu.edu/~ark/TweetNLP/",
-                                    "paper":"http://www.cs.cmu.edu/~ark/TweetNLP/owoputi+etal.naacl13.pdf",
-                                    "tagset": {
-                                                "data":{
-                                                         '!': 'interjection',
-                                                         '#': 'hashtag (indicates topic/category for tweet)',
-                                                         '$': 'numeral',
-                                                         '&': 'coordinating conjunction',
-                                                         ',': 'punctuation',
-                                                         '@': 'at-mention (indicates a user as a recipient of a tweet)',
-                                                         'A': 'adjective',
-                                                         'D': 'determiner',
-                                                         'E': 'emoticon',
-                                                         'G': 'other abbreviations, foreign words, possessive endings, symbols, garbage',
-                                                         'L': 'nominal + verbal (e.g. i\xe2\x80\x99m), verbal + nominal (let\xe2\x80\x99s)',
-                                                         'M': 'proper noun + verbal',
-                                                         'N': 'common noun',
-                                                         'O': 'pronoun (personal/WH; not possessive)',
-                                                         'P': 'pre- or postposition, or subordinating conjunction',
-                                                         'R': 'adverb',
-                                                         'S': 'nominal + possessive',
-                                                         'T': 'verb particle',
-                                                         'U': 'URL or email address',
-                                                         'V': 'verb including copula, auxiliaries',
-                                                         'X': 'existential there, predeterminers',
-                                                         'Y': 'X + verbal',
-                                                         'Z': 'proper noun + possessive',
-                                                         '^': 'proper noun',
-                                                         '~': 'discourse marker, indications of continuation across multiple tweets'
-                                                      },
-
-                                                },
-                                    },
-                        "someweta":{
-                                    "url": "https://github.com/tsproisl/SoMeWeTa",
-                                    "paper":"http://www.lrec-conf.org/proceedings/lrec2018/pdf/49.pdf",
-                                    "tagset":{
-                                              "name": "STTS IBK tagset",
-                                              "url":["http://www.ims.uni-stuttgart.de/forschung/ressourcen/lexika/TagSets/stts-table.html", ],
-                                              "paper":"https://ids-pub.bsz-bw.de/frontdoor/deliver/index/docId/5065/file/Beisswenger_Bartz_Storrer_Tagset_und_Richtlinie_fuer_das_PoS_Tagging_2015.pdf",
-                                              "data": {
-                                                         '$(': 'sonstige Satzzeichen; satzintern',
-                                                         '$,': 'Komma',
-                                                         '$.': 'Satzbeendende Interpunktion',
-                                                         'ADJA': 'attributives Adjektiv',
-                                                         'ADJD': 'adverbiales oder pr\xc3\xa4dikatives Adjektiv',
-                                                         'ADR': 'Adressierung',
-                                                         'ADV': 'Adverb',
-                                                         'ADVART': 'Kontraktion: Adverb + Artikel',
-                                                         'AKW': 'Aktionswort',
-                                                         'APPO': 'Postposition',
-                                                         'APPR': 'Pr\xc3\xa4position, Zirkumposition links',
-                                                         'APPRART': 'Pr\xc3\xa4position mit Artikel',
-                                                         'APZR': 'Zirkumposition rechts',
-                                                         'ART': 'bestimmter oder unbestimmter Artikel',
-                                                         'CARD': 'Kardinalzahl',
-                                                         'DM': 'Diskursmarker',
-                                                         'EML': 'E-Mail-Adresse',
-                                                         'EMOASC': 'Emoticon, als Zeichenfolge dargestellt (Typ \xe2\x80\x9eASCII\xe2\x80\x9c)',
-                                                         'EMOIMG': 'Emoticon, als Grafik-Ikon dargestellt (Typ \xe2\x80\x9eImage\xe2\x80\x9c)',
-                                                         'FM': 'Fremdsprachliches Material',
-                                                         'HST': 'Hashtag',
-                                                         'ITJ': 'Interjektion',
-                                                         'KOKOM': 'Vergleichspartikel ohne Satz',
-                                                         'KON': 'nebenordnende Konjunktion',
-                                                         'KOUI': 'unterordnende Konjunktion mit \xe2\x80\x9ezu\xe2\x80\x9c und Infinitiv',
-                                                         'KOUS': 'unterordnende Konjunktion mit Satz (VL-Stellung)',
-                                                         'KOUSPPER': 'Kontraktion: unterordnende Konjunk- tion mit Satz (VL-Stellung) + irreflexi- ves Personalpronomen',
-                                                         'NE': 'Eigennamen',
-                                                         'NN': 'Appellativa',
-                                                         'ONO': 'Onomatopoetikon',
-                                                         'PAV': 'Pronominaladverb',
-                                                         'PDAT': 'attributierendes Demonstrativprono- men',
-                                                         'PDS': 'substituierendes Demonstrativprono- men',
-                                                         'PIAT': 'attributierendes Indefinitpronomen ohne Determiner',
-                                                         'PIDAT': 'attributierendes Indefinitpronomen mit Determiner',
-                                                         'PIS': 'substituierendes  Indefinitpronomen',
-                                                         'PPER': 'irreflexives Personalpronomen',
-                                                         'PPERPPER': 'Kontraktion: irreflexives Personalpro- nomen + irreflexives Personalprono- men',
-                                                         'PPOSAT': 'attributierendes  Possesivpronomen',
-                                                         'PPOSS': 'substituierendes  Possesivpronomen',
-                                                         'PRELAT': 'attributierendes Relativpronomen',
-                                                         'PRELS': 'substituierendes Relativpronomen',
-                                                         'PRF': 'reflexives Personalpronomen',
-                                                         'PTKA': 'Partikel bei Adjektiv oder Adverb',
-                                                         'PTKANT': 'Antwortpartikel',
-                                                         'PTKIFG': 'Intensit\xc3\xa4ts-, Fokus- oder  Gradpartikel',
-                                                         'PTKMA': 'Modal- oder Abt\xc3\xb6nungspartikel',
-                                                         'PTKMWL': 'Partikel als Teil eines Mehrwort- Lexems',
-                                                         'PTKNEG': 'Negationspartikel',
-                                                         'PTKVZ': 'abgetrennter Verbzusatz',
-                                                         'PTKZU': '\xe2\x80\x9ezu\xe2\x80\x9c vor Infinitiv',
-                                                         'PWAT': 'attributierendes  Interrogativpronomen',
-                                                         'PWAV': 'adverbiales Interrogativ- oder Relativ- pronomen',
-                                                         'PWS': 'substituierendes Interrogativprono- men',
-                                                         'TRUNC': 'Kompositions-Erstglied',
-                                                         'URL': 'Uniform Resource Locator',
-                                                         'VAFIN': 'finites Verb, aux',
-                                                         'VAIMP': 'Imperativ, aux',
-                                                         'VAINF': 'Infinitiv, aux',
-                                                         'VAPP': 'Partizip Perfekt, aux',
-                                                         'VAPPER': 'Kontraktion: Auxiliarverb + irreflexives Personalpronomen',
-                                                         'VMFIN': 'finites Verb, modal',
-                                                         'VMINF': 'Infinitiv, modal',
-                                                         'VMPP': 'Partizip Perfekt, modal',
-                                                         'VMPPER': 'Kontraktion: Modalverb + irreflexives Personalpronomen',
-                                                         'VVFIN': 'finites Verb, voll',
-                                                         'VVIMP': 'Imperativ, voll',
-                                                         'VVINF': 'Infinitiv, voll',
-                                                         'VVIZU': 'Infinitiv mit \xe2\x80\x9ezu\xe2\x80\x9c, voll',
-                                                         'VVPP': 'Partizip Perfekt, voll',
-                                                         'VVPPER': 'Kontraktion: Vollverb + irreflexives Personalpronomen',
-                                                         'XY': 'Nichtwort, Sonderzeichen  enthaltend'
-                                                         },
-                                            },
-                                    }
-                    },
-
-            "splitter":{
-                        "somajo":{},
-
-                        },
-
-            "tokenizer":{
-                        "somajo":{},
-                        "nltk":{},
-                        },
-
-
-        }
-    #### Tokenizer
-    tokenizer_for_languages = {
-                    "en":["somajo","nltk"],
-                    "de":["somajo"],
-                    "test":["somajo"],
-                    }
-    supported_languages_tokenizer = [key for key in tokenizer_for_languages] 
-    supported_tokenizer = set([v  for values in tokenizer_for_languages.itervalues() for v in values])
-    
-
-    ### Sent Splitters
-    sent_splitter_for_languages = {
-                "en":["somajo"],
-                "de":["somajo"],
-                "test":["somajo"],
-                }
-    supported_languages_sent_splitter = [key for key in sent_splitter_for_languages] 
-    supported_sent_splitter = set([v  for values in sent_splitter_for_languages.itervalues() for v in values])
-    
-
-
-    ###POS-Taggers
-    pos_tagger_for_languages = {
-                "en":["tweetnlp","someweta"],
-                "de":["someweta"],
-                "fr":["someweta"],
-                "test":["tweetnlp"],
-                }
-    supported_languages_pos_tagger = [key for key in pos_tagger_for_languages] 
-    supported_pos_tagger = set([v  for values in pos_tagger_for_languages.itervalues() for v in values])
-    pos_tagger_models = {
-            "tweetnlp":{"en":[]},
-            "someweta":{
-                    "de":["german_web_social_media_2017-12-20.model", "german_newspaper_for_empirist_2017-12-20.model"],
-                    "en":["english_newspaper_2017-09-15.model"],
-                    "fr":["french_newspaper_2018-06-20.model"],
-                    "test":["english_newspaper_2017-09-15.model"],
-                    }
-            }
-
-
-
-    ### Sentiment Anylysers
-    sentiment_analyzer_for_languages = {
-                    "en":["textblob"],
-                    "de":["textblob"],
-                    "fr":["textblob"],
-                    "test":["textblob"],
-                    }
-    supported_languages_sentiment_analyzer = [key for key in sentiment_analyzer_for_languages] 
-    supported_sentiment_analyzer = set([v  for values in sentiment_analyzer_for_languages.itervalues() for v in values])
-    
-
-
-
-
-
-    #preprocession=True, lang_classification=True,  tokenizer=False, pos_tagger=False,sent_splitter=False, del_url=False, del_punkt = False, case_sensitiv=True, del_num=False, del_mention=False, del_hashtag=False, sentiment_analyzer=True
-
-    def __init__(self, language="de", preprocession=True, lang_classification=False,
-                tokenizer=True, pos_tagger=False,sent_splitter=False, sentiment_analyzer=False,
-                tok_split_camel_case=True, 
+class Corpus(BaseContent,BaseDB,CorpusData):
+    def __init__(self, language="de", preprocession=True, lang_classification=False, diff_emoticons=True,
+                tokenizer=True, pos_tagger=False,sent_splitter=False, sentiment_analyzer=False, use_test_pos_tagger=False,
+                tok_split_camel_case=True, end_file_marker = -1, use_end_file_marker = False,  emojis_normalization=True,
                 del_url=False, del_punkt = False, del_num=False, del_mention=False, del_hashtag=False, del_html=False,
-                case_sensitiv=True,
-                stop_if_db_already_exist=False ,rewrite=False,
-                logger_folder_to_save=False,  logger_usage=True, logger_level=logging.INFO,
-                logger_save_logs=True, logger_num_buffered=5, error_tracking=True,
-                ext_tb=False, logger_traceback=False, mode="free"):
-        #p(Metaclass.__dict__)
+                case_sensitiv=True, status_bar= True,**kwargs):
+        super(type(self), self).__init__(**kwargs)
         
-        ## Set Mode: Part 1
-        self._mode = mode
-        if mode != "free":
-            _logger_level, _logger_traceback, _logger_save_logs = set_class_mode(self._mode)
-            logger_level = _logger_level if _logger_level!=None else logger_level
-            logger_traceback = _logger_traceback if _logger_traceback!=None else logger_traceback
-            logger_save_logs = _logger_save_logs if _logger_save_logs!=None else logger_save_logs
-        #p(mode)
-        #logger_level = logging.ERROR
-        #p(logger_level)
-        ## Logger Initialisation
-        self._logger_level = logger_level
-        self._logger_traceback =logger_traceback
-        self._logger_folder_to_save = logger_folder_to_save
-        self._logger_usage = logger_usage
-        self._logger_save_logs = logger_save_logs
-        self.logger = main_logger(self.__class__.__name__, level=self._logger_level, folder_for_log=self._logger_folder_to_save, use_logger=self._logger_usage, save_logs=self._logger_save_logs)
-
-        ## Set Mode: Part 2:
-        print_mode_name(self._mode, self.logger)
-
-
-        self.logger.debug('Beginn of creating an instance of {}()'.format(self.__class__.__name__))
-
-
-
-        #Input: Incaplusation:
-        self._error_tracking = error_tracking
-        self._ext_tb = ext_tb
+        #Input: Encapsulation:
         self._language = language
         self._tokenizer= tokenizer
         self._pos_tagger = pos_tagger
@@ -321,90 +84,61 @@ class Corpus(object):
         self._del_hashtag = del_hashtag
         self._del_html = del_html
         self._case_sensitiv = case_sensitiv
-
-        self._stop_if_db_already_exist = stop_if_db_already_exist
-        self._rewrite = rewrite
-
-        #self.insertion_status_extended = defaultdict(lambda:defaultdict(lambda:0))
-        self.insertion_status_extended = defaultdict(lambda:lambda:0)
-        self.inserted_insertion_status_general = defaultdict(lambda:0)
-        self.error_insertion_status_general = defaultdict(lambda:0)
-        self.empty_insertion_status_general = defaultdict(lambda:0)
-
+        self._end_file_marker = end_file_marker
+        self._use_end_file_marker = use_end_file_marker
+        self._status_bar = status_bar
         self._tok_split_camel_case = tok_split_camel_case
-
-
-
-
-        #p(inpdata)
-
-        #InstanceAttributes: Initialization
-        self.db = False
-        self.preprocessors = defaultdict(dict)
-        self.active_threads = []
-
-        self.status_bars_manager =  self._get_status_bars_manager()
-        #self.opened_gateways = []
-        # locally use "eventlet", remotely use "thread" model
-        execnet.set_execmodel("eventlet", "thread")
-        self.opened_gateways = execnet.Group()
-
-        self.threads_error_bucket = Queue.Queue()
-        # self.threads_success_bucket = Queue.Queue()
-        self.threads_status_bucket = Queue.Queue()
-        self.threads_success_exit = []
-        self.threads_unsuccess_exit = []
-        self.channels_error_bucket = Queue.Queue()
-        self.status_bars_bucket = Queue.Queue()
+        self._raise_exception_if_error_insertion = True if "test" in self._mode  else False
+        self._emojis_normalization = emojis_normalization
+        #self._decoding_to_unicode = decoding_to_unicode
+        self._use_test_pos_tagger = use_test_pos_tagger
+        self._diff_emoticons = diff_emoticons
+        #self._test_goal = test_goal
 
         
-        # self.preprocessors = {
-        #             "thread1": 
-        #                     {"splitter":xxx,
-        #                      "tokenizer":xxx,
-        #                      "pos":xxx, 
-        #                         }
-        #             }
 
-        self.additional_attr = {
-                "preprocession":self._preprocession,
-                "tokenizer":self._tokenizer,
-                "sent_splitter":self._sent_splitter,
-                "pos_tagger":self._pos_tagger,
-                "sentiment_analyzer":self._sentiment_analyzer,
-                "lang_classification":self._lang_classification,
-                "del_url":self._del_url,
-                "del_punkt":self._del_punkt ,
-                "del_num":self._del_num,
-                "del_html":self._del_html,
-                "del_mention":self._del_mention,
-                "del_hashtag":self._del_hashtag,
-                "case_sensitiv":self._case_sensitiv,
-                }
-        ## Error-Tracking:Initialization #1
-        if self._error_tracking:
-            self.client = initialisation()
-            self.client.context.merge({'tags': self.__dict__})
+        #InstanceAttributes: Initialization
+        self.corpdb = False
+        self.offshoot = defaultdict(list)
+        self.runcount = 0
+
 
         # Validate Input variables
         if False in set(list(self._valid_input())):
             self.logger.error("InputValidationError: Corpus Instance can not be initialized!", exc_info=self._logger_traceback)
             sys.exit()
 
+        
 
-        self.logger.debug('Intern InstanceAttributes was initialized')
-
-
+        self.logger.low_debug('Intern InstanceAttributes was initialized')
         self.logger.debug('An instance of Corpus() was created ')
+  
 
+        ## Log Settings of the Instance
+        attr_to_flag = False
+        attr_to_len = False
+        self._log_settings(attr_to_flag =attr_to_flag,attr_to_len =attr_to_len)
 
-    # def __del__(self):
-    #     self.logger.newline(1)
 
 
         ############################################################
         ####################__init__end#############################
         ############################################################
+
+
+
+    def __del__(self):
+        super(type(self), self).__del__()
+        try:
+            self.status_bars_manager.stop()
+        except:
+            pass
+
+
+
+
+
+
 
 ####################################################################################
 ####################################################################################
@@ -419,124 +153,310 @@ class Corpus(object):
 ####################################################################################
 ####################################################################################
 
-
+    def additional_attr(self):
+        additional_attributes = {
+                "preprocession":self._preprocession,
+                "tokenizer":self._tokenizer,
+                "sent_splitter":self._sent_splitter,
+                "pos_tagger":self._pos_tagger,
+                "sentiment_analyzer":self._sentiment_analyzer,
+                "lang_classification":self._lang_classification,
+                "del_url":self._del_url,
+                "del_punkt":self._del_punkt ,
+                "del_num":self._del_num,
+                "del_html":self._del_html,
+                "del_mention":self._del_mention,
+                "del_hashtag":self._del_hashtag,
+                "case_sensitiv":self._case_sensitiv,
+                "emojis_normalization":self._emojis_normalization,
+                }
+        return additional_attributes
 
 
     ###########################INITS + Open##########################
-
 
     def init(self, prjFolder, DBname, language,  visibility, platform_name,
                     encryption_key=False,fileName=False, source=False, license=False,
                     template_name=False, version=False,
                     additional_columns_with_types_for_documents=False, corpus_id=False):
 
-        if self.db:
+        if self.corpdb:
             self.logger.error("CorpusInitError: An active Corpus Instance was found. Please close already initialized/opened Corpus, before new initialization.", exc_info=self._logger_traceback)
             return False
-
-        self.db = DBHandler(stop_if_db_already_exist=self._stop_if_db_already_exist, rewrite=self._rewrite,
-                    logger_level= self._logger_level, 
-                    logger_traceback=self._logger_traceback, logger_folder_to_save=self._logger_folder_to_save,
-                    logger_usage=self._logger_usage, logger_save_logs= self._logger_save_logs,
-                    mode=self._mode ,  error_tracking=self._error_tracking,  ext_tb= self._ext_tb)
-        was_initialized =  self.db.init("corpus", prjFolder, DBname, language, visibility,
+        #p(self._logger_level,"!!self._logger_level")
+        #p(self._logger_save_logs, "!!self._logger_save_logs")
+        self.corpdb = DBHandler( **self._init_attributesfor_dbhandler())
+        was_initialized =  self.corpdb.init("corpus", prjFolder, DBname, language, visibility,
             platform_name=platform_name,encryption_key=encryption_key, fileName=fileName,
             source=source, license=license, template_name=template_name, version=version,
             additional_columns_with_types_for_documents=additional_columns_with_types_for_documents,
             corpus_id=corpus_id)
         #p(was_initialized, "was_initialized")
         if not was_initialized:
-            self.logger.debug("CorpInit: Current Corpus for following attributes  wasn't initialized: 'dbtype='{}'; 'dbname'='{}; id='{}'; encryption_key='{}'; template_name='{}'; language='{}'.".format("corpus", DBname,corpus_id, encryption_key, template_name, language))
+            self.logger.critical("CorpInit: Current Corpus for following attributes  wasn't initialized: 'dbtype='{}'; 'dbname'='{}; id='{}'; encryption_key='{}'; template_name='{}'; language='{}'.".format("corpus", DBname,corpus_id, encryption_key, template_name, language))
             return False
-        #self.db.add_attributs()
+        #self.corpdb.add_attributs()
         
-        self.db.update_attrs(self.additional_attr)
-
-        if self.db.exist():
+        self.corpdb.update_attrs(self.additional_attr())
+        self.set_all_intern_attributes_from_db()
+        if self._save_settings:
+            self.logger.settings("InitCorpusDBAttributes: {}".format( instance_info(self.corpdb.get_all_attr(), attr_to_len=False, attr_to_flag=False, as_str=True)))
+        if self.corpdb.exist():
             self.logger.info("CorpusInit: '{}'-Corpus was successful initialized.".format(DBname))
             return True
         else:
             self.logger.error("CorpusInit: '{}'-Corpus wasn't  initialized.".format(DBname), exc_info=self._logger_traceback)
             return False
 
+        #self.logger.settings("InitializationAttributes: {}".format( instance_info(inp_dict, attr_to_len=attr_to_len, attr_to_flag=attr_to_flag, as_str=True)))
+
     
     def close(self):
-        self.db.close()
-        self.db = False
+        self.corpdb.close()
+        self.corpdb = False
 
     def _close(self):
-        self.db._close()
-        self.db = False
+        self.corpdb._close()
+        self.corpdb = False
 
 
     def open(self, path_to_corp_db, encryption_key=False):
 
-        if self.db:
+        if self.corpdb:
             self.logger.error("CorpusOpenerError: An active Corpus Instance was found. Please close already initialized/opened Corpus, before new initialization.", exc_info=self._logger_traceback)
             return False
 
-        self.db = DBHandler(logger_level= self._logger_level,logger_traceback=self._logger_traceback, logger_folder_to_save=self._logger_folder_to_save,logger_usage=self._logger_usage, logger_save_logs= self._logger_save_logs, mode=self._mode ,  error_tracking=self._error_tracking,  ext_tb= self._ext_tb)
-        self.db.connect(path_to_corp_db, encryption_key=encryption_key)
+        self.corpdb = DBHandler(**self._init_attributesfor_dbhandler())
+        self.corpdb.connect(path_to_corp_db, encryption_key=encryption_key)
 
-
-        if self.db.exist():
-            #p(self.db.typ())
-            if self.db.typ() != "corpus":
+        if self.corpdb.exist():
+            #p(self.corpdb.typ())
+            if self.corpdb.typ() != "corpus":
                 self.logger.error("Current DB is not an Corpus.")
                 self._close()
                 return False
             self.logger.info("CorpusOpener: '{}'-Corpus was successful opened.".format(os.path.basename(path_to_corp_db)))
+            self.set_all_intern_attributes_from_db()
+            self.logger.settings("OpenedCorpusDBAttributes: {}".format( instance_info(self.corpdb.get_all_attr(), attr_to_len=False, attr_to_flag=False, as_str=True)))
             return True
         else:
             self.logger.error("CorpusOpener: Unfortunately '{}'-Corpus wasn't opened.".format(os.path.basename(path_to_corp_db)), exc_info=self._logger_traceback)
             return False
 
+    def set_all_intern_attributes_from_db(self):
+        info_dict = self.info()
+        self._del_url = info_dict["del_url"]
+        self._tokenizer = info_dict["tokenizer"]
+        self._template_name = info_dict["template_name"]
+        self._sentiment_analyzer = info_dict["sentiment_analyzer"]
+        self._preprocession = info_dict["preprocession"]
+        self._id = info_dict["id"]
+        self._pos_tagger = info_dict["pos_tagger"]
+        self._del_hashtag = info_dict["del_hashtag"]
+        self._lang_classification = info_dict["lang_classification"]
+        self._source = info_dict["source"]
+        self._version = info_dict["version"]
+        self._del_html = info_dict["del_html"]
+        self._del_punkt = info_dict["del_punkt"]
+        self._sent_splitter = info_dict["sent_splitter"]
+        self._visibility = info_dict["visibility"]
+        self._language = info_dict["language"]
+        self._typ = info_dict["typ"]
+        self._del_url = info_dict["del_url"]
+        self._case_sensitiv = info_dict["case_sensitiv"]
+        self._name = info_dict["name"]
+        self._license = info_dict["license"]
+        self._created_at = info_dict["created_at"]
+        self._platform_name = info_dict["platform_name"]
+        self._del_num = info_dict["del_num"]
+        self._del_mention = info_dict["del_mention"]
+        self._emojis_normalization = info_dict["emojis_normalization"]
+
+
+
+    def _init_attributesfor_dbhandler(self):
+        init_attributes_db_handler = {
+                        "stop_if_db_already_exist":self._stop_if_db_already_exist,
+                        "rewrite":self._rewrite,
+                        "logger_level":self._logger_level,
+                        "optimizer":self._optimizer,
+                        "in_memory":self._in_memory,
+                        "logger_traceback":self._logger_traceback,
+                        "logger_folder_to_save":self._logger_folder_to_save,
+                        "logger_usage":self._logger_usage,
+                        "logger_save_logs":self._logger_save_logs,
+                        "thread_safe":self._thread_safe,
+                        "mode":self._mode,
+                        "error_tracking":self._error_tracking,
+                        "ext_tb":self._ext_tb,
+                        "isolation_level":self._isolation_level,
+                        "optimizer_page_size":self._optimizer_page_size,
+                        "optimizer_cache_size":self._optimizer_cache_size,
+                        "optimizer_locking_mode":self._optimizer_locking_mode,
+                        "optimizer_synchronous":self._optimizer_synchronous,
+                        "optimizer_journal_mode":self._optimizer_journal_mode,
+                        "optimizer_temp_store":self._optimizer_temp_store,
+                        "use_cash":self._use_cash,
+                        }
+        return init_attributes_db_handler
+
+
     def info(self):
-        return self.db.get_all_attr()
+        if not self._check_db_should_exist():
+            return False
+
+        if not self._check_db_should_be_an_corpus():
+            return False
+
+        return copy.deepcopy(self.corpdb.get_all_attr())
 
     ###########################Setters######################
 
+    def _init_insertions_variables(self):
+        self.insertion_status_extended = defaultdict(lambda:lambda:0)
+        self.inserted_insertion_status_general = defaultdict(lambda:0)
+        self.error_insertion_status_general = defaultdict(lambda:0)
+        self.outsorted_insertion_status_general = defaultdict(lambda:0)
+        self._terminated = False
+        self._threads_num = False
+        self.main_status_bar_of_insertions = False
+        self.preprocessors = defaultdict(dict)
+        self.active_threads = []
+        self.KeyboardInterrupt = 0
+        self.status_bars_manager =  False
+        execnet.set_execmodel("eventlet", "thread")
+        self.opened_gateways = execnet.Group()
+        self.threads_error_bucket = Queue.Queue()
+        # self.threads_success_bucket = Queue.Queue()
+        self.threads_status_bucket = Queue.Queue()
+        self.threads_success_exit = []
+        self.threads_unsuccess_exit = []
+        self.channels_error_bucket = Queue.Queue()
+        self.status_bars_bucket = Queue.Queue()
+        #self.counter = SharedCounterIntern()
+        #self.total_ignored_last_insertion = 0
+        self.total_inserted_during_last_insert= 0 
+        self.total_ignored_last_insertion = 0 
+        self.total_outsorted_insertion_during_last_insertion_process = 0
+        self.total_error_insertion_during_last_insertion_process = 0
+        self._timer_on_main_status_bar_was_reset = False
+        self._start_time_of_the_last_insertion = False
+        self._end_time_of_the_last_insertion = False
+        self._last_insertion_was_successfull = False
+        self.counters_attrs = defaultdict(lambda:defaultdict(dict))
+        self.status_bars_manager =  self._get_status_bars_manager()
+
+    def insert_duration(self):
+        if not self._last_insertion_was_successfull:
+            self.logger.error("Last insertion wasn't successfully end ->  It is not possible to return this Duration.")
+            return None
+        if not self._start_time_of_the_last_insertion and not self._end_time_of_the_last_insertion:
+            self.logger.error("Start or End Time for last insertion wasn't saved. -> It is not possible to return this Duration.")
+            return None
+
+        return self._end_time_of_the_last_insertion-self._start_time_of_the_last_insertion
 
 
 
+    def _check_termination(self, thread_name="Thread0"):
+        if self._terminated:
+            self.logger.critical("'{}'-Thread was terminated.".format(thread_name))
+            self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
+            sys.exit()
 
 
-    def _insert(self, inp_data, tablename="documents",text_field_name="text",  thread_name="Thread0", status_bar=False, log_ignored=True):
-        try:
-            #self._rle = Rle()
 
+    def _initialisation_of_insertion_process(self, inp_data, tablename="documents",text_field_name="text",  thread_name="Thread0",  log_ignored=True, dict_to_list=False):
+            if self._status_bar:
+                if self._threads_num>1:
+                    if self._status_bar:
+                        unit = "files" if self._use_end_file_marker else "rows"
+                        self.main_status_bar_of_insertions.unit = unit
+                        self.main_status_bar_of_insertions.total += len(inp_data)
+
+            ### Preprocessors Initialization
             if self._preprocession:
                 if thread_name not in self.preprocessors:
-                    if not self._init_preprocessors(thread_name=thread_name, status_bar=status_bar):
+                    if not self._init_preprocessors(thread_name=thread_name)["status"]:
                         self.logger.error("Error during Preprocessors initialization. Thread '{}' was stopped.".format(thread_name), exc_info=self._logger_traceback)
                         self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":"Error during Preprocessors initialization"})
+                        self._terminated = True
                         return False
-            
-            self.logger.debug("_InsertionProcess: Was started for '{}'-Thread. ".format(thread_name))
-            if status_bar:
-                status_bar_of_insertions = self._get_new_status_bar(len(inp_data), "{}:Insertion".format(thread_name), "files")
-            
-            for row_as_dict in inp_data:
-                #self.logger.critical(row_as_dict)
-                #p(row_as_dict)
-                text_preprocessed = False
-                if self._preprocession:
-                    try:
-                        if row_as_dict:
-                            preproc = self._preprocessing(row_as_dict[text_field_name],thread_name=thread_name, log_ignored=log_ignored)
-                            if preproc:
-                                text_preprocessed = json.dumps(preproc)
-                            else:
-                                text_preprocessed = preproc
-                            #p(text_preprocessed, "text_preprocessed")
-                        else:
-                            self.empty_insertion_status_general[thread_name] +=1
-                            if status_bar:
-                                status_bar_of_insertions.total -= 1
-                            if log_ignored:
-                                self.logger.warning("IgnoredRow: '{}'. (row was given already empty).".format(row_as_dict))
-                            continue
 
+            self.logger.debug("_InsertionProcess: Was started for '{}'-Thread. ".format(thread_name))
+            
+            if self._status_bar:
+                if self._threads_num>1:
+                    if not self._timer_on_main_status_bar_was_reset:
+                        #p(self.main_status_bar_of_insertions.start, "start1")
+                        self.main_status_bar_of_insertions.start= time.time()
+                        #p(self.main_status_bar_of_insertions.start, "start2")
+                        self._timer_on_main_status_bar_was_reset = True
+
+                unit = "files" if self._use_end_file_marker else "rows"
+                status_bar_insertion_in_the_current_thread = self._get_new_status_bar(len(inp_data), "{}:Insertion".format(thread_name), unit)
+                return status_bar_insertion_in_the_current_thread
+            self._check_termination(thread_name=thread_name)
+            return None
+
+    def _insert(self, inp_data, tablename="documents",text_field_name="text",  thread_name="Thread0",  log_ignored=True, dict_to_list=False):
+        try:  
+            self._check_termination(thread_name=thread_name) 
+            time.sleep(2) # 
+
+            ############################################################
+            ####################INITIALISATION####################
+            ############################################################
+            status_bar_insertion_in_the_current_thread = self._initialisation_of_insertion_process( inp_data, tablename=tablename,text_field_name=text_field_name,  thread_name=thread_name,  log_ignored=log_ignored, dict_to_list=dict_to_list)
+            if self._status_bar:
+                if not  status_bar_insertion_in_the_current_thread: return False
+
+            ############################################################
+            #################### MAIN INSERTION PROCESS ####################
+            ############################################################
+            for row_as_dict in inp_data:
+                #p(row_as_dict ,"rw_as_dict ")
+                #self.offshoot[self.runcount].append(row_as_dict)
+                self._check_termination(thread_name=thread_name) 
+                if row_as_dict == self._end_file_marker:
+                    #f.write("{}\n".format(row_as_dict))
+                    if self._status_bar:
+                        if self._use_end_file_marker:
+                            status_bar_insertion_in_the_current_thread.update(incr=1)
+                            if self._threads_num>1:
+                                self.main_status_bar_of_insertions.update(incr=1)
+                    continue
+                else:
+                    if self._status_bar:
+                        if not self._use_end_file_marker:
+                            status_bar_insertion_in_the_current_thread.update(incr=1)
+                            if self._threads_num>1:
+                                self.main_status_bar_of_insertions.update(incr=1)
+                
+                # for empty insertions
+                if not row_as_dict:
+                    #f.write("{}\n".format(row_as_dict))
+                    self.outsorted_insertion_status_general[thread_name] +=1
+                    continue
+                
+                ############################################################
+                #################### TEXT PREPROSSESION ###################
+                ############################################################
+                if self._preprocession:
+                    text_preprocessed = False
+                    try:
+                        preproc = self._preprocessing(row_as_dict[text_field_name],thread_name=thread_name, log_ignored=log_ignored, row=row_as_dict)
+                        if preproc:
+                            if preproc == "terminated":
+                                self.logger.critical("{} got an  Termination Command!! and was terminated.".format(thread_name))
+                                self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
+                                self._terminated = True
+                                return False
+
+                            text_preprocessed = json.dumps(preproc)
+                        else:
+                            text_preprocessed = preproc
+                        #p(text_preprocessed, "text_preprocessed")
                     except KeyError, e: 
                         print_exc_plus() if self._ext_tb else ""
                         self.logger.error("PreprocessingError: (KeyError) See Exception: '{}'. Probably text_field wasn't matched. The wrong text_field name was given or row  was given as list and not as dict.   ".format(e), exc_info=self._logger_traceback)
@@ -547,43 +467,76 @@ class Corpus(object):
                         self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
                         return False
 
+
                     if text_preprocessed:
                         row_as_dict[text_field_name] = text_preprocessed
                     else:
+                        self._check_termination(thread_name=thread_name) 
                         #self.logger.warning("Text in the current DictRow (id='{}') wasn't preprocessed. This Row was ignored.".format(row_as_dict["id"]))
-                        self.empty_insertion_status_general[thread_name] +=1
-                        if status_bar:
-                            status_bar_of_insertions.total -= 1
-                        if log_ignored:
-                            # if isinstance(output, unicode):
-                            #     to_log_orig = output.encode("utf-8")
-                            # else:
-                            #     to_log_orig = output
-                            self.logger.warning("IgnoredRow: '{}'. (after Preprocessing. Probably was out-sorted from language classifier). \n\n\n".format(row_as_dict))
+                        self.outsorted_insertion_status_general[thread_name] +=1
                         continue
 
-                if self.db.lazyinsert( tablename, row_as_dict):
-                    self.inserted_insertion_status_general[thread_name] +=1
-                    if status_bar:
-                        status_bar_of_insertions.update(incr=1)
-                else:
-                    #self.db.
-                    self.error_insertion_status_general[thread_name] +=1
-                    if status_bar:
-                        status_bar_of_insertions.total -= 1
-                    if log_ignored:
-                        self.logger.warning("IgnoredRow: '{}'. (wasn't inserted into DB.) \n\n\n".format(row_as_dict))
-                    continue
-                #else:
-                #    self.logger.critical("Preprocession was ")
 
-            if status_bar:
-                status_bar_of_insertions.refresh()
-                status_bar_of_insertions.close(clear=False)
-            self.logger.debug("_Insert: '{}'-Thread is done and was stopped.".format(thread_name))
+                ############################################################
+                ####################INSERTION INTO DB ####################
+                ############################################################
+                # #return "outsorted"
+                self._check_termination(thread_name=thread_name)
+                insertion_status = self.corpdb.lazyinsert( tablename, row_as_dict, thread_name=thread_name, dict_to_list=dict_to_list)
+
+
+                if insertion_status["status"]: 
+                    self.inserted_insertion_status_general[thread_name] += insertion_status["out_obj"]
+                    self.outsorted_insertion_status_general[thread_name] += insertion_status["outsort"]
+                    self.logger.low_debug("Row was inserted into DB.")
+                elif insertion_status["action"] == "outsorted":
+                    self.outsorted_insertion_status_general[thread_name] +=1
+                elif insertion_status["action"] == "ThreadsCrash":
+                    msg = "ThreadsCrash: Please use option 'thread_safe' to ensure ThreadSafety and run script again. |ErrorTrackID:'{}'| (To see more use search logs with TrackID)".format(insertion_status["track_id"])
+                    self.logger.error(msg)
+                    if log_ignored:
+                        self.logger.error_insertion("IgnoredRow: |ErrorTrackID:'{}'| Current Row: '{}' wasn't inserted (by dbhandler.lazyinsert()) into DB. Consult logs to find the reason.".format(insertion_status["track_id"],row_as_dict))
+                    
+                    self.threads_status_bucket.put({"name":thread_name, "status":"ThreadsCrash", "track_id":insertion_status["track_id"]})
+                    self._terminated = True
+                    raise ThreadsCrash, msg
+                    sys.exit()
+
+                elif insertion_status["action"] in ["failed", "ignored"]:
+                    self.error_insertion_status_general[thread_name] +=1
+                    if log_ignored:
+                        self.logger.error_insertion("IgnoredRow: |ErrorTrackID:'{}'| Current Row: '{}' wasn't inserted (by dbhandler.lazyinsert()) into DB. Consult logs to find the reason.".format(insertion_status["track_id"],row_as_dict))
+                    continue
+                else:
+                    self.error_insertion_status_general[thread_name] +=1
+                    if log_ignored:
+                        self.logger.error_insertion("IgnoredRow: |ErrorTrackID:'{}'| Current Row: '{}' wasn't inserted (by dbhandler.lazyinsert()) into DB. Consult logs to find the reason.".format(insertion_status["track_id"],row_as_dict))
+                    continue
+
+
+            ############################################################
+            ####################FINISCHING ####################
+            ############################################################
+            self._check_termination(thread_name=thread_name) 
+
+            if self._status_bar:
+                status_bar_insertion_in_the_current_thread.refresh()
+                self.counters_attrs["_insert"][thread_name]["start"] = status_bar_insertion_in_the_current_thread.start
+                self.counters_attrs["_insert"][thread_name]["end"] = status_bar_insertion_in_the_current_thread.last_update
+                self.counters_attrs["_insert"][thread_name]["total"] = status_bar_insertion_in_the_current_thread.total
+                self.counters_attrs["_insert"][thread_name]["desc"] = status_bar_insertion_in_the_current_thread.desc
+                status_bar_insertion_in_the_current_thread.close(clear=False)
+
             self.threads_status_bucket.put({"name":thread_name, "status":"done"})
-            self.db.commit()
-            return True   
+            self.logger.debug("_Insert: '{}'-Thread is done and was stopped.".format(thread_name))
+            return True
+
+        except KeyboardInterrupt:
+            self.logger.critical("{} get an  KeyboardInterruption.".format(thread_name))
+            self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
+            self._terminated = True
+            #self.terminate_all("KeyboardInterrupt")
+            return False
 
         except Exception, e:
             print_exc_plus() if self._ext_tb else ""
@@ -592,34 +545,54 @@ class Corpus(object):
             return False
 
 
-
-
-    def insert(self, inp_data, tablename="documents",text_field_name="text",  thread_name="Thread0", status_bar = True, allow_big_number_of_streams=False, number_of_allow_streams=8, log_ignored=True):
+    def insert(self, inp_data, tablename="documents",text_field_name="text",  thread_name="Thread0",  allow_big_number_of_streams=False, number_of_allow_streams=8, log_ignored=True, dict_to_list=False, create_def_indexes=True):
         try:
-            #p(type(inp_data), "inp_data")
-            #self.logger.critical(("1", type(inp_data),inp_data))
+            if not self._check_db_should_exist():
+                return False
+            self._init_insertions_variables()
+            self._start_time_of_the_last_insertion = time.time()
+            self.runcount += 1
             if isinstance(inp_data, LenGen):
                 inp_data= [inp_data]
-            elif isinstance(inp_data, list) and isinstance(inp_data[0], dict):
-                inp_data = [inp_data]
-            #self.logger.critical(("2", type(inp_data),inp_data))
-            #p(inp_data)
-            # starting computing for this corpus
+            elif isinstance(inp_data, list):
+                if isinstance(inp_data[0], dict):
+                    inp_data = [inp_data]
+                #elif isinstance(inp_data[0],  LenGen)
+                #    pass
+            else:
+                self.logger.critical("Possibly not right type of data was given. It could be messed up the process.")
+            #return True
+            #self.status_bars_manager =  self._get_status_bars_manager()
             #Manager.term
             #self.status_bars_manager.term print(t.bold_red_on_bright_green('It hurts my eyes!'))
-            if status_bar:
-                status_bar_starting_corpus_insertion = self._get_new_status_bar(None, self.status_bars_manager.term.center('{}'.format(self.db.fname()) ) , "", counter_format=self.status_bars_manager.term.bold_black_on_white("{fill}{desc}{fill}"))
-                #status_bar_starting_corpus_insertion.update(incr=10)
+            if self._status_bar:
+                if self._in_memory:
+                    dbname = ":::IN-MEMORY-DB:::"
+                else:
+                    dbname = '{}'.format(self.corpdb.fname())
+                status_bar_starting_corpus_insertion = self._get_new_status_bar(None, self.status_bars_manager.term.center( dbname) , "", counter_format=self.status_bars_manager.term.bold_white_on_green("{fill}{desc}{fill}"))
                 status_bar_starting_corpus_insertion.refresh()
             ## threads
-            if status_bar:
+            if self._status_bar:
                 status_bar_threads_init = self._get_new_status_bar(len(inp_data), "ThreadsStarted", "threads")
+            
             i=1
-
             if len(inp_data)>=number_of_allow_streams:
                 if not allow_big_number_of_streams:
                     self.logger.critical("Number of given streams is to big ('{}'). It it allow to have not more as {} streams/threads parallel. If you want to ignore this border set 'allow_big_number_of_streams' to True. But it also could mean, that the type of data_to_insert is not correct. Please check inserted data. It should be generator/list of rows (packed as dict).".format(len(inp_data),number_of_allow_streams))
                     return False
+
+            self._threads_num = len(inp_data)
+            if self._threads_num>1:
+                if self._status_bar:
+                    unit = "files" if self._use_end_file_marker else "rows"
+                    #self.main_status_bar_of_insertions = self._get_new_status_bar(0, "AllThreadsTotalInsertions", unit,
+                    #                    bar_format= self.status_bars_manager.term.bright_magenta( u'{desc}{desc_pad}{percentage:3.0f}%|{bar}| {count:{len_total}d}/{total:d} [{elapsed}<{eta}, {rate:.2f}{unit_pad}{unit}/s]\t\t\t\t'))
+
+                    self.main_status_bar_of_insertions = self._get_new_status_bar(0, "AllThreadsTotalInsertions", unit)
+                    self.main_status_bar_of_insertions.refresh()
+                    #self.main_status_bar_of_insertions.total = 0
+
 
             for gen in inp_data:
                 #p(gen, "gen")
@@ -628,116 +601,119 @@ class Corpus(object):
                     self.logger.error("InsertionError: Given InpData not from right type. Please given an list or an generator.", exc_info=self._logger_traceback)
                     return False
 
-
                 thread_name = "Thread{}".format(i)
-                processThread = threading.Thread(target=self._insert, args=(gen, tablename, text_field_name,  thread_name, status_bar, log_ignored), name=thread_name)
+                processThread = MyThread(target=self._insert, args=(gen, tablename, text_field_name,  thread_name, log_ignored, dict_to_list), name=thread_name)
                 processThread.setDaemon(True)
                 processThread.start()
                 self.active_threads.append(processThread)
-                if status_bar:
+                if self._status_bar:
                     status_bar_threads_init.update(incr=1)
                 i+=1
-                time.sleep(2)
+                time.sleep(1)
 
             #p("All Threads was initialized", "insertparallel")  
             self.logger.info("'{}'-thread(s) was started. ".format(len(self.active_threads)))
 
             time.sleep(3)
 
-            self._wait_till_all_threads_are_completed(thread_name)
+            if not self._wait_till_all_threads_are_completed("Insert"):
+                return False
+
+            status = self.corpdb._write_cashed_insertion_to_disc(with_commit=True)
+            if status["status"]:
+                self.inserted_insertion_status_general[thread_name] += status["out_obj"]
+                self.outsorted_insertion_status_general[thread_name] += status["outsort"]
+            else:
+                return status
+
+            ## save attributes from the main counter
+            if self._status_bar:
+                if self.main_status_bar_of_insertions:
+                    self.counters_attrs["insert"]["start"] = self.main_status_bar_of_insertions.start
+                    self.counters_attrs["insert"]["end"] = self.main_status_bar_of_insertions.last_update
+                    self.counters_attrs["insert"]["total"] = self.main_status_bar_of_insertions.total
+                    self.counters_attrs["insert"]["desc"] = self.main_status_bar_of_insertions.desc
+                else:
+                    self.counters_attrs["insert"] = False
 
             self._print_summary_status()
             self.opened_gateways.terminate()
-
-
+            #self.corpdb.commit()
             
-            if status_bar:
+            if self._status_bar:
                 was_inserted = sum(self.inserted_insertion_status_general.values()) 
                 error_insertion = sum(self.error_insertion_status_general.values())
-                empty_insertion = sum(self.empty_insertion_status_general.values())
+                empty_insertion = sum(self.outsorted_insertion_status_general.values())
                 was_ignored = error_insertion + empty_insertion
-                status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("Total_Inserted: '{}';  Total_Ignored: '{}'  ('{}'-error, '{}'-outsorted).".format(was_inserted, was_ignored,error_insertion,empty_insertion ) ), "",  counter_format=self.status_bars_manager.term.bold_black_on_white('{fill}{desc}{fill}'))
+                status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("TotalRowInserted:'{}'; TotalIgnored:'{}' ('{}'-error, '{}'-outsorted)".format(was_inserted, was_ignored,error_insertion,empty_insertion ) ), "",  counter_format=self.status_bars_manager.term.bold_white_on_green('{fill}{desc}{fill}\n'))
                 status_bar_total_summary.refresh()
                 self.status_bars_manager.stop()
 
+            self.corpdb.commit()
+            self.logger.info("Current CorpusDB has '{}' rows in the Documents Table.".format(self.corpdb.rownum("documents")))
+
+            if create_def_indexes:
+                self.corpdb.init_default_indexes(thread_name=thread_name)
+                self.corpdb.commit()
+
             if len(self.threads_unsuccess_exit) >0:
+                self.logger.error("Insertion process is failed. (some thread end with error)")
+                raise ProcessError, "'{}'-Threads end with an Error.".format(len(self.threads_unsuccess_exit))
                 return False
             else:
+                self.logger.info("Insertion process end successful!!!")
                 return True
 
+            self._last_insertion_was_successfull = True
+            self._end_time_of_the_last_insertion = time.time()
+
         except KeyboardInterrupt:
-            self.logger.warning("KeyboardInterrupt: Process was stopped from User. Some inconsistence in the current DB may situated.")
-            sys.exit()
+            #self.logger.warning("KeyboardInterrupt: Process was stopped from User. Some inconsistence in the current DB may situated.")
+            self.terminate_all("KeyboardInterrupt", thread_name=thread_name)
+            #self.logger.critical("KeyboardInterrupt: All Instances was successful aborted!!!")
+            #sys.exit()
         except Exception, e:
             self.logger.error(" See Exception: '{}'. ".format(e),  exc_info=self._logger_traceback)
+            return False
 
 
 
 
-    # def insert(self, inp_data, datatyp="dict", tablename="documents",text_field_name="text",  thread_name="Thread0", status_bar = True):
-    #     try:
-    #         if not self._isrighttype(inp_data):
-    #             self.logger.error("InsertError: Given InputData is not from right type!", exc_info=self._logger_traceback)
-    #             return False
+    def terminate_all(self, reason, thread_name="Thread0"):
+        try:
+            self.logger.critical("Termination Process was initialized. Reason: '{}'.".format(reason))
+            self._terminated = True
+            time.sleep(2)
+            if self.status_bars_manager:
+                self.status_bars_manager.stop()
+            if self.opened_gateways:
+                self.opened_gateways.terminate()
 
-    #         thread_name = thread_name
-    #         if status_bar:
-    #             status_bar_threads_init = self._get_new_status_bar(1, "ThreadsStarted", "threads")
-    #         processThread = threading.Thread(target=self._insert, args=(inp_data,datatyp, tablename, text_field_name,  thread_name, status_bar), name=thread_name)
-    #         processThread.setDaemon(True)
-    #         processThread.start()
-    #         if status_bar:
-    #             status_bar_threads_init.update(incr=1)
-
-    #         self.active_threads.append(processThread)
-    #         self.logger.info("'{}'-thread(s) was started. ".format(len(self.active_threads)))
-    #         time.sleep(3)
- 
-    #         self._wait_till_all_threads_are_completed()
-    #         # self._init_status_bar([inp_data])
-    #         # self._update_status_bar()
-    #         self._print_summary_status()
-    #         self.opened_gateways.terminate()
-    #     except KeyboardInterrupt:
-    #         self.logger.warning("KeyboardInterrupt: Process was stopped from User. Some inconsistence in the current DB may situated.")
-    #         sys.exit()
+            self._wait_till_all_threads_are_completed("TerminateAll",sec_to_wait=0, sec_to_log = 1)
+            self._print_summary_status()
+            
+            self.logger.critical("All active Threads was successful terminated!!!")
+            if reason == "KeyboardInterrupt":
+                self.logger.critical("Corpus was Terminated ({}). (For more information please consult logs)".format(reason))
+            else:
+                raise ProcessError, "Corpus was Terminated ({}). (For more information please consult logs)".format(reason)
+            return True
+        except KeyboardInterrupt:
+            self.logger.critical("Process was killed un-properly!!!")
+            sys.exit()
+            
 
 
-    # def insertparallel(self, list_with_generators, datatyp="dict", tablename="documents",text_field_name="text",  status_bar=True):
-    #     try:
-    #         if not self._check_db_should_exist():
-    #             return False
 
-    #         status_bar_threads_init = self._get_new_status_bar(len(list_with_generators), "ThreadsStarted", "threads")
-    #         i=1
-    #         for gen in list_with_generators:
-    #             if not self._isrighttype(gen):
-    #                 self.logger.error("InsertionError: Given InpData not from right type. Please given an list or an generator.", exc_info=self._logger_traceback)
-    #                 return False
-
-
-    #             thread_name = "Thread{}".format(i)
-    #             processThread = threading.Thread(target=self._insert, args=(gen,datatyp, tablename, text_field_name,  thread_name, status_bar), name=thread_name)
-    #             processThread.setDaemon(True)
-    #             processThread.start()
-    #             self.active_threads.append(processThread)
-    #             status_bar_threads_init.update(incr=1)
-    #             i+=1
-    #             time.sleep(2)
-
-    #         #p("All Threads was initialized", "insertparallel")  
-    #         self.logger.info("'{}'-thread(s) was started. ".format(len(self.active_threads)))
-
-    #         time.sleep(3)
-
-    #         self._wait_till_all_threads_are_completed()
-
-    #         self._print_summary_status()
-    #         self.opened_gateways.terminate()
-    #     except KeyboardInterrupt:
-    #         self.logger.warning("KeyboardInterrupt: Process was stopped from User. Some inconsistence in the current DB may situated.")
-    #         sys.exit()
-
+#self.KeyboardInterrupt
+    # def _terminated_all_activ_threads(self):
+    #     for t in self.active_threads:
+    #         if t.isAlive():
+    #             t.terminate()
+    #             t.join()
+    #             self.logger.info("'{}'-Thread was terminated".format(t.name))
+    #         else:
+    #             self.logger.info("'{}'-Thread can not be terminated, because it is already died.".format(t.name))
 
 
 
@@ -747,18 +723,18 @@ class Corpus(object):
         if not self._check_db_should_exist():
             yield False
             return 
-        for row in self.db.lazyget("documents", columns=columns, select=select, where=where, connector_where=connector_where, output=output, size_to_fetch=size_to_fetch, limit=limit, offset=offset):
+        for row in self.corpdb.lazyget("documents", columns=columns, select=select, where=where, connector_where=connector_where, output=output, size_to_fetch=size_to_fetch, limit=limit, offset=offset):
             yield row
 
 
     def docs(self, columns=False, select=False,  where=False, connector_where="AND", output="list", size_to_fetch=1000, limit=-1, offset=-1, stream_number=1, adjust_to_cpu=True, min_files_pro_stream=1000):
-        row_number = self.db.rownum("documents")
+        row_number = self.corpdb.rownum("documents")
         #p((row_number))
         wish_stream_number = stream_number
         if stream_number <1:
             stream_number = 1000000
             adjust_to_cpu = True
-            self.logger.debug("StreamNumber is less as 1. Automatic computing of strem number according cpu was enabled.")
+            self.logger.debug("StreamNumber is less as 1. Automatic computing of stream number according cpu was enabled.")
 
 
         if adjust_to_cpu:
@@ -818,7 +794,7 @@ class Corpus(object):
     #     if not self._check_db_should_exist():
     #         return False
 
-    #     if not self.db.update_attr(attribut_name, value,  dbname="main"):
+    #     if not self.corpdb.update_attr(attribut_name, value,  dbname="main"):
     #         self.logger.error("AttrUpdate: Bot possible. ", exc_info=self._logger_traceback)
     #         return False
 
@@ -826,7 +802,7 @@ class Corpus(object):
     #     if not self._check_db_should_exist():
     #         return False
 
-    #     if not self.db.add_attributs(attributs_names, values, dbname="main"):
+    #     if not self.corpdb.add_attributs(attributs_names, values, dbname="main"):
     #         self.logger.error("AttrUpdate: Bot possible. ", exc_info=self._logger_traceback)
     #         return False
 
@@ -834,14 +810,14 @@ class Corpus(object):
     # def get_attr(self,attributName, dbname=False):
     #     if not self._check_db_should_exist():
     #         return False
-    #     return self.db.get_attr(attributName, dbname="main")
+    #     return self.corpdb.get_attr(attributName, dbname="main")
 
 
     # def get_all_attr(self):
     #     if not self._check_db_should_exist():
     #         return False
-    #     #p(self.db.get_all_attr("main"))
-    #     return self.db.get_all_attr(dbname="main")
+    #     #p(self.corpdb.get_all_attr("main"))
+    #     return self.corpdb.get_all_attr(dbname="main")
 
 
 
@@ -853,14 +829,14 @@ class Corpus(object):
 
 
     def exist(self):
-        return True if self.db else False
+        return True if self.corpdb else False
 
 
     def db(self):
         if not self._check_db_should_exist():
             return False
         self.logger.debug("DBConnection was passed.")
-        return self.db
+        return self.corpdb
 
 
 
@@ -891,59 +867,80 @@ class Corpus(object):
 
 
 
-    def _init_preprocessors(self, thread_name="Thread0", status_bar=False):
+    def _init_preprocessors(self, thread_name="Thread0"):
         try:
-            if status_bar:
-                status_bar_preprocessors_init = self._get_new_status_bar(4, "{}:PreprocessorsInit".format(thread_name), "unit")
+            if self._preprocession:
+                ### Step 1: Init Status Bar 
+                if not self._terminated:
+                    p_list = [self._sent_splitter, self._pos_tagger, self._lang_classification, self._tokenizer]
+                    preprocessors_number = sum([True for p in p_list if p ])
+                    if self._status_bar:
+                        status_bar_preprocessors_init = self._get_new_status_bar(preprocessors_number, "{}:PreprocessorsInit".format(thread_name), "unit")
 
-            if not self._set_tokenizer(split_camel_case=self._tok_split_camel_case, language=self._language, thread_name=thread_name):
-                return False
-            if status_bar:
-                status_bar_preprocessors_init.update(incr=1)
-                status_bar_preprocessors_init.refresh()
+                ### Step 2. 
+                if not self._terminated: 
+                    if not self._set_tokenizer(split_camel_case=self._tok_split_camel_case, language=self._language, thread_name=thread_name):
+                        #return False
+                        return Status(status=False, desc="SetTokenizerFailed")
+                    if self._status_bar:
+                        status_bar_preprocessors_init.update(incr=1)
+                        status_bar_preprocessors_init.refresh()
 
-            if self._sent_splitter:
-                #is_tuple = True if True in [self._tok_token_classes,self._tok_extra_info] else False
-                if not self._set_sent_splitter( thread_name=thread_name):
-                    return False
-                if status_bar:
-                    status_bar_preprocessors_init.update(incr=1)
-                    status_bar_preprocessors_init.refresh()
-                    #status_bar_preprocessors_init.update(incr=1)
+                if not self._terminated: 
+                    if self._sent_splitter:
+                        #is_tuple = True if True in [self._tok_token_classes,self._tok_extra_info] else False
+                        if not self._set_sent_splitter( thread_name=thread_name):
+                            return Status(status=False, desc="SetSentSplitterFailed")
+                        if self._status_bar:
+                            status_bar_preprocessors_init.update(incr=1)
+                            status_bar_preprocessors_init.refresh()
+                            #status_bar_preprocessors_init.update(incr=1)
 
-            if self._pos_tagger:
-                if not self._set_pos_tagger(thread_name=thread_name):
-                    return False
-                if status_bar:
-                    status_bar_preprocessors_init.update(incr=1)
-                    status_bar_preprocessors_init.refresh()
+                if not self._terminated: 
+                    if self._pos_tagger:
+                        if not self._set_pos_tagger(thread_name=thread_name):
+                            return Status(status=False, desc="SetPOSTaggerFailed")
+                        if self._status_bar:
+                            status_bar_preprocessors_init.update(incr=1)
+                            status_bar_preprocessors_init.refresh()
 
-
-
-
-
-
-            self._set_rle(thread_name)
-            #self._rle = Rle() # repetitions encoder 
-            #self.logger.debug("RleInit: RLE was initialized.")
-            status_bar_preprocessors_init.update(incr=1)
-            status_bar_preprocessors_init.refresh()
-
-
-            # if self._sentiment_analyzer:
-            #     if not self._set_sentiment_analyzer(thread_name=thread_name):
-            #         return False
-            #     if status_bar:
-            #         status_bar_preprocessors_init.update(incr=1)
-            #         status_bar_preprocessors_init.refresh()
+                if not self._terminated: 
+                    if self._lang_classification:
+                        if self._set_rle(thread_name):
+                            if self._status_bar:
+                                status_bar_preprocessors_init.update(incr=1)
+                                status_bar_preprocessors_init.refresh()
+                        else:
+                            self.logger.error("RLE in '{}'-Thread wasn't initialized. Script was aborted.".format(thread_name), exc_info=self._logger_traceback)
+                            #self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
+                            return Status(status=False, desc="SetRLEFailed")
 
 
-            self.logger.info("PreprocessorsInit: All Preprocessors for '{}'-Thread was initialized.".format(thread_name))
-            return True
+                if not self._terminated: 
+                    self.logger.info("PreprocessorsInit: All Preprocessors for '{}'-Thread was initialized.".format(thread_name))
+                    return Status(status=True, desc=preprocessors_number)
+
+
+                if self._terminated:
+                    self.logger.critical("{} was terminated!!!".format(thread_name))
+                    self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
+                    self._terminated = True
+                    return Status(status=False, desc="WasTerminated")
+
+                    if self._status_bar:
+                        self.counters_attrs["_init_preprocessors"][thread_name]["start"] = status_bar_preprocessors_init.start
+                        self.counters_attrs["_init_preprocessors"][thread_name]["end"] = status_bar_preprocessors_init.last_update
+                        self.counters_attrs["_init_preprocessors"][thread_name]["total"] = status_bar_preprocessors_init.total
+                        self.counters_attrs["_init_preprocessors"][thread_name]["desc"] = status_bar_preprocessors_init.desc
+
+            else:
+                return Status(status=False, desc="PreprocessorsWasDisabled")
+
         except Exception, e:
             print_exc_plus() if self._ext_tb else ""
-            self.logger.error("PreprocessorsInitError: See Exception: '{}'. ".format(e), exc_info=self._logger_traceback)
-            return False
+            msg = "PreprocessorsInitError: See Exception: '{}'. ".format(e)
+            self.logger.error(msg, exc_info=self._logger_traceback)
+            return Status(status=False, desc=msg)
 
         
 
@@ -958,10 +955,15 @@ class Corpus(object):
 
 
     def _set_rle(self,  thread_name="Thread0"):
-        self.logger.debug("INIT-RLE: Start the initialization of Run_length_encoder for '{}'-Thread.".format(thread_name))
-        self.preprocessors[thread_name]["rle"] = Rle(self.logger)
-        self.logger.debug("INIT-RLE: Run_length_encoder for '{}'-Thread was initialized.".format(thread_name))
-        return True
+        try:
+            self.logger.low_debug("INIT-RLE: Start the initialization of Run_length_encoder for '{}'-Thread.".format(thread_name))
+            self.preprocessors[thread_name]["rle"] = Rle(self.logger)
+            #p(("RLE_INIT",thread_name))
+            self.logger.debug("INIT-RLE: Run_length_encoder for '{}'-Thread was initialized.".format(thread_name))
+            return True
+        except Exception, e:
+            self.logger.error("Exception was encountered: '{}'. ".format(e), exc_info=self._logger_traceback)
+            return False
 
 
 
@@ -975,12 +977,15 @@ class Corpus(object):
 
 
 
-    def _wait_till_all_threads_are_completed(self, thread_name, sec_to_wait=3, sec_to_log = 15):
+    def _wait_till_all_threads_are_completed(self, waitername, sec_to_wait=3, sec_to_log = 15):
         time_counter = sec_to_log
-        while (len(self.threads_success_exit)+len(self.threads_unsuccess_exit)) < len(self.active_threads):
+        while not ( (len(self.threads_success_exit) >= len(self.active_threads)) or (len(self.threads_unsuccess_exit) != 0)):
+        #while len(self.threads_unsuccess_exit) == 0
+            #p(((len(self.threads_success_exit) <= len(self.active_threads))), "(len(self.threads_success_exit) < len(self.active_threads))")
+            #p((len(self.threads_unsuccess_exit) == 0), "(len(self.threads_unsuccess_exit) == 0)")
             if time_counter >= sec_to_log:
                 time_counter = 0
-                self.logger.debug("Waiting in '{}'. ({}sec was gone.)".format(thread_name, sec_to_log))
+                self.logger.low_debug("'{}'-Waiter: {}sec was gone.".format(waitername, sec_to_log))
 
             if not self.threads_status_bucket.empty():
                 answer = self.threads_status_bucket.get()
@@ -988,12 +993,18 @@ class Corpus(object):
                 status = answer["status"]
                 if status == "done":
                     if thread_name not in self.threads_success_exit:
-                        self.threads_success_exit.append(thread_name)
-                elif status == "failed":
+                        self.threads_success_exit.append(answer)
+                elif status in  ["failed", "terminated"]:
                     if thread_name not in self.threads_unsuccess_exit:
-                        self.threads_unsuccess_exit.append(thread_name)
+                        self.threads_unsuccess_exit.append(answer)
+                elif status == "ThreadsCrash":
+                    if thread_name not in self.threads_unsuccess_exit:
+                        self.threads_unsuccess_exit.append(answer)
+                        self.terminate_all("ThreadsCrash", thread_name=thread_name)
+                    self.logger.critical("'{}'-Thread returned ThreadCrash-Error. |ErrorTrackID:'{}'| (To see more about it track ErrorID in the logs)".format(thread_name,answer["track_id"]))
+                    return False
                 else:
-                    self.logger.error("ThreadWaiter: Unknown Status was sended: '{}'. Break the execution! ".format(status), exc_info=self._logger_traceback)
+                    self.logger.error("ThreadsWaiter: Unknown Status was send: '{}'. Break the execution! ".format(status), exc_info=self._logger_traceback)
                     sys.exit()
 
 
@@ -1004,17 +1015,25 @@ class Corpus(object):
             #self._check_threads()
             self._check_buckets()
 
-        self.logger.debug("Stop waiting in '{}'. ".format(thread_name))
+        self.logger.debug("Waiter '{}' was stopped. ".format(waitername))
+
+        return True
 
 
-    def _get_new_status_bar(self, total, desc, unit, counter_format=False):
+    def _get_new_status_bar(self, total, desc, unit, counter_format=False, bar_format=False):
         #counter_format
         if counter_format:
-            counter = self.status_bars_manager.counter(total=total, desc=desc, unit=unit, leave=True, counter_format=counter_format)
+            if bar_format:
+                counter = self.status_bars_manager.counter(total=total, desc=desc, unit=unit, leave=True, counter_format=counter_format, bar_format=bar_format)
+            else:
+                counter = self.status_bars_manager.counter(total=total, desc=desc, unit=unit, leave=True, counter_format=counter_format)
         else:
-            counter = self.status_bars_manager.counter(total=total, desc=desc, unit=unit, leave=True)
+            if bar_format:
+                counter = self.status_bars_manager.counter(total=total, desc=desc, unit=unit, leave=True, bar_format=bar_format)
+            else:
+                counter = self.status_bars_manager.counter(total=total, desc=desc, unit=unit, leave=True)
         return counter
-
+ 
     def _check_if_threads_still_alive(self):
         for thread in self.active_threads:
             if not thread.isAlive():
@@ -1023,13 +1042,9 @@ class Corpus(object):
 
 
 
-    # def _check_threads(self):
-    #     if False in set(list(self._check_if_threads_still_alive())):
-    #         self.logger.error("One or few Threads are not alive any more. It seems to be an error. Execution of this program is stopped....", exc_info=self._logger_traceback)
-    #         sys.exit()
 
 
-    def _check_buckets(self):
+    def _check_buckets(self, thread_name="Thread0"):
         status = False
         if not self.threads_error_bucket.empty():
             while not self.threads_error_bucket.empty():
@@ -1047,22 +1062,33 @@ class Corpus(object):
 
         if status:
             self.logger.error("BucketChecker: Some threads/channels throw exception(s). Program can not be executed. ".format(), exc_info=self._logger_traceback)
-            sys.exit()
+            self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
+            self._terminated = True
+            #sys.exit()
 
 
     def _print_summary_status(self):
         for thread in self.active_threads:
             thread_name = thread.getName()
-            #thread.getName()
-            self.error_insertion_status_general[thread_name]
-            self.inserted_insertion_status_general[thread_name]
-            self.logger.info("Summary for {}: Total inserted: {}; Total ignored: {}, from that was {} was error insertions and {} was out-sorted insertions (exp:  cleaned tweets/texts, ignored retweets, etc.).".format(thread_name, self.inserted_insertion_status_general[thread_name], self.error_insertion_status_general[thread_name]+ self.empty_insertion_status_general[thread_name], self.error_insertion_status_general[thread_name], self.empty_insertion_status_general[thread_name]))
+            self.total_inserted_during_last_insert +=  self.inserted_insertion_status_general[thread_name]
+            self.total_outsorted_insertion_during_last_insertion_process +=  self.outsorted_insertion_status_general[thread_name]
+            self.total_error_insertion_during_last_insertion_process += self.error_insertion_status_general[thread_name]
         
-        # for thread_name, status in self.inserted_insertion_status_general.iteritems():
-
-
+        self.total_ignored_last_insertion += (self.total_outsorted_insertion_during_last_insertion_process+self.total_error_insertion_during_last_insertion_process)
+        #self.logger.info("Summary for {}:\n Total inserted: {} rows; Total ignored: {} rows, from that was {} was error insertions and {} was out-sorted insertions (exp:  cleaned tweets/texts, ignored retweets, etc.).".format(thread_name, self.inserted_insertion_status_general[thread_name], self.error_insertion_status_general[thread_name]+ self.outsorted_insertion_status_general[thread_name], self.error_insertion_status_general[thread_name], self.outsorted_insertion_status_general[thread_name]))
+        self.logger.info(">>>Summary<<< Total inserted: {} rows; Total ignored: {} rows, from that was {} was error insertions and {} was out-sorted insertions (exp:  cleaned tweets/texts, ignored retweets, etc.).".format(self.total_inserted_during_last_insert, self.total_ignored_last_insertion, self.total_error_insertion_during_last_insertion_process, self.total_outsorted_insertion_during_last_insertion_process))
+        
+        if self.total_error_insertion_during_last_insertion_process >0:
+            msg = "'{}'-ErrorInsertion was processed.".format(self.total_error_insertion_during_last_insertion_process)
+            if self._raise_exception_if_error_insertion:
+                raise ErrorInsertion, msg
+            else:
+                self.logger.error(msg)
 
     def _valid_input(self):
+        # if not self._decoding_to_unicode:
+        #     self.logger.warning("InputValidation: Automaticly Decoding Input byte string to unicode string is deactivated. This could lead to wrong work of this tool. (ex. Emojis will not recognized in the right way, etc.). To ensure correct work of this Tool, please switch on following option ->  'decoding_to_unicode'.")
+
         if self._language not in Corpus.supported_languages_tokenizer:
             self.logger.error("InputValidationError: Given Language '{}' is not supported by tokenizer.".format(self._language), exc_info=self._logger_traceback)
             yield False
@@ -1084,7 +1110,7 @@ class Corpus(object):
                     self.logger.critical("InputValidationError: '{}'-tokenizer is not support '{}'-language. Please use another one. For this session the default one will be used. ".format(self._tokenizer, self._language))
                     self._tokenizer = Corpus.tokenizer_for_languages[self._language][0]
                     #yield False
-            self.logger.debug("'{}'-Tokenizer was choiced.".format(self._tokenizer))
+            self.logger.debug("'{}'-Tokenizer was chosen.".format(self._tokenizer))
 
 
 
@@ -1102,11 +1128,12 @@ class Corpus(object):
                     if self._sent_splitter not in Corpus.sent_splitter_for_languages[self._language]:
                         self.logger.critical("InputValidationError: '{}'-SentenceSplitter  is not support '{}'-language. Please use another one. For this session the default one will be used. ".format(self._sent_splitter, self._language))
                         self._sent_splitter = Corpus.sent_splitter_for_languages[self._language][0]
-                self.logger.debug("'{}'-SentSplitter was choiced.".format(self._sent_splitter))
+                self.logger.debug("'{}'-SentSplitter was chosen.".format(self._sent_splitter))
 
 
             ## Choice POS Tagger
             if self._pos_tagger:
+
                 if self._language not in Corpus.supported_languages_pos_tagger:
                     self.logger.error("InputValidationError: Given Language '{}' is not supported by POS-Tagger.".format(self._language), exc_info=self._logger_traceback)
                     yield False
@@ -1116,14 +1143,20 @@ class Corpus(object):
                     if self._pos_tagger not in Corpus.supported_pos_tagger:
                         self.logger.error("InputValidationError: Given POS-Tagger '{}' is not supported.".format(self._pos_tagger), exc_info=self._logger_traceback)
                         yield False
-                    if self._pos_tagger not in Corpus.pos_tagger_for_languages[self._language]:
-                        self.logger.critical("InputValidationError: '{}'-POS-Tagger is not support '{}'-language. Please use another one. For this session the default one will be used. ".format(self._pos_tagger, self._language))
-                        self._pos_tagger = Corpus.pos_tagger_for_languages[self._language][0]
-                        #yield True
+                    if not self._use_test_pos_tagger:
+                        if self._pos_tagger not in Corpus.pos_tagger_for_languages[self._language]:
+                            self.logger.critical("InputValidationError: '{}'-POS-Tagger is not support '{}'-language. Please use another one. For this session the default one will be used. ".format(self._pos_tagger, self._language))
+                            self._pos_tagger = Corpus.pos_tagger_for_languages[self._language][0]
+                            #yield True
                     if not  self._sent_splitter:
                         self.logger.error("InputError: POS-Tagging require sentence splitter. Please use an option to activate it!",  exc_info=self._logger_traceback)
                         yield False
-                self.logger.debug("'{}'-POS-Tagger was choiced.".format(self._pos_tagger))
+                
+                if self._use_test_pos_tagger:
+                  self._pos_tagger = "tweetnlp"
+
+
+                self.logger.debug("'{}'-POS-Tagger was chosen.".format(self._pos_tagger))
 
 
             if self._sentiment_analyzer:
@@ -1137,7 +1170,7 @@ class Corpus(object):
                         self.logger.error("InputValidationError: Given SentimentAnalyzer '{}' is not supported.".format(self._sentiment_analyzer), exc_info=self._logger_traceback)
                         yield False
 
-                self.logger.debug("'{}'-SentimentAnalyzer was choiced.".format(self._sentiment_analyzer))
+                self.logger.debug("'{}'-SentimentAnalyzer was chosen.".format(self._sentiment_analyzer))
 
 
         else:
@@ -1147,8 +1180,8 @@ class Corpus(object):
         return 
 
 
-        self._del_mention = del_mention
-        self._del_hashtag = del_hashtag
+        # self._del_mention = del_mention
+        # self._del_hashtag = del_hashtag
 
     def _clean_sents_list(self, inp_sent_list):
         # Step 1: Find out what exactly should be erased
@@ -1183,13 +1216,11 @@ class Corpus(object):
         # return cleaned
 
 
-    def _categorize_token_list(self, inp_token_list):
-        if self._tokenizer == "somajo":
-            pass ## tokens should be already categorized
-        else:
-            inp_token_list = categorize_token_list(inp_token_list)
-            #p("wertzuiopoiutrert", c="m")
-        return inp_token_list
+    # def _categorize_token_list(self, inp_token_list):
+    #     if self._tokenizer != "somajo":
+    #         return categorize_token_list(inp_token_list)
+
+
 
 
     def _lower_case_sents(self, inpsents):
@@ -1203,10 +1234,140 @@ class Corpus(object):
                 lower_cased.append(lower_cased_sent)
             return lower_cased
 
+
+
+    def _normalize_emojis(self,inp_list):
+        #p(inp_list,"inp_list")
+        prev = ""
+        collected_elem = ()
+        new_output_list = []
+        for token_container in inp_list:
+            if token_container[1] in ["emoticon",'EMOIMG', "EMOASC"]:
+                if prev:
+                    if prev == token_container[0]:
+                        new_text_elem = u"{}{}".format(collected_elem[0], token_container[0])
+                        collected_elem = (new_text_elem, collected_elem[1])
+                        #continue
+                    else:
+                        new_output_list.append(collected_elem)
+                        prev = token_container[0]
+                        collected_elem = token_container
+                        #continue
+                else:
+                    prev = token_container[0]
+                    collected_elem = token_container
+                    #continue
+            else:
+                if prev:
+                    new_output_list.append(collected_elem)
+                    new_output_list.append(token_container)
+                    collected_elem = ()
+                    prev = ""
+
+                else:
+                    new_output_list.append(token_container)
+
+        if prev:
+            new_output_list.append(collected_elem)
+            collected_elem = ()
+            prev = ""
+        return new_output_list
+
+
+    def _error_correction_after_somajo_tokenization(self,output):
+        new_output = []
+        token_index = -1
+        ignore_next_step = False
+        #tok1 = None
+        #tok2 = None
+        try:
+            output[1]
+        except:
+            return output
+        #p(output,"11output")
+
+        ### ReCategorize Symbols
+        output = [(token_cont[0], u"symbol") if text_is_punkt(token_cont[0]) and token_cont[1]!= "symbol" else token_cont  for token_cont in output ]
+        #p(output,"22output")
+
+        for i,tok in zip(xrange(len(output)),output):
+
+            if i == 0:
+                new_output.append(tok)
+
+            elif i > 0:
+                last_elem = new_output[-1]
+                #if last_elem[1] == 
+                if last_elem[1] == "emoticon" and tok[1] == 'regular':
+                    if last_elem[0][-1] == tok[0][0]:
+                        new_output[-1] = (last_elem[0]+tok[0], last_elem[1])
+                    else:
+                        new_output.append(tok)
+                elif last_elem[1] == "symbol" and tok[1] == 'symbol':
+                    if last_elem[0][-1] == tok[0][0]:
+                        new_output[-1] = (last_elem[0]+tok[0], last_elem[1])
+                        #new_output[-1] = (last_elem[0]+tok[0], "FUCK")
+                    elif last_elem[0][-1] == "-" and tok[0][0] in ["(", ")"]:
+                        #new_output.append((tok1[0]+tok2[0], "emoticon"))
+                        new_output[-1] = (last_elem[0]+tok[0], "emoticon")
+                    else:
+                        new_output.append(tok)
+                else:
+                    new_output.append(tok)
+
+                ## check if last two elements possibly are same
+                if len(new_output)>1:
+                    last_item = new_output[-1]
+                    bevore_the_last_item = new_output[-2]
+                    
+                    if last_item[0][0] == bevore_the_last_item[0][0]:
+                        if len(rle.del_rep(last_item[0])) and  len(rle.del_rep(bevore_the_last_item[0])) == 1 :
+                            #p(new_output, "111new_output", c="r")
+                            if last_item[1] == "symbol" and bevore_the_last_item[1] == "symbol":
+                                poped = new_output.pop()
+                                new_output[-1] = (last_item[0]+poped[0], poped[1])
+                        #p(new_output, "22new_output", c="r")
+
+        return new_output
+
+
+
+
+
+
+
     ###########################Preprocessing###############
-    def _preprocessing(self, inp_str, thread_name="Thread0", log_ignored=True):
-        self.logger.debug("Preprocessing: '{}'-Thread do preprocessing.".format( thread_name ))
-        output = inp_str
+    def _preprocessing(self, inp_str, thread_name="Thread0", log_ignored=True, row=False):
+        #self.logger.debug("Preprocessing: '{}'-Thread do preprocessing.".format( thread_name ))
+        
+        # if self._decoding_to_unicode:
+        #     if isinstance(inp_str, str):
+        #         try:
+        #             output = inp_str.decode("utf-8")
+        #         except Exception as e:
+        #             self.logger.error("EncodingError: It wasn't possible to decode byte string to unicode string. Please ensure, that given sting was encoded into unicode! GivenStr: '{}'.".format(repr(inp_str)))
+        #             #self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
+        #             self._terminated = True
+        #             return None
+        #     else:
+        #         output = inp_str
+        # else:
+        #     output = inp_str
+
+        # inp_str = "fghjk😀"
+        # p(type(inp_str), "inp_str")
+
+        ### convert to unicode, if needed!!!=) 
+        ## it is important, fo right works of further preprocessing steps 
+        try: 
+            output = inp_str.decode("utf-8")
+        except:
+            output = inp_str
+
+        # p(type(output), "output")
+
+        #p(self.preprocessors)
+        #time.sleep(5)
         # Preprocessing woth Python !!! (gut) https://www.kdnuggets.com/2018/03/text-data-preprocessing-walkthrough-python.html
         # python code: https://de.dariah.eu/tatom/preprocessing.html
 
@@ -1216,21 +1377,23 @@ class Corpus(object):
             # remove HTML, XML, etc. markup and metadata
             # extract valuable data from other formats, such as JSON, or from within databases
             # if you fear regular expressions, this could potentially be the part of text preprocessing in which your worst fears are realized
-        was_found= False
-        if "Klitze kliiiitze kleEEEEine" in output:
-            self.logger.critical(("start",output))
-            was_found = True
+        #was_found= False
+        # if 1111 == row["id"] or "1111" == row["id"]:
+        #     self.logger.critical(("start",output))
+        #     was_found = True
 
         if self._del_html:
             output = removetags(output)  
             output = remove_html_codded_chars(output)    # delete html-codded characters sets 
-            if was_found:
-                self.logger.critical(("del_html",output))
+            #if was_found:
+            #    self.logger.critical(("del_html",output))
             #p(output, "html_deleted")
         #if self._del_rep:
 
-        #############Step 1 ########################
-        #Step 1: Language Classification
+        ############Step 1 ########################
+        ##### Step 1: Language Classification
+        #self.logger.critical("LANGPREPROC in {}".format(thread_name))
+        #### time.sleep(10)
         if self._lang_classification:
             output_with_deleted_repetitions = self.preprocessors[thread_name]["rle"].del_rep(output) #output #self._rle.del_rep(output)
             #self.logger.critical(output_with_deleted_repetitions)
@@ -1238,42 +1401,64 @@ class Corpus(object):
             if lang != self._language:
                 #p(output_with_deleted_repetitions, "lan_outsorted")
                 try:
-                    # if isinstance(output_with_deleted_repetitions, unicode):
-                    #     to_log_cleaned = output_with_deleted_repetitions.encode("utf-8")
-                    # else:
-                    #     to_log_cleaned = output_with_deleted_repetitions
-
-                    if isinstance(output, unicode):
-                        to_log_orig = output.encode("utf-8")
-                    else:
-                        to_log_orig = output
-                    #to_log_orig = output
-                    self.logger.warning("LangClassification: Current TextElement was out-sorted, because given language not equal to recognized language: '{}'!='{}'.  According following Text: '{}'. ".format(self._language, lang, to_log_orig))
+                    if log_ignored:
+                        row = row if row else ":ORIG_ROW_WASNT_GIVEN:"
+                        self.logger.outsorted_corpus(u"LangClassification: Following row was out-sorted and ignored. Reason: Given language not equal to recognized language ('{}'!='{}');  TextElement: '{}'; FullRow: '{}'. ".format(self._language, lang, output, row))
                 except Exception, e:
-                    self.logger.error("LangClassificationResultsStdOut: See Exception: '{}'. ".format(e))
-                return []
+                    #p(str(e),"e")
+                    self.logger.error(u"LangClassificationResultsStdOut: See Exception: '{}'. ".format(e))
+                return None
 
 
         #############Step 2 ########################
-        # Step 2: Tokenization &  (https://www.kdnuggets.com/2017/12/general-approach-preprocessing-text-data.html)
+        # Step 2.1: Tokenization &  (https://www.kdnuggets.com/2017/12/general-approach-preprocessing-text-data.html)
         #p(inp_str, "inp_str")
         output = self.tokenize(output, thread_name=thread_name)
-        if was_found:
-            self.logger.critical(("tokenize",output))
-        #p(output, "tokenized")
+        #if not output:
+        #    return "terminated"
+        #if was_found:
+        #    self.logger.critical(("tokenize",output))
+
+        #p((len(output),output), "tokenized")
+        #time.time(3)
+
+
+        # Step 2.2
+        if self._tokenizer == "somajo":
+            output = self._error_correction_after_somajo_tokenization(output)
+            #p((len(output),output), "error_corrected")
 
 
         #############Step 3 ########################
         # Step 3: Categorization (if wasn't done before)
-        output = self._categorize_token_list(output)
-        if was_found:
-            self.logger.critical(("categprized",output))
-        #p(output, "categorized")
+        if self._tokenizer != "somajo":
+            output = categorize_token_list(output)
+
 
         #############Step 4 ########################
-        #Step 4:  Segmentation
+        # Step 4: Categorization (if wasn't done before)
+        if self._diff_emoticons and self._tokenizer == "somajo": 
+            output = recognize_emoticons_types(output)
+            #p(output, "recognize_emoticons_types")
+
+        #sys.exit()
+
+        #############Step 5 ########################
+        # Step 5: normalization - Part0
+        #### Normalisation Emojis
+        if self._emojis_normalization:
+            output = self._normalize_emojis(output)
+
+
+
+        #############Step 6 ########################
+        #Step 6:  Segmentation
         if self._sent_splitter:
             output = self.split_sentences(output, thread_name=thread_name)
+            #p(output, c="r")
+            #if output
+            if not output:
+                return "terminated"
             #p((len(sentences),sentences), "sentences", c="r")
             #p(len(output), "splitted")
             #p(output, "splitted")
@@ -1281,56 +1466,63 @@ class Corpus(object):
 
         else:
             output = [output]
-        if was_found:
-            self.logger.critical(("sent_splitter",output))
+        #if was_found:
+        #    self.logger.critical(("sent_splitter",output))
         #p(output, "sent_splitted")
 
 
-        #############Step 5 ########################
-        # Step 5: normalization - Part1
+        #############Step 7 ########################
+        # Step 7: normalization - Part1
             #> Stemming or Lemmatization (https://www.kdnuggets.com/2017/12/general-approach-preprocessing-text-data.html)
             #remove numbers (or convert numbers to textual representations)
             #remove punctuation (generally part of tokenization, but still worth keeping in mind at this stage, even as confirmation)
         output = self._clean_sents_list(output)
-        if was_found:
-            self.logger.critical(("cleaned",output))
+        #if was_found:
+        #    self.logger.critical(("cleaned",output))
         #p(output, "cleaned")
 
 
 
 
-        #############Step 6 ########################
-        # Step 6: Tagging
 
+        #############Step 8 ########################
+        # Step 8: Tagging
+        #output, cutted_ = 
+        #p(output, "output")
         if self._pos_tagger: #u'EMOASC', 'EMOIMG'
+            non_regular_tokens = self._backup_non_regular_tokens(output)
+            #p(non_regular_tokens, "non_regular_tokens")
             output = [self.tag_pos([token[0] for token in sent], thread_name=thread_name) for sent in output]
+            if not output[0]:
+                return "terminated"
+            output = self._rebuild_non_regular_tokens(non_regular_tokens, output)
             #p(output, "tagged")
-        if was_found:
-            self.logger.critical(("pos",output))
+        #if was_found:
+        #    self.logger.critical(("pos",output))
         #############Step  ########################
         # Step : WDS
 
 
 
-        #############Step 7 ########################
-        # Step 7: normalization
+        #############Step 9 ########################
+        # Step 9: normalization
             #> Stemming or Lemmatization (https://www.kdnuggets.com/2017/12/general-approach-preprocessing-text-data.html)
             #> case normalisation (lower case)
             #(NO)remove default stop words (general English stop words) 
         if not self._case_sensitiv:
             output = self._lower_case_sents(output)
             #p(output, "lowercased")
-        if was_found:
-            self.logger.critical(("lowercased",output))
+        #if was_found:
+        #    self.logger.critical(("lowercased",output))
 
 
-        #############Step  ########################
-        # Step : Emotikons? werden die durch den Tokenizer zu einer Entität?
+        #############Step  10 ########################
+        # Step 10: Emotikons? werden die durch den Tokenizer zu einer Entität?
 
 
 
-        #############Step 8 ########################
-        # Step 8: Sentiment Analysis
+        #############Step 11 ########################
+        # Step 11: Sentiment Analysis
         output_with_sentiment = []
         #p(output, "output")
         for sent in output:
@@ -1344,12 +1536,38 @@ class Corpus(object):
             output_with_sentiment.append((sent, polarity))
         #for 
         output = output_with_sentiment
-        if was_found:
-            self.logger.critical(("sentiment",output))
+        #if was_found:
+        #    self.logger.critical(("sentiment",output))
         #p(output, "sentiment")
 
-        was_found =False
+        #was_found =False
 
+        return output
+
+
+
+    def _backup_non_regular_tokens(self,output):
+        #["url", "emoji", "emoticon", "symbol", "mention", "hashtag"]
+        #"regular"
+        non_regular_tokens = []
+        sent_index = -1
+        for sent in output:
+            sent_index += 1
+            token_index = -1
+            for token in sent:
+                token_index += 1
+                if token[1] != "regular":
+                    #if token[1] != "emoticon":
+                    non_regular_tokens.append((sent_index, token_index, token[1]))
+
+        return non_regular_tokens
+
+
+    def _rebuild_non_regular_tokens(self, non_regular_tokens, output):
+        for backup_data in non_regular_tokens:
+            #p(backup_data,"backup_data")
+            #p(output,"output")
+            output[backup_data[0]][backup_data[1]] = (output[backup_data[0]][backup_data[1]][0], backup_data[2])
         return output
 
 
@@ -1357,20 +1575,36 @@ class Corpus(object):
     ############Tokenization#############
 
     def tokenize(self,inp_str, thread_name="Thread0"):
-        self.logger.debug("'{}'-Tokenizer: Tokenizer was called from '{}'-Thread.".format(self._tokenizer, thread_name))
-        if self._tokenizer == "somajo":
-            return self._tokenize_with_somajo(inp_str, thread_name=thread_name)
-        elif self._tokenizer == "nltk":
-            return self._tokenize_with_nltk(inp_str, thread_name=thread_name)
-        else:
-            self.logger.error("TokenizationError: No one Tokenizer was chooses.", exc_info=self._logger_traceback)
+        try:
+        
+            self.logger.low_debug("'{}'-Tokenizer: Tokenizer was called from '{}'-Thread.".format(self._tokenizer, thread_name))
+            
+            if self._tokenizer == "somajo":
+                return self._tokenize_with_somajo(inp_str, thread_name=thread_name)
+            elif self._tokenizer == "nltk":
+                return self._tokenize_with_nltk(inp_str, thread_name=thread_name)
+            else:
+                self.logger.error("TokenizationError: No one Tokenizer was chooses.", exc_info=self._logger_traceback)
+                return False
+        except KeyboardInterrupt:
+            self.logger.critical("TokenizerError:  in '{}'-Thread get an  KeyboardInterruption.".format(thread_name))
+            self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
+            self._terminated = True
+            #self.terminate_all("KeyboardInterrupt")
             return False
+        except Exception, e:
+            self.logger.error("TokenizerError:  in '{}'-Thread. See Exception '{}'.".format(thread_name,e))
+            self.terminate = True
+            return False
+            #sys.exit()
+            #return [("",""),("","")]
+
 
 
     def _set_tokenizer(self, split_camel_case=True, language="de", thread_name="Thread0"):
         token_classes=True
         extra_info=False
-        self.logger.debug("INIT-Tokenizer: Start the initialization of '{}'-Tokenizer for '{}'-Thread.".format(self._tokenizer,thread_name))
+        self.logger.low_debug("INIT-Tokenizer: Start the initialization of '{}'-Tokenizer for '{}'-Thread.".format(self._tokenizer,thread_name))
         if self._tokenizer == "somajo":
             tokenizer_obj = self._get_somajo_tokenizer( split_camel_case=split_camel_case, token_classes=token_classes, extra_info=extra_info, language=language,thread_name=thread_name)
             if not tokenizer_obj:
@@ -1400,10 +1634,12 @@ class Corpus(object):
         return self.preprocessors[thread_name]["tokenizer"].tokenize(inp_str)
 
     def _get_somajo_tokenizer(self, split_camel_case=True, token_classes=True, extra_info=False, language="de", thread_name="Thread0"):
-        self.logger.debug("SomajoTokenizerGetter: Start the initialisation of the SoMaJo-Tokenizer.")
+        self.logger.low_debug("Start the initialisation of the SoMaJo-Tokenizer.")
         try:
             args = 'split_camel_case={}, token_classes={}, extra_info={}, language="{}" '.format(split_camel_case, token_classes, extra_info, language)
             gw_id = "tokenizer_{}".format(thread_name)
+            #p(gw_id, "gw_id")
+            #p(self.opened_gateways, "self.opened_gateways")
             gw  = self.opened_gateways.makegateway("popen//python=python3//id={}".format(gw_id))
             channel = gw.remote_exec("""
                 import sys
@@ -1421,16 +1657,24 @@ class Corpus(object):
                         """.format(self._logger_level, gw_id,args))
             #channel_error_bucket = pickle.dumps(self.channels_error_bucket)
             #channel.send(channel_error_bucket)
-            if channel.receive() == "ready":
-                self.logger.debug("TokenizerInit: Somajo tokenizer for '{}'-Thread was initialized. ".format(thread_name))
-            return channel
+            answer = channel.receive()
+            #p( answer, "answer")
+            if answer == "ready":
+                self.logger.low_debug("ChannelReady: Channel for Somajo tokenizer ('{}') is open and ready. ".format(thread_name))
+                return channel
+            else:
+                self.logger.error("SomajoTokenizerGetterError: Channel wasn't opended properly. Got following answer: '{}'. and was aborted!!! ".format(answer))
+                self._terminated = True
+                self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
+                return False
+            
         except Exception, e:
             print_exc_plus() if self._ext_tb else ""
             self.channels_error_bucket.put((thread_name,"Tokenizer",e))
             self.logger.error("SomajoTokenizerGetterError: '{}'-Thread throw following exception: '{}'. ".format(thread_name, e), exc_info=self._logger_traceback)
             #T, V, TB = sys.exc_info()
-            tb = ''.join(traceback.format_exception(sys.exc_info()))
-            self.threads_status_bucket.put({"name":thread_name, "status":"failed", "exception":e, "traceback":tb})
+            
+            self.threads_status_bucket.put({"name":thread_name, "status":"failed", "exception":e})
             #sys.exit()
             return False
         
@@ -1440,14 +1684,27 @@ class Corpus(object):
     ############Sentence Splitting############
 
     def split_sentences(self,inp_list, thread_name="Thread0"):
-        self.logger.debug("'{}'-SentSplitter: SentSplitter was called from '{}'-Thread.".format(self._sent_splitter, thread_name))
-        if self._sent_splitter == "somajo":
-            return self._split_sentences_with_somajo(inp_list,thread_name=thread_name)
-
+        try:
+        
+            self.logger.low_debug("'{}'-SentSplitter: SentSplitter was called from '{}'-Thread.".format(self._sent_splitter, thread_name))
+            if self._sent_splitter == "somajo":
+                return self._split_sentences_with_somajo(inp_list,thread_name=thread_name)
+        except KeyboardInterrupt:
+            self.logger.critical("SentSplitterError:  in '{}'-Thread get an  KeyboardInterruption.".format(thread_name))
+            self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
+            self._terminated = True
+            #self.terminate_all("KeyboardInterrupt")
+            return False  
+        except Exception, e:
+            self.logger.error("SentSplitterError:  in '{}'-Thread. See Exception '{}'.".format(thread_name,e))
+            self.terminate = True
+            #return [[("",""),("","")],[("",""),("","")]]
+            #sys.exit()
+            return False
 
     def _set_sent_splitter(self, is_tuple=True,thread_name="Thread0"):
         #is_tuple  -means, that input tokens are tuples with additonal information about their type (ex: URLS, Emoticons etc.)
-        self.logger.debug("INITSentSplitter: Start the initialization of '{}'-SentSplitter for '{}'-Thread.".format(self._sent_splitter,thread_name))
+        self.logger.low_debug("INITSentSplitter: Start the initialization of '{}'-SentSplitter for '{}'-Thread.".format(self._sent_splitter,thread_name))
         #p(self._sent_splitter)
         if self._sent_splitter == "somajo":
             sent_splitter_obj = self._get_somajo_sent_splitter( is_tuple=is_tuple, thread_name=thread_name)
@@ -1459,7 +1716,7 @@ class Corpus(object):
         return True
 
     def _split_sentences_with_somajo(self,inp_list, thread_name="Thread0"):
-        self.logger.debug("SoMaJo-SentSpliter: Start splitting into sentences.")
+        self.logger.low_debug("SoMaJo-SentSpliter: Start splitting into sentences.")
         self.preprocessors[thread_name]["sent_splitter"].send(inp_list)
         return self.preprocessors[thread_name]["sent_splitter"].receive()
 
@@ -1482,18 +1739,26 @@ class Corpus(object):
                     channel.send(sentence_splitter.split(received))
                 sys.exit()
                     """.format(args))
-            if channel.receive() == "ready":
-                self.logger.debug("SentSplitterInit: Somajo SentSplitter for '{}'-Thread was initialized. ".format(thread_name))
-            #sys.exit()
-            #return channel
-            return channel
+
+            answer = channel.receive()
+            if answer == "ready":
+                self.logger.low_debug("ChannelReady: Channel for SentSplitter ('{}') is open and ready. ".format(thread_name))
+                return channel
+            else:
+                self.logger.error("SomajoSentSplitterGetterError: Channel wasn't opended properly. Got following answer: '{}'. and was aborted!!! ".format(answer))
+                self._terminated = True
+                self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
+                return False
+
+
+
         except Exception, e:
             print_exc_plus() if self._ext_tb else ""
             self.logger.error("SomajoSentSplitterGetterError: '{}'-Thread throw following exception: '{}'. ".format(thread_name, e), exc_info=self._logger_traceback)
             self.channels_error_bucket.put((thread_name,"SentSplitter",e))
             #T, V, TB = sys.exc_info()
-            tb = ''.join(traceback.format_exception(sys.exc_info()))
-            self.threads_status_bucket.put({"name":thread_name, "status":"failed", "exception":e, "traceback":tb})
+            
+            self.threads_status_bucket.put({"name":thread_name, "status":"failed", "exception":e})
             return False
 
         
@@ -1502,17 +1767,28 @@ class Corpus(object):
 
 
 
-
-
-
     ###########PoS-Tagging###########
 
     def tag_pos(self,inp_list, thread_name="Thread0"):
-        self.logger.debug("'{}'-POSTagger: POS-tagger was called from '{}'-Thread.".format(self._sent_splitter, thread_name))
-        if self._pos_tagger == "someweta":
-            return self._tag_pos_with_someweta(inp_list, thread_name=thread_name)
-        elif self._pos_tagger == "tweetnlp":
-            return self._tag_pos_with_tweetnlp(inp_list)
+        try:
+        
+            self.logger.low_debug("'{}'-POSTagger: POS-tagger was called from '{}'-Thread.".format(self._sent_splitter, thread_name))
+            if self._pos_tagger == "someweta":
+                return self._tag_pos_with_someweta(inp_list, thread_name=thread_name)
+            elif self._pos_tagger == "tweetnlp":
+                return self._tag_pos_with_tweetnlp(inp_list)
+        except KeyboardInterrupt:
+            self.logger.critical("POSTaggerError:  in '{}'-Thread get an  KeyboardInterruption.".format(thread_name))
+            self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
+            self._terminated = True
+            #self.terminate_all("KeyboardInterrupt")
+            return False         
+        except Exception, e:
+            self.logger.error("POSTaggerError: in '{}'-Thread. See Exception '{}'.".format(thread_name,e))
+            self.terminate = True
+            #return [[("",""),("","")],[("",""),("","")]]
+            #sys.exit()
+            return False
 
 
 
@@ -1520,7 +1796,8 @@ class Corpus(object):
 
     def _set_pos_tagger(self, thread_name="Thread0"):
         #p(self._pos_tagger)
-        self.logger.debug("INIT-POS-Tagger: Start the initialization of '{}'-pos-tagger for '{}'-Thread.".format(self._pos_tagger,thread_name))
+    
+        self.logger.low_debug("INIT-POS-Tagger: Start the initialization of '{}'-pos-tagger for '{}'-Thread.".format(self._pos_tagger,thread_name))
         if self._pos_tagger == "someweta":
             model_name = Corpus.pos_tagger_models[self._pos_tagger][self._language][0]
             path_to_model = os.path.join(path_to_zas_rep_tools,"data/models/SoMeWeTa/",model_name)
@@ -1573,17 +1850,26 @@ class Corpus(object):
 
                     sys.exit()
                     """.format(path_to_model))
-            if channel.receive() == "ready":
-                self.logger.debug("POSTaggerInit: Someweta POS-Tagger  for '{}'-Thread was initialized. ".format(thread_name))
-            #sys.exit()
-            return channel
+
+            answer = channel.receive()
+            if answer == "ready":
+                self.logger.low_debug("ChannelReady: Channel for SeMeWeTa-POSTagger ('{}') is open and ready. ".format(thread_name))
+                return channel
+            else:
+                self.logger.error("SoMeWeTaPOSTaggerGetterError: Channel wasn't opended properly. Got following answer: '{}'. and was aborted!!! ".format(answer))
+                self._terminated = True
+                self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
+                return False
+
+
+
         except Exception, e:
             print_exc_plus() if self._ext_tb else ""
             self.logger.error("SoMeWeTaPOSTaggerGetterError: '{}'-Thread throw following exception: '{}'. ".format(thread_name,e), exc_info=self._logger_traceback)
             self.channels_error_bucket.put((thread_name,"POSTagger",e))
             #T, V, TB = sys.exc_info()
-            tb = ''.join(traceback.format_exception(sys.exc_info()))
-            self.threads_status_bucket.put({"name":thread_name, "status":"failed", "exception":e, "traceback":tb})
+            
+            self.threads_status_bucket.put({"name":thread_name, "status":"failed", "exception":e})
             return False
         
 
@@ -1603,7 +1889,8 @@ class Corpus(object):
     ###########Sentiment###########
 
     def get_sentiment(self,inp_str, thread_name="Thread0"):
-        self.logger.debug("'{}'-SentimentAnalyzer: was called from '{}'-Thread.".format(self._sent_splitter, thread_name))
+    
+        self.logger.low_debug("'{}'-SentimentAnalyzer: was called from '{}'-Thread.".format(self._sent_splitter, thread_name))
         if self._sentiment_analyzer == "textblob":
             return self._get_sentiment_with_textblob(inp_str, thread_name=thread_name)
         # elif self._pos_tagger == "tweetnlp":
@@ -1730,6 +2017,13 @@ class Corpus(object):
 
 
 
+    def _check_db_should_be_an_corpus(self):
+        if self.corpdb.typ() != "corpus":
+            self.logger.error("No active DB was found. You need to connect or initialize a DB first, before you can make any operation on the DB.", exc_info=self._logger_traceback)
+            return False
+        else:
+            return True
+
 
 
 
@@ -1744,14 +2038,17 @@ class Corpus(object):
 
 
     def _check_db_should_exist(self):
-        if not self.db: 
+        if not self.corpdb: 
             self.logger.error("No active DB was found. You need to connect or initialize a DB first, before you can make any operation on the DB.", exc_info=self._logger_traceback)
             return False
         else:
             return True
 
+
+
+
     def _check_db_should_not_exist(self):
-        if self.db: 
+        if self.corpdb: 
             self.logger.error("An active DB was found. You need to initialize new empty Instance of DB before you can do this operation.", exc_info=self._logger_traceback)
             return False
         else:

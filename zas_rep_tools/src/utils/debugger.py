@@ -4,6 +4,7 @@
 import platform
 import sys
 from kitchen.text.converters import getwriter
+import inspect
 
 if platform.uname()[0].lower() !="windows":
     from blessings import Terminal
@@ -14,17 +15,21 @@ from cached_property import cached_property
 UTF8Writer = getwriter('utf8')
 sys.stdout = UTF8Writer(sys.stdout)
 
-def p(func, func_name='DEBUGING', c='w'):
+def p(func, func_name='DEBUGING', c='w', r=False):
 	'''
 	Functionality: Print-Function for Debigging 
 	'''
 	if platform.uname()[0].lower() !="windows":
 		t = Terminal()
-		colores = {'b':'t.bold_on_bright_blue', 'r':'t.bold_on_bright_red', 'g':'t.bold_on_bright_green', 'w':'t.bold_black_on_bright_white', 'm':'t.bold_white_on_bright_magenta'}
+		colores = {'b':'t.bold_on_bright_blue', 'r':'t.bold_on_bright_red', 'g':'t.bold_on_bright_green', 'w':'t.bold_black_on_bright_white', 'm':'t.bold_white_on_bright_magenta', "c":'t.bold_white_on_bright_cyan', "y":'t.bold_white_on_bright_yellow', "b":'t.bold_white_on_bright_black'}
 		#colores = {'b':'t.bold_blue', 'r':'t.bold_red', 'g':'t.bold_green', 'w':'t.bold', 'm':'t.bold_magenta'}
-
-		print u"\n\n{start} <{0}>{stop} \n  {1} \n   {start} </{0}>{stop}\n".format(  func_name,  func, t=t, start=eval(colores[c]), stop=t.normal   )
-		#print "\n\n{start} <{0}>{stop}   {1}    {start} </{0}>{stop}\n".format(  func_name,  func, t=t, start=eval(colores[c]), stop=t.normal   )
+		#for st in  inspect.stack():
+		#	print st
+		#print u"\n\n{start} <{0}>{stop} \n  {1} \n   {start} </{0}>{stop}\n".format(  func_name,  func, t=t, start=eval(colores[c]), stop=t.normal   )
+		if r:
+			print "\n\n{start} <{0}>{stop}  \n  {1}  \n   {start} </{0}>{stop}\n".format(  func_name,  repr(func), t=t, start=eval(colores[c]), stop=t.normal   )
+		else:
+			print "\n\n{start} <{0}>{stop}  \n  {1}  \n   {start} </{0}>{stop}\n".format(  func_name,  func, t=t, start=eval(colores[c]), stop=t.normal   )
 	else:
 		print "p() is not supported for 'Windows'-OS."
 

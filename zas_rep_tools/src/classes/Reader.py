@@ -18,7 +18,7 @@ from __future__ import absolute_import
 
 
 import os
-#import copy
+import copy
 import sys
 import regex
 import logging
@@ -28,9 +28,14 @@ import csv
 import unicodecsv as unicodecsv
 from lxml import etree as ET
 import psutil
+import zipfile
+import cStringIO
+import json
+import StringIO
+#zipfile.ZipExtFile
 
 
-#from collections import defaultdict
+from collections import defaultdict
 from raven import Client
 #from cached_property import cached_property
 from encodings.aliases import aliases
@@ -38,12 +43,14 @@ from decimal import Decimal, ROUND_HALF_UP, ROUND_UP, ROUND_HALF_DOWN, ROUND_DOW
 
 #from zas_rep_tools.src.utils.db_helper import *
 #from zas_rep_tools.src.classes.configer import Configer
-from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, LenGen, path_to_zas_rep_tools, get_number_of_streams_adjust_cpu
-from zas_rep_tools.src.utils.logger import *
+from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, LenGen, path_to_zas_rep_tools, get_number_of_streams_adjust_cpu, instance_info, SharedCounterExtern, SharedCounterIntern, Status, function_name,statusesTstring
+#from zas_rep_tools.src.utils.logger import *
+from zas_rep_tools.src.utils.zaslogger import ZASLogger
 from zas_rep_tools.src.utils.debugger import p
 from zas_rep_tools.src.utils.error_tracking import initialisation
 from zas_rep_tools.src.utils.helpers import get_file_list
 from zas_rep_tools.src.utils.traceback_helpers import print_exc_plus
+from zas_rep_tools.src.classes.basecontent import BaseContent
 
 
 import platform
@@ -53,8 +60,9 @@ if platform.uname()[0].lower() !="windows":
 else:
     import colorama
 
+csv.field_size_limit(sys.maxsize)
 
-class Reader(object):
+class Reader(BaseContent):
     #supported_encodings_types = ["utf-8"]
     supported_encodings_types = set(aliases.values())
     supported_file_types = ["txt", "json", "xml", "csv"]
@@ -63,73 +71,53 @@ class Reader(object):
                 "blogger":r"(?P<id>[\d]*)\.(?P<gender>[\w]*)\.(?P<age>\d*)\.(?P<working_area>.*)\.(?P<star_constellation>[\w]*)",
                 }
 
-    reader_supported_formatter = ["twitter"]
+    reader_supported_formatter = {
+                                "json":["twitter"],
+                                }
 
-    def __init__(self, inp_path, file_format, columns_source=False, regex_template=False, regex_for_fname=False,
-                formatter_name=False, text_field_name = "text", id_field_name="id", ignore_retweets=True,
-                logger_folder_to_save=False,  logger_usage=True, logger_level=logging.INFO,
-                logger_save_logs=True, logger_num_buffered=5, error_tracking=True,
-                ext_tb=False, logger_traceback=False, mode="prod"):
+                            
 
-        
-        ## Set Mode: Part 1
-        self._mode = mode
-        if mode != "free":
-            _logger_level, _logger_traceback, _logger_save_logs = set_class_mode(self._mode)
-            logger_level = _logger_level if _logger_level!=None else logger_level
-            logger_traceback = _logger_traceback if _logger_traceback!=None else logger_traceback
-            logger_save_logs = _logger_save_logs if _logger_save_logs!=None else logger_save_logs
+    def __init__(self, inp_path, file_format, columns_source=False, regex_template=False,
+                regex_for_fname=False, read_from_zip=False,
+                end_file_marker = -1, send_end_file_marker=False,
+                formatter_name=False, text_field_name = "text", id_field_name="id",
+                ignore_retweets=True,**kwargs):
 
-    
-    
-        ## Logger Initialisation
-        self._logger_level = logger_level
-        self._logger_traceback =logger_traceback
-        self._logger_folder_to_save = logger_folder_to_save
-        self._logger_usage = logger_usage
-        self._logger_save_logs = logger_save_logs
-        self.logger = main_logger(self.__class__.__name__, level=self._logger_level, folder_for_log=self._logger_folder_to_save, use_logger=self._logger_usage, save_logs=self._logger_save_logs)
-
-        ## Set Mode: Part 2:
-        print_mode_name(self._mode, self.logger)
+        super(type(self), self).__init__(**kwargs)
+        #super(BaseContent, self).__init__(**kwargs)
 
 
-        self.logger.debug('Beginn of creating an instance of {}()'.format(self.__class__.__name__))
-
-
-
-
-
-        #Input: Incaplusation:
+        #Input: Encapsulation:
         self._inp_path = inp_path
-        self._file_format = file_format
+        self._file_format = file_format.lower()
         self._columns_source = columns_source
-        self._regex_template = regex_template
+        self._regex_template =regex_template  if regex_template else "blogger"
         self._regex_for_fname = regex_for_fname 
         self._formatter_name = formatter_name
         self._text_field_name = text_field_name
         self._id_field_name = id_field_name
         self._ignore_retweets = ignore_retweets
-        self.retweet_counter = 0
+        self._read_from_zip = read_from_zip
+        self._end_file_marker = end_file_marker
+        self._send_end_file_marker = send_end_file_marker
 
-        self.xmlroottag = False
-        self.xmlchildetag = False
 
-
-        self._error_tracking = error_tracking
-        self._ext_tb = ext_tb
-
-        #p(inpdata)
 
         #InstanceAttributes: Initialization
-        self._ignored_retweets_counter = 0
+        self._created_streams = 0
+        self._stream_done = 0
+        self.xmlroottag = False
+        self.xmlchildetag = False
+        self.retweet_counter = SharedCounterIntern()
+        self.files_to_read_orig = []
+        self.files_to_read_leftover = None
+        self.files_at_all_was_found = 0
+        self.zips_to_read = []
+        self.files_from_zips_to_read_orig = defaultdict(list)
+        self.files_from_zips_to_read_left_over = None
+        self.files_number_in_zips = 0
+        self.counter_lazy_getted  = 0
 
-
-
-        ## Error-Tracking:Initialization #1
-        if self._error_tracking:
-            self.client = initialisation()
-            self.client.context.merge({'tags': self.__dict__})
 
 
         self.logger.debug('Intern InstanceAttributes was initialized')
@@ -146,25 +134,30 @@ class Reader(object):
         if not self._validation_regex_treatment():
             sys.exit()
 
+        self.logger.low_debug('Input was validated')
 
-        ## 
-        self.files_to_read = self._extract_all_files_according_given_file_format()
-
-
-
+        # Extract Files from the given File Structure
+        self._extract_all_files_according_given_file_format()
 
 
         self.logger.debug('An instance of Reader() was created ')
+        
+        #self.inp_obj = StringIO.StringIO()
+        #self.inp_obj.write('{"id":123456}')
 
-
+        ## Log Settings of the Instance
+        attr_to_flag = ["files_from_zips_to_read_orig", "files_from_zips_to_read_left_over", ] 
+        attr_to_len = ["files_to_read_orig", "files_to_read_leftover", "zips_to_read", ]
+        self._log_settings(attr_to_flag =attr_to_flag,attr_to_len =attr_to_len)
 
 
         ############################################################
         ####################__init__end#############################
         ############################################################
-    # def __del__(self):
-    #     self.logger.newline(1)
 
+
+    def __del__(self):
+        super(type(self), self).__del__()
 
 
 
@@ -187,163 +180,174 @@ class Reader(object):
 
 ###########################+++++++++############################
     
-    
+    def _generator_helper(self, inp_obj, colnames=False, encoding="utf-8", csvdelimiter=',' ):
+        #try:
+        
+        #output.write('{"id":123456}')
+        if self._file_format == "txt":
+            row =  self._readTXT(inp_obj, encoding=encoding, columns_extract_from_fname=True, colnames=colnames)
+            yield row
+            if self._send_end_file_marker:
+                yield self._end_file_marker
 
-
-
-    # def getlazy(self, colnames=False, encoding="utf-8", csvdelimiter=',', input_path_list=False):
-    #     #p(self.files_to_read)
-    #     if input_path_list:
-    #         path_to_files = input_path_list
-    #     else:
-    #         path_to_files = self.files_to_read
-
-    #     for path_to_file in path_to_files:
-    #         if self._file_format == "txt":
-    #             #p(self._readTXT(path_to_file, encoding=encoding, columns_extract_from_fname=True))
-    #             row =  self._readTXT(path_to_file, encoding=encoding, columns_extract_from_fname=True, colnames=colnames)
-    #             yield row
-    #         elif self._file_format == "json":
-    #             for row in self._readJSON(path_to_file, encoding=encoding, colnames=colnames):
-    #                 yield row
-    #         elif self._file_format == "xml":
-    #             for row in self._readXML(path_to_file, encoding=encoding, colnames=colnames):
-    #                 yield row
-    #         elif self._file_format == "csv":
-    #             for row in self._readCSV(path_to_file, encoding=encoding, colnames=colnames, delimiter=csvdelimiter):
-    #                 yield row
-    #         else:
-    #             self.logger.error("'{}'-Format not supported.".format(self._file_format), exc_info=self._logger_traceback)
-    #             yield False
-    #             return 
-
-
-    def getgenerator(self, colnames=False, encoding="utf-8", csvdelimiter=',', input_path_list=False):
-        if input_path_list:
-            path_to_files = input_path_list
-        else:
-            path_to_files = self.files_to_read
-
-        for path_to_file in path_to_files:
-            if self._file_format == "txt":
-                #p(self._readTXT(path_to_file, encoding=encoding, columns_extract_from_fname=True))
-                row =  self._readTXT(path_to_file, encoding=encoding, columns_extract_from_fname=True, colnames=colnames)
+        elif self._file_format == "json":
+            for row in self._readJSON(inp_obj, encoding=encoding, colnames=colnames,):
                 yield row
-            elif self._file_format == "json":
-                for row in self._readJSON(path_to_file, encoding=encoding, colnames=colnames,):
-                    yield row
-            elif self._file_format == "xml":
-                for row in self._readXML(path_to_file, encoding=encoding, colnames=colnames):
-                    yield row
-            elif self._file_format == "csv":
-                for row in self._readCSV(path_to_file, encoding=encoding, colnames=colnames, delimiter=csvdelimiter):
-                    yield row
-            else:
-                self.logger.error("'{}'-Format not supported.".format(self._file_format), exc_info=self._logger_traceback)
-                yield False
-                return 
+            if self._send_end_file_marker:
+                yield self._end_file_marker
 
-        if self.retweet_counter > 0:
-            self.logger.warning("'{}'-retweets was ignored.".format(self.retweet_counter))
+        elif self._file_format == "xml":
+            for row in self._readXML(inp_obj, encoding=encoding, colnames=colnames):
+                yield row
+            if self._send_end_file_marker:
+                yield self._end_file_marker
 
-    def getlazy(self,colnames=False, encoding="utf-8", csvdelimiter=',', input_path_list=False,stream_number=1, adjust_to_cpu=True, min_files_pro_stream=1000):
-        if not input_path_list:
-            input_path_list = self.files_to_read
+        elif self._file_format == "csv":
+            for row in self._readCSV(inp_obj, encoding=encoding, colnames=colnames, delimiter=csvdelimiter):
+                yield row
+            if self._send_end_file_marker:
+                yield self._end_file_marker
 
+        else:
+            self.logger.error("'{}'-Format not supported.".format(self._file_format), exc_info=self._logger_traceback)
+            yield False
+            return 
+ 
+
+    def getgenerator(self, colnames=False, encoding="utf-8", csvdelimiter=',', input_path_list=False, input_zip_file_list = False):
+        if not input_path_list and not input_zip_file_list:
+            self.logger.warning("Given Generator is empty.")
+            yield False
+
+        if input_path_list:
+            for path_to_file in input_path_list:
+                for row in self._generator_helper(path_to_file, colnames=colnames, encoding=encoding, csvdelimiter=csvdelimiter):
+                    yield row
+
+        if self._read_from_zip:
+            if input_zip_file_list:
+                for path_to_zip, list_with_path_to_files in input_zip_file_list.iteritems():
+                    archive = zipfile.ZipFile(path_to_zip, 'r')
+                    for path_to_file in list_with_path_to_files:
+                        f = archive.open(path_to_file)
+                        for row in self._generator_helper(f, colnames=colnames, encoding=encoding, csvdelimiter=csvdelimiter):
+                            yield row
+
+        self._stream_done += 1
+        self._print_once_ignore_retweets_counter()
+
+
+    def getlazy(self,colnames=False, encoding="utf-8", csvdelimiter=',', stream_number=1, adjust_to_cpu=True, min_files_pro_stream=1000, restart=True, cpu_percent_to_get=50):
+        self._stream_done = 0
+        self.retweet_counter.clear()
         wish_stream_number = stream_number
+        if self.counter_lazy_getted>0 and restart:
+            self.files_from_zips_to_read_left_over = copy.deepcopy(self.files_from_zips_to_read_orig)
+            self.files_to_read_leftover = copy.deepcopy(self.files_to_read_orig)
+        self.counter_lazy_getted +=1
         if stream_number <1:
             stream_number = 10000
             adjust_to_cpu = True
             self.logger.debug("StreamNumber is less as 1. Automatic computing of strem number according cpu was enabled.")
         #p(stream_number, "stream_number")
         if adjust_to_cpu:
-            stream_number= get_number_of_streams_adjust_cpu( min_files_pro_stream, len(self.files_to_read), stream_number)
+            stream_number= get_number_of_streams_adjust_cpu( min_files_pro_stream, self._get_number_of_left_over_files(), stream_number, cpu_percent_to_get=cpu_percent_to_get)
             if stream_number is None:
-                self.logger.error("Number of input files is 0. Not generators could be returned.")
+                #p((self._get_number_of_left_over_files(),self.counter_lazy_getted),"self._get_number_of_left_over_files()")
+                self.logger.error("Number of input files is 0. Not generators could be returned.", exc_info=self._logger_traceback)
                 return []
+
         #p(stream_number, "stream_number")
-        #p(stream_number, "stream_number")
-        if stream_number > len(self.files_to_read):
-            self.logger.error("StreamNumber is higher as number of the files to read. This is not allowed.")
+        if stream_number > self._get_number_of_left_over_files():
+            self.logger.error("StreamNumber is higher as number of the files to read. This is not allowed.", exc_info=self._logger_traceback)
             return False
 
         list_with_generators = []
-        #number_of_files_per_stream = 
-        number_of_files_per_stream = int(Decimal(float(len(self.files_to_read)/stream_number)).quantize(Decimal('1.'), rounding=ROUND_DOWN))
-        #p(number_of_files_per_stream)
-        current_index = 0
-        #p(range(stream_number), "range(stream_number)")
-        for i in range(stream_number):
-            #p(i, "i")
-            if i < (stream_number-1): # for gens in between 
-                new_index = current_index+number_of_files_per_stream
-                #p((current_index,new_index))
-                temp_list_with_paths  = self.files_to_read[current_index:new_index]
-                #list_with_generators.append()
-                current_index = new_index
-            else: # for the last generator
-                temp_list_with_paths  = self.files_to_read[current_index:]
-                # list_with_generators.append(self.getlazy(input_path_list=temp_list_with_paths, colnames= colnames, encoding=encoding, csvdelimiter=csvdelimiter,))
-            
-            gen = self._getlazy_single(input_path_list=temp_list_with_paths, colnames= colnames, encoding=encoding, csvdelimiter=csvdelimiter)
-            
-            if stream_number == 1:
-                if wish_stream_number > 1:
 
+        number_of_files_per_stream = int(Decimal(float(self._get_number_of_left_over_files()/stream_number)).quantize(Decimal('1.'), rounding=ROUND_DOWN))
+        #p((stream_number, number_of_files_per_stream), c="m")
+
+        #self.files_from_zips_to_read_orig
+        for i in range(stream_number):
+            if i < (stream_number-1): # for gens in between 
+                files_to_read_non_zip, files_from_zips_to_read_orig = self._get_files_for_stream(number_of_files_per_stream)
+
+            else: # for the last generator
+                files_to_read_non_zip, files_from_zips_to_read_orig = self._get_files_for_stream(-1)
+
+            input_path_list= files_to_read_non_zip if files_to_read_non_zip else False
+            input_zip_file_list = files_from_zips_to_read_orig if files_from_zips_to_read_orig else False
+            gen = self._getlazy_single(input_path_list=input_path_list, input_zip_file_list=input_zip_file_list,colnames= colnames, encoding=encoding, csvdelimiter=csvdelimiter)
+
+            if stream_number == 1:
+                #p(wish_stream_number)
+                if wish_stream_number > 1:
                     return [gen]
                 else:
                     return gen
-            #else:
+
             list_with_generators.append(gen)
 
-        self.logger.debug(" '{}'-streams was created.".format(stream_number))
+        self._created_streams = stream_number
+        
+        self.logger.info(" '{}'-streams was created. (adjust_to_cpu='{}')".format(stream_number, adjust_to_cpu))
         return list_with_generators
 
 
+    def _print_once_ignore_retweets_counter(self):
+        if int(self.retweet_counter) > 0:
+            if self._stream_done >= self._created_streams:
+                self.logger.info("'{}'-retweets in total was ignored.".format(int(self.retweet_counter)))
 
 
-    def _getlazy_single(self,colnames=False, encoding="utf-8", csvdelimiter=',', input_path_list=False):
-        if not input_path_list:
-            input_path_list = self.files_to_read
+    def _get_number_of_left_over_files(self):
+        #p(len(self.files_to_read_leftover), c="m")
+        #p(sum([len(v) for v in self.files_from_zips_to_read_left_over.values() ]), c="m")
+        return len(self.files_to_read_leftover) + sum([len(v) for v in self.files_from_zips_to_read_left_over.values() ])
+
+    def _get_files_for_stream(self,number_to_get):
+        number_files_leftover = self._get_number_of_left_over_files()
+        if number_to_get == -1:
+            number_to_get = number_files_leftover
+
+        if not (number_to_get <= number_files_leftover):
+            self.logger.error("Given Number '{}' is higher than number of leftover '{}' files to get.".format(number_to_get, number_files_leftover), exc_info=self._logger_traceback)
+            return False, False
+
+        files_to_read_non_zip = []
+        files_from_zips_to_read_orig = defaultdict(list)
         
-        length = len(input_path_list)
-        gen = self.getgenerator(colnames=colnames, encoding=encoding, csvdelimiter=csvdelimiter, input_path_list=input_path_list)
+        getted_number = 0
+        while getted_number< number_to_get:
+            try:
+                files_to_read_non_zip.append(self.files_to_read_leftover.pop()) 
+                getted_number += 1
+            except IndexError:
+                try:
+                    for k in self.files_from_zips_to_read_left_over.keys():
+                        #if len(l[k]) != 0:
+                        files_from_zips_to_read_orig[k].append( self.files_from_zips_to_read_left_over[k].pop() )
+                        getted_number += 1
+                        break
+                except IndexError:
+                    del self.files_from_zips_to_read_left_over[k]
+
+        return files_to_read_non_zip, files_from_zips_to_read_orig
+
+
+
+
+
+
+    def _getlazy_single(self,colnames=False, encoding="utf-8", csvdelimiter=',', input_path_list=False, input_zip_file_list=False):        
+        len_unzipped_files = len(input_path_list) if input_path_list else 0 
+        len_zipped_files = sum([len(v) for v in input_zip_file_list.values() ]) if input_zip_file_list else 0
+        length = len_unzipped_files + len_zipped_files
+        gen = self.getgenerator(colnames=colnames, encoding=encoding, csvdelimiter=csvdelimiter, input_path_list=input_path_list, input_zip_file_list=input_zip_file_list)
         #p(type(gen))
         return LenGen(gen, length)
 
 
-# #number_of_files_per_thread = len(self.files_to_read)/threads_to_create
-#         return threads_to_create,  int(Decimal(float(number_of_files_per_thread)).quantize(Decimal('1.'), rounding=ROUND_DOWN))
-
-
-
-    # def getparallel(self, thread_number=False, colnames=False, encoding="utf-8", csvdelimiter=',', min_files_pro_thread=100):
-    #     list_with_generators = []
-    #     threads_to_create= self._get_number_of_streams_adjust_cpu( min_files_pro_thread, thread_number=thread_number)
-    #     current_index = 0
-    #     if threads_to_create >1:
-    #         for i in range(threads_to_create):
-    #             #if i < threads_to_create-1:
-    #             if i < (threads_to_create-1):
-    #                 new_index = current_index+number_of_files_per_thread
-    #                 #p((current_index,new_index), "reader", c="r")
-    #                 temp_list_with_paths  = self.files_to_read[current_index:new_index]
-    #                 #p(temp_list_with_paths, "reader",c="r")
-    #                 list_with_generators.append(self._getlazy_single(input_path_list=temp_list_with_paths, colnames= colnames, encoding=encoding, csvdelimiter=csvdelimiter,))
-    #                 #p(len(list(list_with_generators[-1])), "reader",c="r")
-    #                 current_index = new_index
-    #             else:
-    #                 #p((current_index), "reader",c="m")
-    #                 temp_list_with_paths  = self.files_to_read[current_index:]
-    #                 #p(temp_list_with_paths, "reader",c="m")
-    #                 #p(len(list(list_with_generators[-1])))
-    #                 list_with_generators.append(self._getlazy_single(input_path_list=temp_list_with_paths, colnames= colnames, encoding=encoding, csvdelimiter=csvdelimiter,))
-    #                 #p(len(list(list_with_generators[-1])), "reader",c="m")
-    #     else:
-    #         list_with_generators.append(self._getlazy_single(input_path_list=self.files_to_read, colnames= colnames, encoding=encoding, csvdelimiter=csvdelimiter,))
-        
-    #     self.logger.debug("GetParallel: '{}'-generators was created.".format(len(list_with_generators)))
-    #     return list_with_generators
 
 ##################################################################################
 ####################################################################################
@@ -469,71 +473,93 @@ class Reader(object):
 
 
 
-    def _readTXT(self, path_to_file,encoding="utf-8", columns_extract_from_fname=True, colnames=False):
-        if os.path.isfile(path_to_file):
-            try:
-                if columns_extract_from_fname:
-                    #file = open(path_to_file, "r")
-                    file = codecs.open(path_to_file, "r", encoding=encoding)
-                    fname = os.path.splitext(os.path.basename(path_to_file))
-                    output_data = self._get_col_and_values_from_fname(fname[0],self._compiled_regex_for_fname)
-                    #p(output_data)
-                    if not output_data or not isinstance(output_data, dict):
-                        self.logger.critical("ReadTXTError: '{}' wasn't readed.".format(fname))
-                        return {}
-                    file_data = file.read()
-
-
-                    output_data.update({self._text_field_name:file_data})
-                    if colnames:
-                        return self._get_data_from_dic_for_given_keys(colnames, output_data)
-                    else:
-                        return output_data
+    def _readTXT(self, inp_object,encoding="utf-8", columns_extract_from_fname=True, colnames=False,  string_was_given=False):
+        try:
+            if isinstance(inp_object, str):
+                if not  os.path.isfile(inp_object):
+                    self.logger.error("TXTFileNotExistError: Following File wasn't found: '{}'. ".format(inp_object), exc_info=self._logger_traceback)
+                    return False
                 else:
-                    self.logger.error("ReadTXTError: Other sources of Columns as from FName are not implemented!", exc_info=self._logger_traceback)
-                    return False 
+                    f = open(inp_object, "r")
+                    as_file_handler = False
+            else:
+                f = inp_object
+                as_file_handler = True
+                #data = json.load(f) 
 
-            except Exception, e:
-                print_exc_plus() if self._ext_tb else ""
-                self.logger.error("TXTReaderError: Following Exception was throw: '{}'. ".format(e), exc_info=self._logger_traceback)
-                return False
-                #return
+            if columns_extract_from_fname:
+                #file = open(inp_object, "r")
+                #f = codecs.open(inp_object, "r", encoding=encoding)
+                fname = os.path.splitext(os.path.basename(f.name))
+                output_data = self._get_col_and_values_from_fname(fname[0],self._compiled_regex_for_fname)
+                #p(output_data)
+                if not output_data or not isinstance(output_data, dict):
+                    self.logger.critical("ReadTXTError: '{}' wasn't readed.".format(fname))
+                    return {}
+                file_data = f.read().decode(encoding)
 
-        else:
-            self.logger.error("TXTFileNotExistError: Following File wasn't found: '{}'. ".format(path_to_file), exc_info=self._logger_traceback)
+
+                output_data.update({self._text_field_name:file_data})
+                if colnames:
+                    return self._get_data_from_dic_for_given_keys(colnames, output_data)
+                else:
+                    return output_data
+            else:
+                self.logger.error("ReadTXTError: Other sources of Columns as from FName are not implemented!", exc_info=self._logger_traceback)
+                return False 
+
+        except Exception, e:
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("TXTReaderError: Following Exception was throw: '{}'. ".format(e), exc_info=self._logger_traceback)
             return False
+            #return
 
 
-    def _readCSV(self, path_to_file,encoding="utf_8", delimiter=',', colnames=False):
-        csv.field_size_limit(sys.maxsize)
-        if os.path.isfile(path_to_file):
-            try:
-                csvfile = open(path_to_file, "r")
+    def _readCSV(self, inp_object,encoding="utf_8", delimiter=',', colnames=False,  string_was_given=False):
+        try:
+            if isinstance(inp_object, str):
+                if not  os.path.isfile(inp_object):
+                    self.logger.error("CSVFileNotExistError: Following File wasn't found: '{}'. ".format(inp_object), exc_info=self._logger_traceback)
+                    yield False
+                    return
+                else:
+                    f = open(inp_object, "r")
+                    as_file_handler = False
+            else:
+                f = inp_object
+                as_file_handler = True
 
-                readCSV = unicodecsv.DictReader(csvfile, delimiter=delimiter, encoding=encoding)
-                headers = readCSV.fieldnames
+            readCSV = unicodecsv.DictReader(f, delimiter=delimiter, encoding=encoding)
+            headers = readCSV.fieldnames
 
-                for row in readCSV:
-                    if colnames:
-                        yield self._get_data_from_dic_for_given_keys(colnames, row)
-                    else:
-                        yield row
+            for row in readCSV:
+                if colnames:
+                    yield self._get_data_from_dic_for_given_keys(colnames, row)
+                else:
+                    yield row
 
-            except Exception, e:
-                print_exc_plus() if self._ext_tb else ""
-                self.logger.error("CSVReaderError: Following Exception was throw: '{}'. ".format(e), exc_info=self._logger_traceback)
-                yield False
-                return
-
-        else:
-            self.logger.error("CSVFileNotExistError: Following File wasn't found: '{}'. ".format(path_to_file), exc_info=self._logger_traceback)
+        except Exception, e:
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("CSVReaderError: Following Exception was throw: '{}'.  For following File: '{}'.".format(e, f.name), exc_info=self._logger_traceback)
             yield False
             return
 
 
-    def _readXML(self, path_to_file,encoding="utf_8", colnames=False):
-        if os.path.isfile(path_to_file):
-            tree = ET.parse(path_to_file)
+    def _readXML(self, inp_object,encoding="utf_8", colnames=False, string_was_given=False):
+        try:
+            if isinstance(inp_object, str):
+                if not  os.path.isfile(inp_object):
+                    self.logger.error("XMLFileNotExistError: Following File wasn't found: '{}'. ".format(inp_object), exc_info=self._logger_traceback)
+                    yield False
+                    return
+                else:
+                    f = open(inp_object, "r")
+                    as_file_handler = False
+            else:
+                f = inp_object
+                as_file_handler = True
+
+            tree = ET.parse(inp_object)
             root = tree.getroot()
             self.xmlroottag = root.tag
             #root.attrib
@@ -555,11 +581,12 @@ class Reader(object):
                 else:
                     yield row_dict
 
-        else:
-            self.logger.error("XMLFileNotExistError: Following File wasn't found: '{}'. ".format(path_to_file), exc_info=self._logger_traceback)
+
+        except Exception, e:
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("XMLReaderError: Following Exception was throw: '{}'.  For following File: '{}'.".format(e, f.name), exc_info=self._logger_traceback)
             yield False
             return
-
 
 
     def _json_tweets_preprocessing(self, data):
@@ -618,8 +645,9 @@ class Reader(object):
             #p(json_tweet["retweeted_status"])
             is_retweet = True
             if self._ignore_retweets:
-                self.retweet_counter += 1
-                self.logger.warning("RetweenIgnoring: Current RETweet with ID='{}' was ignored. (for allowing retweets please use 'ignore_retweets' option.)".format(json_tweet["id"]))
+                self.retweet_counter.incr()
+                self.logger.outsorted_reader("RetweenIgnoring: Retweet with ID:'{}' was ignored. ".format(json_tweet["id"]))
+                #self.logger.warning("RetweenIgnoring: Current RETweet with ID='{}' was ignored. (for allowing retweets please use 'ignore_retweets' option.)".format(json_tweet["id"]))
                 return {}
 
 
@@ -654,67 +682,97 @@ class Reader(object):
         new_structure["is_retweet"] = is_retweet
         new_structure["is_answer"] = is_answer
 
-
-
-        #p(new_structure, c="r")
-
-
         return new_structure
 
 
 
 
-    def _readJSON(self, path_to_file,encoding="utf_8", colnames=False):
-        if os.path.isfile(path_to_file):
-            try:
-                #p(path_to_file)
-                f = open(path_to_file)
-                data = json.load(f)
+    def _readJSON(self, inp_object, encoding="utf_8", colnames=False, str_to_reread=False ):
+        try: 
+            if not  str_to_reread:
+                if isinstance(inp_object, str):
+                    if not  os.path.isfile(inp_object):
+                        self.logger.error("JSONFileNotExistError: Following File wasn't found: '{}'. This File was ignored.".format(inp_object), exc_info=self._logger_traceback)
+                        yield {}
+                        return 
+                        #return 
+                    else:
+                        f = open(inp_object, "r")
+                        as_file_handler = False
+                        raw_str = f.read()
+                else:
+                    f = inp_object
+                    raw_str = f.read()
+                    as_file_handler = True
+            else:
+                raw_str = str_to_reread
+                
+            data = json.loads(raw_str)
+            if len(data) == 0:
+                self.logger.outsorted_reader("JSONReader: Given JSON '{}' is empty.".format(f.name))
+                yield {}
+                return 
 
-                if len(data) == 0:
-                    self.logger.debug("Given JSON '{}' is empty.".format(path_to_file))
-                    yield {}
+            if self._formatter_name:
+                if self._formatter_name.lower() in Reader.reader_supported_formatter["json"]:
+                    try:
+                        data = self._json_tweets_preprocessing(data)
 
-                if self._formatter_name:
-                    if self._formatter_name.lower() in Reader.reader_supported_formatter:
-                        try:
-                            data = self._json_tweets_preprocessing(data)
-
-                            if len(data) == 0:
-                                self.logger.debug("TweetsPreprocessing out-sorted current file: '{}' .".format(path_to_file))
-                                yield {}
-                        except Exception, e:
-                            self.logger.error("JSONReader: Exception encountered during cleaning Twitter-JSON. This File was ignoren. Exception: '{}'.".format(e))
+                        if len(data) == 0:
+                            self.logger.debug("TweetsPreprocessing out-sorted current file: '{}' .".format(f.name))
                             yield {}
                             return 
-                    else:
-                        self.logger.critical("JSONReaderError: Given '{}'-FormatterName is not supported. Please choice one of the following: '{}'. Execution of the Program was stopped- ".format(self._formatter_name, Reader.reader_supported_formatter))
-                        sys.exit()
-
-                if isinstance(data, dict):
-                    data = [data]
-
-                for row_dict in data:
-                    if colnames: 
-                        yield self._get_data_from_dic_for_given_keys(colnames, row_dict)
-                    else:
-                        yield row_dict 
-            except ValueError, e:
-                print_exc_plus() if self._ext_tb else ""
-                if "Expecting , delimiter" in str(e) or "No JSON object could be decoded" in str(e):
-                    self.logger.error("JSONReaderError: Current File is not valid JSON: Path to File: '{}'. Following Exception was throw: '{}'. ".format(path_to_file, e), exc_info=self._logger_traceback)
+                    except Exception, e:
+                        self.logger.error("JSONReader: Exception encountered during cleaning Twitter-JSON. This File was ignoren. Exception: '{}'.".format(e))
+                        yield {}
+                        return 
                 else:
-                    self.logger.error("JSONReaderError: ValueError in the current File '{}' following Exception was throw: '{}'. ".format(path_to_file, e), exc_info=self._logger_traceback)
-            except Exception, e:
-                print_exc_plus() if self._ext_tb else ""
-                self.logger.error("JSONReaderError: For current File '{}' following Exception was throw: '{}'. ".format(path_to_file, e), exc_info=self._logger_traceback)
+                    self.logger.critical("JSONReaderError: Given '{}'-FormatterName is not supported. Please choice one of the following: '{}'. Execution of the Program was stopped- ".format(self._formatter_name, Reader.reader_supported_formatter))
+                    sys.exit()
 
-        else:
-            self.logger.error("JSONFileNotExistError: Following File wasn't found: '{}'. This File was ignored.".format(path_to_file), exc_info=self._logger_traceback)
-            yield {}
-            #return
+            if isinstance(data, dict):
+                data = [data]
 
+            for row_dict in data:
+                if colnames: 
+                    yield self._get_data_from_dic_for_given_keys(colnames, row_dict)
+                else:
+                    yield row_dict 
+        except ValueError, e: # this was implemented, because twitter streamer send sometimes inconsistent tweets, where json is not correct
+            print_exc_plus() if self._ext_tb else ""
+            if not str_to_reread:
+                try:
+                    splitted = raw_str.split("}{")
+                    if len(splitted) > 1:
+                        temp_items = []
+                        for item in splitted:
+                            if item[0] != "{":
+                                item= "{{{}".format(item)
+                            if item[-1]!= "}":
+                                item= "{}}}".format(item)
+                            temp_items.append(json.loads(item))
+                        json_str = json.dumps(temp_items)
+                        #self.logger.critical(temp_items)
+                        #self.logger.critical(json_str)
+                        #sys.exit()
+                        for row in self._readJSON(inp_object, encoding=encoding, colnames=colnames, str_to_reread=json_str):
+                            yield row
+                    self.logger.healed("JSONDoktorSuccess: 'not-valid'-JSON File was getted: '{}'. It was possible to heal it up. ".format(f.name))
 
+                except Exception, e:
+                    self.logger.error("JSONDoktorError: It wasn't possible to heal up current 'not-valid'-JSON File: '{}' (was ignored)\n --->See Exception:  '{}';\n --->DataFromFile:'{}'; \n".format(f.name, e, raw_str), exc_info=self._logger_traceback)
+            else:
+                raw_str= raw_str if self._log_content else "log_content is disable. Switch on this Option, if you want see file data here"
+                if "Expecting , delimiter" in str(e) or "No JSON object could be decoded" in str(e):
+                    self.logger.error_insertion("JSONReaderError: Current File is not valid JSON: ('{}' was ignored)\n --->See Exception:  '{}';\n --->DataFromFile:'{}'; \n".format(f.name, e, raw_str), exc_info=self._logger_traceback)
+                elif "Extra data"  in str(e):
+                    self.logger.error_insertion("JSONReaderError: Probably inconsistent JSON File. ('{}' was ignored)\n --->See Exception:  '{}';\n --->DataFromFile:'{}'; \n".format(f.name, e, raw_str), exc_info=self._logger_traceback)
+                else:
+                    self.logger.error_insertion("JSONReaderError:  ('{}' was ignored)\n --->See Exception:  '{}';\n --->DataFromFile:'{}'; \n".format(f.name, e, raw_str), exc_info=self._logger_traceback)
+
+        except Exception, e:
+            print_exc_plus() if self._ext_tb else ""
+            self.logger.error("JSONReaderError: For current File '{}' following Exception was throw: '{}'. ".format(f.name, e), exc_info=self._logger_traceback)
 
 
 
@@ -736,29 +794,49 @@ class Reader(object):
 
 
     def _extract_all_files_according_given_file_format(self):
-        output_path_to_file = []
-        for root, dirs, files in os.walk(self._inp_path, topdown=False):
-           for name in files:
-              if self._file_format in name:
-                output_path_to_file.append(os.path.join(root, name))
+        try:
+            output_path_to_file = []
+            #self.files_to_read_orig = []
+            #self.zips_to_read = []
+            for root, dirs, files in os.walk(self._inp_path, topdown=False):
+               for name in files:
+                    if "."+self._file_format in name.lower():
+                        self.files_to_read_orig.append(os.path.join(root, name))
+                    if self._read_from_zip:
+                        if ".zip" in name.lower():
+                            self.zips_to_read.append(os.path.join(root, name))
 
-        if len(output_path_to_file)==0:
-            #p((self._inp_path))
-            self.logger.error("FilesExtractionProblem: No '{}'-Files was found. (check given FileFormat).".format(self._file_format), exc_info=self._logger_traceback)
-            return output_path_to_file
+            if len(self.files_to_read_orig)==0 and len(self.zips_to_read)==0:
+                #p((self._inp_path))
+                self.logger.warning("FilesExtractionProblem: No '{}'-Files or ZIPs was found. (check given FileFormat).".format(self._file_format), exc_info=self._logger_traceback)
+                #return self.files_to_read_orig
+            self.files_to_read_leftover = copy.deepcopy(self.files_to_read_orig)
 
-        self.logger.info("FilesExtraction: '{}' files was found in the given folder Structure.".format(len(output_path_to_file)))
-        return output_path_to_file
-
-
-
-
-
-
-
-
+            if self._read_from_zip:
+                for path_to_zip in self.zips_to_read:
+                    archive = zipfile.ZipFile(path_to_zip, 'r')
+                    for name in  archive.namelist():
+                        if "."+self._file_format in name:
+                            #f = archive.open(name)
+                            self.files_from_zips_to_read_orig[path_to_zip].append(name)
 
 
+                self.files_from_zips_to_read_left_over = copy.deepcopy(self.files_from_zips_to_read_orig)
+
+            self.logger.info("FilesExtraction: '{}' '{}'-Files (unzipped) was found in the given folder Structure: '{}'. ".format(len(self.files_to_read_orig),self._file_format, self._inp_path))
+            
+            if self._read_from_zip:
+                if self.zips_to_read:
+                    self.files_number_in_zips = sum([len(v) for v in self.files_from_zips_to_read_orig.values() ])
+                    self.logger.info("ZIPsExtraction: Additional it was found '{}' ZIP-Archives, where '{}' '{}'-Files was found.".format(len(self.zips_to_read), self.files_number_in_zips,self._file_format))
+                
+            self.files_at_all_was_found =  len(self.files_to_read_orig) + self.files_number_in_zips
+            self.files_from_zips_to_read_left_over = copy.deepcopy(self.files_from_zips_to_read_orig)
+            self.files_to_read_leftover = copy.deepcopy(self.files_to_read_orig)
+
+        except Exception, e:
+            self.logger.error("FilesExtractionError: Encountered Exception '{}'. ".format(e), exc_info=self._logger_traceback)
+            return False   
 
 
 

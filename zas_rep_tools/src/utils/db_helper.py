@@ -14,12 +14,13 @@ from __future__ import generators
 import os
 import sys
 import regex
-import sqlite3
+#import sqlite3
 import inspect
 import itertools
 import logging
 import json
 
+from pysqlcipher import dbapi2 as sqlite
 
 import functools
 from pyhashxx import hashxx
@@ -27,7 +28,7 @@ from datetime import datetime as dt
 
 
 from zas_rep_tools.src.utils.debugger import p
-from zas_rep_tools.src.utils.logger import *
+from zas_rep_tools.src.utils.zaslogger import ZASLogger
 
 
 
@@ -38,6 +39,32 @@ from zas_rep_tools.src.utils.logger import *
 #########################Exception- Handling#############################################
 ########################################################################################
 
+sql_supported_data_type =["NULL", "INTEGER", "REAL", "TEXT", "BLOB"]
+sql_supported_data_functions = ["date", "time", "datetime", "julianday","strftime"]
+
+
+
+def dict_to_list(inp_dict, order_list):
+    out_list = []
+    for col in order_list:
+        try:
+            out_list.append(inp_dict[col])
+        except:
+            out_list.append(None)
+
+    return out_list
+
+
+def log_and_execute(cursor, sql, *args):
+    s = sql
+    if len(args) > 0:
+        # generates SELECT quote(?), quote(?), ...
+        cursor.execute("SELECT " + ", ".join(["quote(?)" for i in args]), args)
+        quoted_values = cursor.fetchone()
+        for quoted_value in quoted_values:
+            s = s.replace('?', quoted_value, 1)
+    print "SQL command: " + s
+    cursor.execute(sql, args)
 
 
 
@@ -58,7 +85,8 @@ class DBErrorCatcher(type):
         if 'DBErrorCatcher' in dct:
             #p(dct['DBErrorCatcher'])
             if dct['DBErrorCatcher']:
-                logger = main_logger('DBErrorCatcher', level=logging.ERROR,  use_logger=True)
+                self.L = ZASLogger('DBErrorCatcher', level=logging.ERROR, logger_usage=True)
+                self.logger = self.L.getLogger()
                 #logger = errorLogger("DBErrorCatcher")
                 for m in dct:
                     if hasattr(dct[m], '__call__'):
@@ -83,49 +111,49 @@ def catch_exception(f,logger):
             return f(*args, **kwargs)
 
 
-        except sqlite3.DataError as e:
-            msg = "sqlite3.DataError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
-            logger.error(msg)
+        except sqlite.DataError as e:
+            msg = "sqlite.DataError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
+            self.logger.error(msg)
             sys.exit()
          
-        except sqlite3.InternalError as e:
-            msg = "sqlite3.InternalError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
-            logger.error(msg)
-            sys.exit()
-
-         
-        except sqlite3.IntegrityError as e:
-            msg = "sqlite3.IntegrityError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
-            logger.error(msg)
+        except sqlite.InternalError as e:
+            msg = "sqlite.InternalError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
+            self.logger.error(msg)
             sys.exit()
 
          
-        except sqlite3.OperationalError as e:
-            msg = "sqlite3.OperationalError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
-            logger.error(msg)
+        except sqlite.IntegrityError as e:
+            msg = "sqlite.IntegrityError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
+            self.logger.error(msg)
             sys.exit()
 
          
-        except sqlite3.NotSupportedError as e:
-            msg = "sqlite3.NotSupportedError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
-            logger.error(msg)
+        except sqlite.OperationalError as e:
+            msg = "sqlite.OperationalError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
+            self.logger.error(msg)
             sys.exit()
 
          
-        except sqlite3.ProgrammingError as e:
-            msg = "sqlite3.ProgrammingError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
-            logger.error(msg)
+        except sqlite.NotSupportedError as e:
+            msg = "sqlite.NotSupportedError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
+            self.logger.error(msg)
+            sys.exit()
+
+         
+        except sqlite.ProgrammingError as e:
+            msg = "sqlite.ProgrammingError: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
+            self.logger.error(msg)
             sys.exit()
 
         except KeyboardInterrupt:
-            logger.warning("KeyboardInterrupt: Process was stopped from User. Some inconsistence in the current DB may situated.")
+            self.logger.warning("KeyboardInterrupt: Process was stopped from User. Some inconsistence in the current DB may situated.")
             sys.exit()
          
         except Exception as e:
             msg = "OtherExceptions: '{}'-Function returned following Error: '{}'. ".format(f.__name__, e)
             #logger.error(msg)
             #p(logger, c="m")
-            logger.error(msg)
+            self.logger.error(msg)
             sys.exit()
     
     return func
@@ -198,7 +226,8 @@ attributs_names_corpus = [
                             ("del_hashtag", "INTEGER"),
                             ("del_html", "INTEGER"),
                             ("case_sensitiv", "INTEGER"),
-                            ("lang_classification", "INTEGER")
+                            ("lang_classification", "INTEGER"),
+                            ("emojis_normalization", "INTEGER"),
                         ]
 
 
@@ -281,9 +310,22 @@ attributs_names_stats = [
                             ("version", "TEXT"),
                             ("created_at", "TEXT NOT NULL"),
                             ("visibility", "TEXT NOT NULL"),
-                            ("typ", "TEXT NOT NULL")
+                            ("typ", "TEXT NOT NULL"),
+                            ("was_space_optimized", "INTEGER"),
+                            ("context_left", "INTEGER"),
+                            ("context_right", "INTEGER"),
+                            ("repl_up", "INTEGER"),
+                            ("ignore_hashtag", "INTEGER"),
+                            ("ignore_url", "INTEGER"),
+                            ("ignore_mention", "INTEGER"),
+                            ("ignore_punkt", "INTEGER"),
+                            ("ignore_num", "INTEGER"),
+                            ("force_cleaning", "INTEGER"),
+                            ("case_sensitiv", "INTEGER"),
+                            ("text_field_name", "TEXT"),
+                            ("id_field_name", "TEXT"),
+                                                  
                         ]
-
 
 
 
@@ -295,21 +337,29 @@ attributs_names_stats = [
 
 
 #repl_baseline
-default_columns_and_types_for_stats_repl_baseline = [
+default_columns_and_types_for_stats_baseline = [
                                 ('syntagma','TEXT PRIMARY KEY NOT NULL'),
-                                ('occurrence_repl_uniq','INTEGER NOT NULL'),
-                                ('occurrence_repl_alle','INTEGER NOT NULL'),
-                                ('occurrence_non_repl','INTEGER NOT NULL'),
-                                ('repl_ids','TEXT'),
+                                ('counter','INTEGER NOT NULL'),
                                 ]
 
-#redu_baseline
-default_columns_and_types_for_redu_baseline = [
-                                ('syntagma','TEXT PRIMARY KEY NOT NULL'),
-                                ('scope','INTEGER NOT NULL'),
-                                ('occurrence','INTEGER NOT NULL'),
-                                ('redu_ids','TEXT'),
-                                ]
+
+
+# #repl_baseline
+# default_columns_and_types_for_stats_repl_baseline = [
+#                                 ('syntagma','TEXT PRIMARY KEY NOT NULL'),
+#                                 ('repl_uniq','INTEGER NOT NULL'),
+#                                 ('repl_add','INTEGER NOT NULL'),
+#                                 ('non_repl','INTEGER NOT NULL'),
+#                                 ('repl_ids','TEXT'),
+#                                 ]
+
+# #redu_baseline
+# default_columns_and_types_for_redu_baseline = [
+#                                 ('syntagma','TEXT PRIMARY KEY NOT NULL'),
+#                                 ('scope','INTEGER NOT NULL'),
+#                                 ('occur','INTEGER NOT NULL'),
+#                                 ('redu_ids','TEXT'),
+#                                 ]
 
 
 default_constraints_for_stats_baseline = [
@@ -331,11 +381,14 @@ default_constraints_for_stats_baseline = [
 default_columns_and_types_for_stats_replications = [
                                 ('repl_id','INTEGER PRIMARY KEY'),
                                 ('doc_id','INTEGER NOT NULL'),
-                                ('token_nr','INTEGER NOT NULL'),
-                                ('word','TEXT NOT NULL'),
-                                ('rle',' TEXT'),
+                                ('token_index','JSON NOT NULL'),
+                                ('rle_word','TEXT NOT NULL'),
+                                ('normalized_word',' TEXT NOT NULL'),
+                                ('pos',' TEXT NOT NULL'),
+                                ('polarity','JSON NOT NULL'),
                                 ('repl_letter','TEXT NOT NULL'),
-                                ('nr_of_repl','INTEGER NOT NULL'),
+                                ("in_redu",'JSON NOT NULL'),
+                                ('repl_length','INTEGER NOT NULL'),
                                 ('index_of_repl','INTEGER NOT NULL'),
                                 ]
 
@@ -346,7 +399,8 @@ default_constraints_for_stats_replications = [
 
 
 default_indexes_for_stats_replications = [
-                                'CREATE INDEX "ix_replID" ON "replications" ("repl_id");',
+                                #'CREATE INDEX "ix_replID" ON "replications" ("repl_id");',
+                                'CREATE INDEX "ix_norm_word_repl" ON "replications" ("normalized_word");',
                                 ]
 
 ### Reduplications_Table (default)
@@ -356,10 +410,14 @@ default_indexes_for_stats_replications = [
 default_columns_and_types_for_stats_reduplications = [
                                 ('redu_id','INTEGER PRIMARY KEY'),
                                 ('doc_id','INTEGER NOT NULL'),
-                                ('token_nr','INTEGER NOT NULL'),
-                                ('word','TEXT NOT NULL'),
-                                ('nr_of_redu','INTEGER NOT NULL'),
-                                ('scopus','BLOB'),
+                                ("redu_length",'INTEGER NOT NULL'),
+                                ('normalized_word',' TEXT NOT NULL'),
+                                ('start_index','TEXT'),
+                                ('pos',' TEXT NOT NULL'),
+                                ('orig_words','JSON NOT NULL'),
+                                ('polarity','JSON NOT NULL'),
+                                
+                                #('scopus','BLOB'),
                                 ]
 
 
@@ -369,7 +427,8 @@ default_constraints_for_stats_reduplications = [
 
 
 default_indexes_for_stats_reduplications = [
-                                    'CREATE INDEX "ix_reduID" ON "reduplications" ("redu-id");',
+                                    #'CREATE INDEX "ix_reduID" ON "reduplications" ("redu-id");',
+                                    'CREATE INDEX "ix_norm_word_redu" ON "reduplications" ("normalized_word");',
                                     ]
 
 default_indexes = {
@@ -398,8 +457,7 @@ default_tables = {
                         "info":attributs_names_stats,
                         "replications":default_columns_and_types_for_stats_replications,
                         "reduplications":default_columns_and_types_for_stats_reduplications,
-                        "repl_baseline":default_columns_and_types_for_stats_repl_baseline,
-                        "redu_baseline":default_columns_and_types_for_redu_baseline
+                        "baseline":default_columns_and_types_for_stats_baseline,
                         }
 
             }
@@ -781,12 +839,12 @@ def where_condition_to_str(inputobj,  connector="AND"):
         for item in inputobj:
             i+=1
             if i < len(inputobj):
-                outputstr += " {} {}".format(item, connector)
+                outputstr += u" {} {}".format(item, connector)
             else:
-                outputstr += " {} ".format(item)
+                outputstr += u" {} ".format(item)
 
     elif isinstance(inputobj, str):
-        outputstr += " {}".format(inputobj)
+        outputstr += u" {}".format(inputobj)
 
     else:
         return False
