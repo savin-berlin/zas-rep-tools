@@ -285,9 +285,10 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         typ= "corpus"
 
 
-        corp = Corpus(mode=self.mode, preprocession=False)
+        corp = Corpus(mode=self.mode, status_bar=True)
         #corp = Corpus(logger_level=logging.DEBUG)
-        corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license, template_name=template_name,  version= version, corpus_id=corpus_id)
+        corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license, template_name=template_name,  version= version, corpus_id=corpus_id,
+                    preprocession=False)
         #p(len(self.input_list_blogger_corpus_high_repetativ_subset))
         corp.insert(self.input_list_blogger_corpus_high_repetativ_subset)
         #p(list(corp.docs(output="dict")))
@@ -318,9 +319,11 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         language="en"
         
         reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True, ext_tb=True, mode=self.mode)
-        corp = Corpus( preprocession=True,  sent_splitter="somajo", pos_tagger=True, language=language, logger_traceback=True, ext_tb=True, mode=self.mode, use_test_pos_tagger=True) #text_field_name=""
+        corp = Corpus( logger_traceback=True, ext_tb=True, mode=self.mode, use_test_pos_tagger=True) #text_field_name=""
         #corp = Corpus(logger_level=logging.DEBUG)
-        corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license, template_name=template_name,  version= version, corpus_id=corpus_id)
+        corp.init(self.tempdir_project_folder, name, language, visibility, platform_name, 
+                    source=source, license=license, template_name=template_name,  version= version,
+                    corpus_id=corpus_id,preprocession=True,  sent_splitter="somajo", pos_tagger=True, )
    
 
         corp.insert(reader.getlazy())
@@ -354,9 +357,11 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         language="de"
         
         reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True, ext_tb=True, mode=self.mode)
-        corp = Corpus( sent_splitter="somajo", pos_tagger="someweta", language=language, logger_traceback=True, ext_tb=True, mode=self.mode, use_test_pos_tagger=True) #text_field_name=""
+        corp = Corpus(  logger_traceback=True, ext_tb=True, mode=self.mode, use_test_pos_tagger=True) #text_field_name=""
         #corp = Corpus(logger_level=logging.DEBUG)
-        corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license, template_name=template_name,  version= version, corpus_id=corpus_id)
+        corp.init(self.tempdir_project_folder, name, language, visibility, platform_name, 
+                    source=source, license=license, template_name=template_name,  version= version,
+                    corpus_id=corpus_id,sent_splitter="somajo", pos_tagger="someweta", )
         #p(reader.files_at_all_was_found)
         #corp.total_ignored_last_insertion
         corp.insert(reader.getlazy(stream_number=-1, min_files_pro_stream=7))
@@ -373,7 +378,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
     @attr(status='stable')
     #@wipd
-    def test_preprocessing_on_example_of_blogger_corp_553(self):
+    def test_preprocessing_on_example_of_blogger_corp_553_1(self):
         self.prj_folder()
         self.blogger_corpus()
         self.blogger_lists()
@@ -396,25 +401,24 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         sentiment_analyzer = "textblob"
         lang_classification = True
         del_url = True
-        del_punkt = True
-        del_num = True
-        del_html = True
+        del_punkt = False
+        del_num = False
+        del_html = False
         del_mention = True
-        del_hashtag = True
+        del_hashtag = False
         case_sensitiv = True
         typ= "corpus"
         language="de"
-        diff_emoticons = True
 
         reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_small_fake_set), "txt", regex_template="blogger", mode=self.mode)
         #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True)
-        corp = Corpus(preprocession=preprocession,tokenizer=tokenizer, #use_test_pos_tagger=True,
-                sent_splitter=sent_splitter, pos_tagger=pos_tagger,sentiment_analyzer=sentiment_analyzer,
-                language=language,lang_classification=lang_classification, del_url=del_url,
-                del_punkt=del_punkt, del_num=del_num, del_mention=del_mention, diff_emoticons=diff_emoticons,
-                del_hashtag=del_hashtag, del_html=del_html, case_sensitiv=case_sensitiv,
-                logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=False) #text_field_name=""
-        corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license, template_name=template_name,  version= version, corpus_id=corpus_id)
+        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=False) #text_field_name=""
+        corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license,
+                    template_name=template_name,  version= version, corpus_id=corpus_id,
+                    preprocession=preprocession,tokenizer=tokenizer,sent_splitter=sent_splitter, pos_tagger=pos_tagger,
+                    sentiment_analyzer=sentiment_analyzer,lang_classification=lang_classification, del_url=del_url,
+                    del_punkt=del_punkt, del_num=del_num, del_mention=del_mention,
+                    del_hashtag=del_hashtag, del_html=del_html, case_sensitiv=case_sensitiv,)
         corp.insert(self.input_list_blogger_corpus_high_repetativ_subset)
 
 
@@ -436,25 +440,92 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
             if row_from_corp["id"]==324114:
                 #pass
                 #p((row_from_corp["id"],324114))
-                output_text =  u'[[[["-)))", "EMOASC"], ["-)", "EMOASC"], ["-P", "EMOASC"], ["Neeeeeeeeeeeeeeeeiiiiiiinnnnn", "NN"]], ["neutral", 0.0]], [[["Bitte", "PTKANT"], ["nicht", "PTKNEG"], ["\\ud83d\\ude02\\ud83d\\ude02\\ud83d\\ude02", "EMOIMG"], ["Test", "NN"], ["Version", "NN"], ["von", "APPR"], ["einem", "ART"], ["Tweeeeeeeeet", "NN"], ["=)))))))", "EMOASC"], ["noch", "ADV"], ["einen", "ART"], ["Tweeeeeeeeet", "NN"], ["=)))))))", "EMOASC"], ["\\ud83d\\ude05\\ud83d\\ude05", "EMOIMG"]], ["neutral", 0.0]]]'
-                if row_from_corp["text"] != output_text:
-                    p(row_from_corp["text"], "row_from_corp",c="r")
-                    #p(output_text, "output_text",c="r")
-                    assert False
+                output_text =  u'[[[[null, ":mention:"], ["#direct_to_haven", "hashtag"], ["67666", "number"], ["8997", "number"], ["-)))", "EMOASC"], ["-)", "EMOASC"], ["-P", "EMOASC"], ["Neeeeeeeeeeeeeeeeiiiiiiinnnnn", "NN"], ["!!!!!", "symbol"]], ["neutral", 0.0]], [[["Bitte", "PTKANT"], ["nicht", "PTKNEG"], ["\\ud83d\\ude02\\ud83d\\ude02\\ud83d\\ude02", "EMOIMG"], ["Test", "NN"], ["Version", "NN"], ["von", "APPR"], ["einem", "ART"], ["Tweeeeeeeeet", "NN"], ["=)))))))", "EMOASC"], ["noch", "ADV"], ["einen", "ART"], ["Tweeeeeeeeet", "NN"], ["=)))))))", "EMOASC"], ["\\ud83d\\ude05\\ud83d\\ude05", "EMOIMG"]], ["neutral", 0.0]]]'
+                row_from_corp["text"].should.be.equal(output_text)
+
             elif row_from_corp["id"]==416465:
-                output_text = u'[[[["Einen", "ART"], ["weiteren", "ADJA"], ["Thread", "NN"], ["eingef\\u00fcgt", "VVPP"], ["ju", "NE"], ["Huuuuuuuu", "NE"], ["=)", "EMOASC"], ["\\ud83d\\udc9b\\ud83d\\udc9b\\ud83d\\udc9b", "EMOIMG"], ["den", "ART"], ["vierten", "ADJA"], ["Threadddddd", "NN"], ["wooooowwwwww", "NE"], ["\\u263a", "EMOIMG"], ["\\ufe0f", "$("], ["\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c", "EMOIMG"], ["Das", "PDS"], ["ist", "VAFIN"], ["einnnneeeen", "ART"], ["Teeeeest", "NN"], ["Tweeeets", "NE"], ["das", "ART"], ["als", "APPR"], ["extended", "NE"], ["klassifiziert", "VVPP"], ["werden", "VAINF"], ["sollte", "VMFIN"]], ["positive", 0.7]], [[["Weil", "KOUS"], ["es", "PPER"], ["bis", "APPR"], ["Zeichen", "NN"], ["beinhalten", "VVINF"], ["sollte", "VMFIN"], ["\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c", "EMOIMG"], ["Das", "PDS"], ["ist", "VAFIN"], ["einnnneeeen", "ART"], ["Teeeeest", "NN"], ["Tweeeets", "NE"], ["das", "ART"], ["als", "APPR"], ["extended", "NE"], ["klassifiziert", "VVPP"], ["werden", "VAINF"], ["sollte", "VMFIN"]], ["neutral", 0.0]], [[["Weil", "KOUS"], ["es", "PPER"], ["bis", "APPR"], ["Zeichen", "NN"], ["\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c", "EMOIMG"], ["Das", "PDS"], ["ist", "VAFIN"], ["einnnneeeen", "ART"], ["Teeeeest", "NN"], ["Quoted", "NE"], ["Tweet", "NN"], ["das", "PDS"], ["als", "APPR"], ["extended", "NN"], ["klassifiziert", "VVPP"], ["werden", "VAINF"], ["sollte", "VMFIN"]], ["neutral", 0.0]], [[["Weil", "KOUS"], ["es", "PPER"], ["bis", "APPR"], ["Zeichen", "NN"], ["beinhalten", "VVINF"], ["sollte", "VMFIN"], ["\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c", "EMOIMG"], ["Das", "PDS"], ["ist", "VAFIN"], ["einnnneeeen", "ART"], ["Teeeeest", "NN"], ["Tweeeets", "NE"], ["das", "ART"], ["als", "APPR"], ["extended", "NE"], ["klassifiziert", "VVPP"], ["werden", "VAINF"], ["sollte", "VMFIN"]], ["neutral", 0.0]], [[["Weil", "KOUS"], ["es", "PPER"], ["bis", "APPR"], ["Zeichen", "NN"], ["\\ud83d\\ude1c\\ud83d\\ude1c", "EMOIMG"], ["h", "NN"]], ["neutral", 0.0]]]'
-                if row_from_corp["text"] != output_text:
-                    #pass
-                    p(row_from_corp["text"], "row_from_corp",c="r")
-                    #p((row_from_corp["text"], output_text))
-                    assert False
+                output_text = u'[[[["Einen", "ART"], ["weiteren", "ADJA"], ["Thread", "NN"], ["eingef\\u00fcgt", "VVPP"], ["!!!", "symbol"], ["ju", "NE"], ["Huuuuuuuu", "NN"], ["=)", "EMOASC"], ["\\ud83d\\udc9b\\ud83d\\udc9b\\ud83d\\udc9b", "EMOIMG"], ["den", "ART"], ["vierten", "ADJA"], ["Threadddddd", "NN"], ["!!!", "symbol"], ["wooooowwwwww", "ADJD"], ["!!!", "symbol"], ["\\u263a", "EMOIMG"], ["\\ufe0f", "EMOIMG"], ["\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c", "EMOIMG"], ["Das", "PDS"], ["ist", "VAFIN"], ["einnnneeeen", "ART"], ["Teeeeest", "NN"], ["Tweeeets", "NE"], [",", "symbol"], ["das", "PRELS"], ["als", "APPR"], ["\\"", "symbol"], ["extended", "ADJD"], ["\\"", "symbol"], ["klassifiziert", "VVPP"], ["werden", "VAINF"], ["sollte", "VMFIN"], ["!!!", "symbol"]], ["positive", 0.13999999999999999]], [[["Weil", "KOUS"], ["es", "PPER"], ["bis", "APPR"], ["280", "number"], ["Zeichen", "NN"], ["beinhalten", "VVINF"], ["sollte", "VMFIN"], [".", "symbol"], ["\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c", "EMOIMG"], ["Das", "PDS"], ["ist", "VAFIN"], ["einnnneeeen", "ART"], ["Teeeeest", "NN"], ["Tweeeets", "NE"], [",", "symbol"], ["das", "PRELS"], ["als", "APPR"], ["\\"", "symbol"], ["extended", "ADJD"], ["\\"", "symbol"], ["klassifiziert", "VVPP"], ["werden", "VAINF"], ["sollte", "VMFIN"], ["!!!", "symbol"]], ["neutral", 0.0]], [[["Weil", "KOUS"], ["es", "PPER"], ["bis", "APPR"], ["280", "number"], ["Zeichen", "NN"], ["\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c", "EMOIMG"], ["Das", "PDS"], ["ist", "VAFIN"], ["einnnneeeen", "ART"], ["Teeeeest", "NN"], ["Quoted", "NE"], ["Tweet", "NN"], [",", "symbol"], ["das", "PRELS"], ["als", "APPR"], ["\\"", "symbol"], ["extended", "ADJD"], ["\\"", "symbol"], ["klassifiziert", "VVPP"], ["werden", "VAINF"], ["sollte", "VMFIN"], ["!!!", "symbol"]], ["neutral", 0.0]], [[["Weil", "KOUS"], ["es", "PPER"], ["bis", "APPR"], ["280", "number"], ["Zeichen", "NN"], ["beinhalten", "VVINF"], ["sollte", "VMFIN"], [".", "symbol"], ["\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c\\ud83d\\ude1c", "EMOIMG"], ["Das", "PDS"], ["ist", "VAFIN"], ["einnnneeeen", "ART"], ["Teeeeest", "NN"], ["Tweeeets", "NE"], [",", "symbol"], ["das", "PRELS"], ["als", "APPR"], ["\\"", "symbol"], ["extended", "ADJD"], ["\\"", "symbol"], ["klassifiziert", "VVPP"], ["werden", "VAINF"], ["sollte", "VMFIN"], ["!!!", "symbol"]], ["neutral", 0.0]], [[["Weil", "KOUS"], ["es", "PPER"], ["bis", "APPR"], ["280", "number"], ["Zeichen", "NN"], ["\\ud83d\\ude1c\\ud83d\\ude1c", "EMOIMG"], ["h", "NN"]], ["neutral", 0.0]]]'
+                row_from_corp["text"].should.be.equal(output_text)
+
             elif row_from_corp["id"]==322624:
-                output_text = u'[[[["Eine", "ART"], ["Teeeeeest", "NN"], ["Diskussion", "NN"], ["wird", "VAFIN"], ["er\\u00f6ffnet", "VVPP"], ["-rep-tools", "NE"], ["Einen", "ART"], ["Test", "NN"], ["Retweet", "NN"], ["wird", "VAFIN"], ["gepostet", "VVPP"]], ["neutral", 0.0]], [[["Juhuuuuuu", "ITJ"], ["=)", "EMOASC"], ["\\ud83d\\ude00\\ud83d\\ude00\\ud83d\\ude00\\ud83d\\ude00", "EMOIMG"], ["noooooooch", "ADV"], ["einen", "ART"], ["Tweeeeeeeeet", "NN"], ["=)))))))", "EMOASC"]], ["neutral", 0.0]]]'
-                if row_from_corp["text"] != output_text:
-                    #pass
-                    p(row_from_corp["text"], "row_from_corp",c="r")
-                    #p((row_from_corp["text"], output_text))
-                    assert False
+                output_text = u'[[[["Eine", "ART"], ["Teeeeeest", "NN"], ["Diskussion", "NN"], ["wird", "VAFIN"], ["er\\u00f6ffnet", "VVPP"], ["!!!", "symbol"], [null, ":mention:"], ["Einen", "ART"], ["Test", "NN"], ["Retweet", "NN"], ["wird", "VAFIN"], ["gepostet", "VVPP"], ["!!!!!", "symbol"]], ["neutral", 0.0]], [[["Juhuuuuuu", "ITJ"], ["=)", "EMOASC"], ["\\ud83d\\ude00\\ud83d\\ude00\\ud83d\\ude00\\ud83d\\ude00", "EMOIMG"], ["noooooooch", "ADV"], ["einen", "ART"], ["Tweeeeeeeeet", "NN"], ["=)))))))", "EMOASC"]], ["neutral", 0.0]]]'
+                row_from_corp["text"].should.be.equal(output_text)
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_preprocessing__with_cleaning_553_2(self):
+        self.prj_folder()
+        self.blogger_corpus()
+        self.blogger_lists()
+        name = self.configer.init_info_data["blogger"]["name"]
+        language = self.configer.init_info_data["blogger"]["language"]
+        visibility = self.configer.init_info_data["blogger"]["visibility"]
+        platform_name = self.configer.init_info_data["blogger"]["platform_name"]
+        license = self.configer.init_info_data["blogger"]["license"]
+        template_name = self.configer.init_info_data["blogger"]["template_name"]
+        version = self.configer.init_info_data["blogger"]["version"]
+        source = self.configer.init_info_data["blogger"]["source"]
+        encryption_key = self.configer.init_info_data["blogger"]["encryption_key"]["corpus"]
+        corpus_id = self.configer.init_info_data["blogger"]["id"]["corpus"]
+        stats_id = self.configer.init_info_data["blogger"]["id"]["stats"]
+        preprocession = True
+        tokenizer = "somajo"
+        sent_splitter = True
+        pos_tagger = True
+        #pos_tagger = False
+        sentiment_analyzer = True
+        lang_classification = True
+        del_url = True
+        del_punkt = True
+        del_num = True
+        del_html = True
+        del_mention = True
+        del_hashtag = True
+        case_sensitiv = False
+        typ= "corpus"
+        language="de"
+
+        reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_small_fake_set), "txt", regex_template="blogger", mode=self.mode)
+        #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True)
+        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True) #text_field_name=""
+        corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license,
+                    template_name=template_name,  version= version, corpus_id=corpus_id,
+                    preprocession=preprocession,tokenizer=tokenizer,sent_splitter=sent_splitter, pos_tagger=pos_tagger,
+                    sentiment_analyzer=sentiment_analyzer,lang_classification=lang_classification, del_url=del_url,
+                    del_punkt=del_punkt, del_num=del_num, del_mention=del_mention,
+                    del_hashtag=del_hashtag, del_html=del_html, case_sensitiv=case_sensitiv,)
+        corp.insert(self.input_list_blogger_corpus_dirty)
+
+
+        assert corp.total_inserted_during_last_insert == len(self.input_list_blogger_corpus_dirty)
+        assert corp.total_error_insertion_during_last_insertion_process == 0
+        assert corp.total_ignored_last_insertion == 0
+
+        # check, if there rows was matched
+        for row_from_corp, row_from_input in  zip(corp.docs(output="dict"),self.input_list_blogger_corpus_dirty):
+            #p(row_from_corp, "row_from_corp")
+            #p(row_from_input, "row_from_input")
+            del row_from_corp["text"]
+            del row_from_input["text"]
+            {unicode(k):unicode(v) for k,v in row_from_input.iteritems()}.should.be.equal({unicode(k):unicode(v) for k,v in row_from_corp.iteritems()})
+
+
+        # check if preprocessing was right
+        for row_from_corp in  corp.docs(output="dict"):
+            if row_from_corp["id"]==324114:
+                #pass
+                #p((row_from_corp["id"],324114))
+                output_text =  u'[[[[null, ":mention:"], [null, ":hashtag:"], [null, ":number:"], [null, ":number:"], ["-)))", "EMOASC"], ["-)", "EMOASC"], ["-p", "EMOASC"], ["neeeeeeeeeeeeeeeeiiiiiiinnnnn", "!"], [null, ":symbol:"]], ["neutral", 0.0]], [[["bitte", "V"], ["nicht", "!"], [null, ":mention:"], ["\\ud83d\\ude02\\ud83d\\ude02\\ud83d\\ude02", "EMOIMG"], ["test", "N"], ["version", "N"], ["von", "!"], ["einem", "!"], ["tweeeeeeeeet", "V"], ["=)))))))", "EMOASC"], ["noch", "!"], ["einen", "!"], ["tweeeeeeeeet", "V"], ["=)))))))", "EMOASC"], [null, ":number:"], [null, ":number:"], ["3", "ordinal"], [null, ":number:"], ["\\ud83d\\ude05\\ud83d\\ude05", "EMOIMG"]], ["positive", 1.0]]]'
+                row_from_corp["text"].should.be.equal(output_text)
+
+            elif row_from_corp["id"]==322624:
+                output_text = u'[[[["eine", "!"], ["teeeeeest", "N"], ["diskussion", "!"], ["wird", "!"], ["er\\u00f6ffnet", "!"], [null, ":symbol:"], [null, ":mention:"], [null, ":hashtag:"], [null, ":hashtag:"], ["einen", "^"], ["test", "N"], ["retweet", "V"], ["wird", "!"], ["gepostet", "!"], [null, ":symbol:"], ["=)))))))", "EMOASC"], [null, ":hashtag:"]], ["neutral", 0.0]]]'
+                row_from_corp["text"].should.be.equal(output_text)
+
+
 
 
 
@@ -493,16 +564,13 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
         reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_small_fake_set), "txt", regex_template="blogger", mode=self.mode)
         #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True)
-        corp = Corpus(preprocession=preprocession,tokenizer=tokenizer, sent_splitter=sent_splitter,
-        pos_tagger=pos_tagger,sentiment_analyzer=sentiment_analyzer,
-        language=language,lang_classification=lang_classification, del_url=del_url,
-        del_punkt=del_punkt, del_num=del_num, del_mention=del_mention, use_test_pos_tagger=True,
-        del_hashtag=del_hashtag, del_html=del_html, case_sensitiv=case_sensitiv,
-        logger_traceback=True, status_bar=True,mode=self.mode)#, thread_safe=True) #text_field_name=""
-        #corp = Corpus(logger_level=logging.DEBUG)
-
-
-        corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license, template_name=template_name,  version= version, corpus_id=corpus_id)
+        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True) #text_field_name=""
+        corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license,
+                    template_name=template_name,  version= version, corpus_id=corpus_id,
+                    preprocession=preprocession,tokenizer=tokenizer,sent_splitter=sent_splitter, pos_tagger=pos_tagger,
+                    sentiment_analyzer=sentiment_analyzer,lang_classification=lang_classification, del_url=del_url,
+                    del_punkt=del_punkt, del_num=del_num, del_mention=del_mention,
+                    del_hashtag=del_hashtag, del_html=del_html, case_sensitiv=case_sensitiv,)
         corp.insert(reader.getlazy(stream_number=1, min_files_pro_stream=1))
         number_to_insert = len(reader.getlazy(stream_number=1, min_files_pro_stream=1))
         
@@ -547,14 +615,13 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
         reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_small_fake_set), "txt", regex_template="blogger", mode=self.mode)
         #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True)
-        corp = Corpus(preprocession=preprocession,tokenizer=tokenizer, sent_splitter=sent_splitter,
-        pos_tagger=pos_tagger,sentiment_analyzer=sentiment_analyzer,
-        language=language,lang_classification=lang_classification, del_url=del_url,
-        del_punkt=del_punkt, del_num=del_num, del_mention=del_mention,
-        del_hashtag=del_hashtag, del_html=del_html, case_sensitiv=case_sensitiv,
-        logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True)#, thread_safe=True) #text_field_name=""
-        #corp = Corpus(logger_level=logging.DEBUG)
-        corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license, template_name=template_name,  version= version, corpus_id=corpus_id)
+        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True) #text_field_name=""
+        corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license,
+                    template_name=template_name,  version= version, corpus_id=corpus_id,
+                    preprocession=preprocession,tokenizer=tokenizer,sent_splitter=sent_splitter, pos_tagger=pos_tagger,
+                    sentiment_analyzer=sentiment_analyzer,lang_classification=lang_classification, del_url=del_url,
+                    del_punkt=del_punkt, del_num=del_num, del_mention=del_mention,
+                    del_hashtag=del_hashtag, del_html=del_html, case_sensitiv=case_sensitiv,)
         corp.insert([self.input_list_blogger_corpus_high_repetativ_subset[:1],self.input_list_blogger_corpus_high_repetativ_subset[1:]])
         
         if corp.total_inserted_during_last_insert != len(self.input_list_blogger_corpus_high_repetativ_subset):
@@ -593,14 +660,20 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         case_sensitiv = False
         typ= "corpus"
         language="en"
-        
-        reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True, ext_tb=True,mode=self.mode)
-        corp = Corpus(preprocession=preprocession,tokenizer=tokenizer, sent_splitter=sent_splitter,
-        pos_tagger=pos_tagger, language=language,del_url=del_url, del_punkt=del_punkt,use_test_pos_tagger=True,
-        del_num=del_num, case_sensitiv=case_sensitiv,logger_traceback=True, status_bar=True,mode=self.mode) #text_field_name=""
-        #corp = Corpus(logger_level=logging.DEBUG)
-        corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license, template_name=template_name,  version= version, corpus_id=corpus_id)
+        sentiment_analyzer=True
+        lang_classification=False
+        del_mention=True
+        del_hashtag = True
+        del_html = True
 
+        reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True, ext_tb=True,mode=self.mode)
+        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True) #text_field_name=""
+        corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license,
+                    template_name=template_name,  version= version, corpus_id=corpus_id,
+                    preprocession=preprocession,tokenizer=tokenizer,sent_splitter=sent_splitter, pos_tagger=pos_tagger,
+                    sentiment_analyzer=sentiment_analyzer,lang_classification=lang_classification, del_url=del_url,
+                    del_punkt=del_punkt, del_num=del_num, del_mention=del_mention,
+                    del_hashtag=del_hashtag, del_html=del_html, case_sensitiv=case_sensitiv,)
         corp.insert(reader.getlazy())
 
         assert corp.total_error_insertion_during_last_insertion_process == 0
@@ -794,14 +867,14 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         self.test_unicode_str_en_1_tokenized_not_cleaned_with_emoji_normalization = [([(u'I', u'regular'), (u'loved', u'regular'), (u'it', u'regular'), (u'.', u'symbol'), (u'But', u'regular'), (u'it', u'regular'), (u'was', u'regular'), (u'verrrryyyyy', u'regular'), (u'vvveRRRRRRrry', u'regular'), (u'very', u'regular'), (u'piiiiiiiiity', u'regular'), (u'pity', u'regular'), (u'pity', u'regular'), (u'piiitttyyy', u'regular'), (u'for', u'regular'), (u'me', u'regular'), (u'......', u'symbol'), (u':-(((((', 'EMOASC'), (u'@real_trump', u'mention'), (u'#sheetlife', u'hashtag'), (u'#readytogo', u'hashtag'), (u'http://www.absurd.com', u'URL')], (None, None))]
         self.test_unicode_str_en_1_tokenized_not_cleaned_without_emoji_normalization = [([(u'I', u'regular'), (u'loved', u'regular'), (u'it', u'regular'), (u'.', u'symbol'), (u'But', u'regular'), (u'it', u'regular'), (u'was', u'regular'), (u'verrrryyyyy', u'regular'), (u'vvveRRRRRRrry', u'regular'), (u'very', u'regular'), (u'piiiiiiiiity', u'regular'), (u'pity', u'regular'), (u'pity', u'regular'), (u'piiitttyyy', u'regular'), (u'for', u'regular'), (u'me', u'regular'), (u'......', u'symbol'), (u':-(((((', 'EMOASC'), (u'@real_trump', u'mention'), (u'#sheetlife', u'hashtag'), (u'#readytogo', u'hashtag'), (u'http://www.absurd.com', u'URL')], (None, None))]
         assert self.test_unicode_str_en_1_tokenized_not_cleaned_with_emoji_normalization == self.test_unicode_str_en_1_tokenized_not_cleaned_without_emoji_normalization
-        self.test_unicode_str_en_1_tokenized_cleaned = [([(u'I', u'regular'), (u'loved', u'regular'), (u'it', u'regular'), (u'But', u'regular'), (u'it', u'regular'), (u'was', u'regular'), (u'verrrryyyyy', u'regular'), (u'vvveRRRRRRrry', u'regular'), (u'very', u'regular'), (u'piiiiiiiiity', u'regular'), (u'pity', u'regular'), (u'pity', u'regular'), (u'piiitttyyy', u'regular'), (u'for', u'regular'), (u'me', u'regular'), (u':-(((((', 'EMOASC')], (None, None))]
+        self.test_unicode_str_en_1_tokenized_cleaned = [([(u'I', u'regular'), (u'loved', u'regular'), (u'it', u'regular'), (None, ':symbol:'), (u'But', u'regular'), (u'it', u'regular'), (u'was', u'regular'), (u'verrrryyyyy', u'regular'), (u'vvveRRRRRRrry', u'regular'), (u'very', u'regular'), (u'piiiiiiiiity', u'regular'), (u'pity', u'regular'), (u'pity', u'regular'), (u'piiitttyyy', u'regular'), (u'for', u'regular'), (u'me', u'regular'), (None, ':symbol:'), (u':-(((((', 'EMOASC'), (None, ':mention:'), (None, ':hashtag:'), (None, ':hashtag:'), (None, ':URL:')], (None, None))]
         
         ### Sent 2        
         self.test_unicode_str_en_2 = self.test_byte_str_en_2.decode("utf-8")
         self.test_unicode_str_en_2_tokenized_not_cleaned_with_emoji_normalization = [([(u'a', u'regular'), (u'baddddd', u'regular'), (u'bad', u'regular'), (u'bbbbbbbaaaaaad', u'regular'), (u'bbbbaaaaddddd', u'regular'), (u'baaaaaaad', u'regular'), (u'news', u'regular'), (u',', u'symbol'), (u'which', u'regular'), (u'we', u'regular'), (u'can', u'regular'), (u'not', u'regular'), (u'accept', u'regular'), (u'.', u'symbol'), (u'-((((', 'EMOASC'), (u'\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b', 'EMOIMG'), (u'#sheetlife', u'hashtag'), (u'#sheetlife', u'hashtag'), (u'http://www.noooo.com', u'URL')], (None, None))]
         self.test_unicode_str_en_2_tokenized_not_cleaned_without_emoji_normalization = [([(u'a', u'regular'), (u'baddddd', u'regular'), (u'bad', u'regular'), (u'bbbbbbbaaaaaad', u'regular'), (u'bbbbaaaaddddd', u'regular'), (u'baaaaaaad', u'regular'), (u'news', u'regular'), (u',', u'symbol'), (u'which', u'regular'), (u'we', u'regular'), (u'can', u'regular'), (u'not', u'regular'), (u'accept', u'regular'), (u'.', u'symbol'), (u'-((((', 'EMOASC'), (u'\U0001f62b', 'EMOIMG'), (u'\U0001f62b', 'EMOIMG'), (u'\U0001f62b', 'EMOIMG'), (u'\U0001f62b', 'EMOIMG'), (u'\U0001f62b', 'EMOIMG'), (u'\U0001f62b', 'EMOIMG'), (u'\U0001f62b', 'EMOIMG'), (u'\U0001f62b', 'EMOIMG'), (u'\U0001f62b', 'EMOIMG'), (u'\U0001f62b', 'EMOIMG'), (u'\U0001f62b', 'EMOIMG'), (u'\U0001f62b', 'EMOIMG'), (u'#sheetlife', u'hashtag'), (u'#sheetlife', u'hashtag'), (u'http://www.noooo.com', u'URL')], (None, None))]
         assert self.test_unicode_str_en_2_tokenized_not_cleaned_with_emoji_normalization != self.test_unicode_str_en_2_tokenized_not_cleaned_without_emoji_normalization
-        self.test_unicode_str_en_2_tokenized_cleaned = [([(u'a', u'regular'), (u'baddddd', u'regular'), (u'bad', u'regular'), (u'bbbbbbbaaaaaad', u'regular'), (u'bbbbaaaaddddd', u'regular'), (u'baaaaaaad', u'regular'), (u'news', u'regular'), (u'which', u'regular'), (u'we', u'regular'), (u'can', u'regular'), (u'not', u'regular'), (u'accept', u'regular'), (u'-((((', 'EMOASC'), (u'\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b', 'EMOIMG')], (None, None))]
+        self.test_unicode_str_en_2_tokenized_cleaned = [([(u'a', u'regular'), (u'baddddd', u'regular'), (u'bad', u'regular'), (u'bbbbbbbaaaaaad', u'regular'), (u'bbbbaaaaddddd', u'regular'), (u'baaaaaaad', u'regular'), (u'news', u'regular'), (None, ':symbol:'), (u'which', u'regular'), (u'we', u'regular'), (u'can', u'regular'), (u'not', u'regular'), (u'accept', u'regular'), (None, ':symbol:'), (u'-((((', 'EMOASC'), (u'\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b', 'EMOIMG'), (None, ':hashtag:'), (None, ':hashtag:'), (None, ':URL:')], (None, None))]
 
         ####################################
         ####################################
@@ -827,14 +900,14 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         self.test_unicode_str_de_1 = self.test_byte_str_de_1.decode("utf-8")
         self.test_unicode_str_de_1_tokenized_not_cleaned_with_emoji_normalization = [([(u'einen', u'regular'), (u'wundersch\xf6nen', u'regular'), (u'Taaaaaagggggg', u'regular'), (u'w\xfcnsche', u'regular'), (u'ich', u'regular'), (u'euch', u'regular'), (u'\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600', 'EMOIMG'), (u'\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308', 'EMOIMG'), (u'Genieeeeeeeeeeesst', u'regular'), (u'das', u'regular'), (u'Leben', u'regular'), (u'.', u'symbol'), (u'Bleeeeeeeeibt', u'regular'), (u'bleeeeibt', u'regular'), (u'Huuuuuuuuuuuungrig', u'regular'), (u'.', u'symbol')], (None, None))]
         self.test_unicode_str_de_1_tokenized_not_cleaned_without_emoji_normalization = [([(u'einen', u'regular'), (u'wundersch\xf6nen', u'regular'), (u'Taaaaaagggggg', u'regular'), (u'w\xfcnsche', u'regular'), (u'ich', u'regular'), (u'euch', u'regular'), (u'\U0001f600', 'EMOIMG'), (u'\U0001f600', 'EMOIMG'), (u'\U0001f600', 'EMOIMG'), (u'\U0001f600', 'EMOIMG'), (u'\U0001f600', 'EMOIMG'), (u'\U0001f308', 'EMOIMG'), (u'\U0001f308', 'EMOIMG'), (u'\U0001f308', 'EMOIMG'), (u'\U0001f308', 'EMOIMG'), (u'\U0001f308', 'EMOIMG'), (u'\U0001f308', 'EMOIMG'), (u'\U0001f308', 'EMOIMG'), (u'Genieeeeeeeeeeesst', u'regular'), (u'das', u'regular'), (u'Leben', u'regular'), (u'.', u'symbol'), (u'Bleeeeeeeeibt', u'regular'), (u'bleeeeibt', u'regular'), (u'Huuuuuuuuuuuungrig', u'regular'), (u'.', u'symbol')], (None, None))]
-        self.test_unicode_str_de_1_tokenized_cleaned =  [([(u'einen', u'regular'), (u'wundersch\xf6nen', u'regular'), (u'Taaaaaagggggg', u'regular'), (u'w\xfcnsche', u'regular'), (u'ich', u'regular'), (u'euch', u'regular'), (u'\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600', 'EMOIMG'), (u'\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308', 'EMOIMG'), (u'Genieeeeeeeeeeesst', u'regular'), (u'das', u'regular'), (u'Leben', u'regular'), (u'Bleeeeeeeeibt', u'regular'), (u'bleeeeibt', u'regular'), (u'Huuuuuuuuuuuungrig', u'regular')], (None, None))]
+        self.test_unicode_str_de_1_tokenized_cleaned =  [([(u'einen', u'regular'), (u'wundersch\xf6nen', u'regular'), (u'Taaaaaagggggg', u'regular'), (u'w\xfcnsche', u'regular'), (u'ich', u'regular'), (u'euch', u'regular'), (u'\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600', 'EMOIMG'), (u'\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308', 'EMOIMG'), (u'Genieeeeeeeeeeesst', u'regular'), (u'das', u'regular'), (u'Leben', u'regular'), (None, ':symbol:'), (u'Bleeeeeeeeibt', u'regular'), (u'bleeeeibt', u'regular'), (u'Huuuuuuuuuuuungrig', u'regular'), (None, ':symbol:')], (None, None))]
         
 
         ### Sent 2
         self.test_unicode_str_de_2 = self.test_byte_str_de_2.decode("utf-8")
         self.test_unicode_str_de_2_tokenized_not_cleaned_with_emoji_normalization = [([(u'eine', u'regular'), (u'klitzeeee', u'regular'), (u'kleine', u'regular'), (u'Sache', u'regular'), (u'.', u'symbol'), (u'Die', u'regular'), (u'aber', u'regular'), (u'trotzdem', u'regular'), (u'wichtiiiiiiiig', u'regular'), (u'isssssst', u'regular'), (u'!', u'symbol'), (u'11111', u'number'), (u'2222', u'number'), (u'33333', u'number'), (u'4444', u'number'), (u'55555', u'number')], (None, None))]
         self.test_unicode_str_de_2_tokenized_not_cleaned_without_emoji_normalization = [([(u'eine', u'regular'), (u'klitzeeee', u'regular'), (u'kleine', u'regular'), (u'Sache', u'regular'), (u'.', u'symbol'), (u'Die', u'regular'), (u'aber', u'regular'), (u'trotzdem', u'regular'), (u'wichtiiiiiiiig', u'regular'), (u'isssssst', u'regular'), (u'!', u'symbol'), (u'11111', u'number'), (u'2222', u'number'), (u'33333', u'number'), (u'4444', u'number'), (u'55555', u'number')], (None, None))]
-        self.test_unicode_str_de_2_tokenized_cleaned = [([(u'eine', u'regular'), (u'klitzeeee', u'regular'), (u'kleine', u'regular'), (u'Sache', u'regular'), (u'Die', u'regular'), (u'aber', u'regular'), (u'trotzdem', u'regular'), (u'wichtiiiiiiiig', u'regular'), (u'isssssst', u'regular')], (None, None))]
+        self.test_unicode_str_de_2_tokenized_cleaned = [([(u'eine', u'regular'), (u'klitzeeee', u'regular'), (u'kleine', u'regular'), (u'Sache', u'regular'), (None, ':symbol:'), (u'Die', u'regular'), (u'aber', u'regular'), (u'trotzdem', u'regular'), (u'wichtiiiiiiiig', u'regular'), (u'isssssst', u'regular'), (None, ':symbol:'), (None, ':number:'), (None, ':number:'), (None, ':number:'), (None, ':number:'), (None, ':number:')], (None, None))]
         
 
         ####################################
@@ -887,20 +960,19 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
         #reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_small_fake_set), "txt", regex_template="blogger", mode=self.mode)
         #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True)
-        corp = Corpus(preprocession=preprocession,tokenizer=tokenizer, sent_splitter=sent_splitter,
-        pos_tagger=pos_tagger,sentiment_analyzer=sentiment_analyzer, use_test_pos_tagger=use_test_pos_tagger,
-        language=language,lang_classification=lang_classification, del_url=del_url,
-        del_punkt=del_punkt, del_num=del_num, del_mention=del_mention, 
-        del_hashtag=del_hashtag, del_html=del_html, case_sensitiv=case_sensitiv,
-        logger_traceback=True, status_bar=status_bar,mode=mode, emojis_normalization=emojis_normalization)#, thread_safe=True) #text_field_name=""
-        
-
+        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True) #text_field_name=""
         
 
         if not init:
             return corp
         else:
-            corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license, template_name=template_name,  version= version, corpus_id=corpus_id)
+            corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license,
+                        template_name=template_name,  version= version, corpus_id=corpus_id,
+                        preprocession=preprocession,tokenizer=tokenizer,sent_splitter=sent_splitter, pos_tagger=pos_tagger,
+                        sentiment_analyzer=sentiment_analyzer,lang_classification=lang_classification, del_url=del_url,
+                        del_punkt=del_punkt, del_num=del_num, del_mention=del_mention, emojis_normalization=emojis_normalization,
+                        del_hashtag=del_hashtag, del_html=del_html, case_sensitiv=case_sensitiv,)
+
             #if status_bar:
                 
             return corp
@@ -951,6 +1023,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         # p(sent, "1sent")
         # sents = corp._preprocessing(sent)
         # p(sents, "2sent")
+
 
         ################################################
         ################SENT 1#######################
@@ -1111,27 +1184,13 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         self.prj_folder()
         self._init_variables_for_preprocessing_test()
         mode = self.mode
-        corp = self._get_test_corp(preprocession=False,tokenizer=False, sent_splitter=False,pos_tagger=False,sentiment_analyzer=False,lang_classification=False, lang="en", mode =mode )
-        #corp._init_insertions_variables()
+        corp = self._get_test_corp(preprocession=False,tokenizer=False, sent_splitter=False,pos_tagger=False,sentiment_analyzer=False,lang_classification=False, lang="en", mode =mode, init=True )
+
         answer1 = corp._init_preprocessors()
         answer1["status"].should.be.equal(False)
         answer1["desc"].should.be.equal("PreprocessorsWasDisabled")
 
 
-
-    @attr(status='stable')
-    #@wipd
-    def test_preprocessors_with_disabled_tokenizer_701(self):
-        self.prj_folder()
-        self._init_variables_for_preprocessing_test()
-        mode = "silent"
-        #corp._init_insertions_variables()
-        try:
-            corp = self._get_test_corp(preprocession=True,tokenizer=False, sent_splitter=False,pos_tagger=False,sentiment_analyzer=False,lang_classification=False, lang="en",mode=mode )
-            answer1 = corp._init_preprocessors()
-            assert False # because, if preproc are enabled and tokenizer is disabled, than it is not possible to preprocess
-        except:
-            assert True
 
 
 
@@ -1181,7 +1240,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         answer1["status"].should.be.equal(True)
         answer1["desc"].should.be.equal(1)
 
-        ######Input in Byte  ######
+        #####Input in Byte  ######
         corp._preprocessing(self.test_byte_str_de_1).should.be.equal(self.test_unicode_str_de_1_tokenized_not_cleaned_with_emoji_normalization )
         # p(corp._preprocessing(self.test_byte_str_de_1), "corp._preprocessing(self.test_byte_str_de_1)")
         corp._preprocessing(self.test_byte_str_de_2).should.be.equal(self.test_unicode_str_de_2_tokenized_not_cleaned_with_emoji_normalization )
@@ -1192,6 +1251,10 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         # p(corp._preprocessing(self.test_unicode_str_de_1), "corp._preprocessing(self.test_unicode_str_de_1)")
         corp._preprocessing(self.test_unicode_str_de_2).should.be.equal(self.test_unicode_str_de_2_tokenized_not_cleaned_with_emoji_normalization )
         # p(corp._preprocessing(self.test_unicode_str_de_2), "corp._preprocessing(self.test_byte_str_de_2)")
+
+        output =  corp._preprocessing(":-)))) -))) 😀😀😀😀😀-))) -)))")
+        right_output = [([(u':-))))', 'EMOASC'), (u'-)))', 'EMOASC'), (u'\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600', 'EMOIMG'), (u'-)))', 'EMOASC'), (u'-)))', 'EMOASC')], (None, None))]
+        output.should.be.equal(right_output)
 
 
 
@@ -1216,10 +1279,12 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
         
         ######Input in Byte  ######
+        #p(corp._preprocessing(self.test_byte_str_en_1), "corp._preprocessing(self.test_byte_str_en_1)")
         corp._preprocessing(self.test_byte_str_en_1).should.be.equal(self.test_unicode_str_en_1_tokenized_not_cleaned_without_emoji_normalization )
-        # p(corp._preprocessing(self.test_byte_str_en_1), "corp._preprocessing(self.test_byte_str_en_1)")
+        #p(corp._preprocessing(self.test_byte_str_en_2), "corp._preprocessing(self.test_byte_str_en_2)")
         corp._preprocessing(self.test_byte_str_en_2).should.be.equal(self.test_unicode_str_en_2_tokenized_not_cleaned_without_emoji_normalization )
-        # p(corp._preprocessing(self.test_byte_str_en_2), "corp._preprocessing(self.test_byte_str_en_2)")
+        
+
 
 
         ###### Input in  UNICODE ######
@@ -1908,31 +1973,31 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         
         #p(docs_dict[0]) #{u'star_constellation': u'fish', u'text': u'[[[["Klitze", "NN"], ["kliiiitze", "VMFIN"], ["kleEEEEine", "NE"], ["kleinnne", "ADJA"], ["\\u00dcberaschung", "NN"], [".", "symbol"]], ["neutral", 0.0]], [[["Trotzdem", "PAV"], ["hat", "VAFIN"], ["sie", "PPER"], ["mich", "PPER"], ["gl\\u00fccklich", "ADJD"], ["gemacht", "VVPP"], ["!", "symbol"], [":-))))", "EMOASC"], ["-)))", "EMOASC"]], ["positive", 0.5]]]', u'age': 23, u'working_area': u'Care', u'rowid': 8, u'gender': u'm', u'id': 8888}
         #p([tokencontainer[0] for sentcontainer in json.loads(docs[0][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[0] for sentcontainer in json.loads(docs[0][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'Klitze', u'kliiiitze', u'kleEEEEine', u'kleinnne', u'\xdcberaschung', u'.', u'Trotzdem', u'hat', u'sie', u'mich', u'gl\xfccklich', u'gemacht', u'!', u':-))))', u'-)))'])
+        [tokencontainer[0] for sentcontainer in json.loads(docs[0][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'klitze', u'kliiiitzeeeeeee', u'kleeeeeinnnnne', u'kleinnne', u'\xfcberaschung', u'.', u'trotzdem', u'hat', u'sie', u'mich', u'gl\xfccklich', u'gemacht', u'!', u':-))))', u'-)))', u'\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600', u'-)))', u'-)))'])
         #p(len(json.loads(docs[0][2])))
         len(json.loads(docs[0][2])).should.be.equal(2)
 
         #p(docs_dict[1]) #{u'star_constellation': u'aquarius', u'text': u'[[[["einen", "ART"], ["wundersch\\u00f6nen", "ADJA"], ["Taaaaaagggggg", "NN"], ["w\\u00fcnsche", "VVFIN"], ["ich", "PPER"], ["euch", "PRF"], [".", "symbol"]], ["neutral", 0.0]], [[["Genieeeeeeeeeeesst", "NN"], ["geniiiiiiiiiiiiist", "VVFIN"], ["das", "ART"], ["Leben", "NN"], [".", "symbol"]], ["neutral", 0.0]], [[["Bleeeeeeeeibt", "NN"], ["bleeeeibt", "VVFIN"], ["Huuuuuuuuuuuungrig", "NN"], [".", "symbol"], ["\\ud83d\\ude00\\ud83d\\ude00\\ud83d\\ude00\\ud83d\\ude00\\ud83d\\ude00", "EMOIMG"], ["\\ud83c\\udf08\\ud83c\\udf08\\ud83c\\udf08\\ud83c\\udf08\\ud83c\\udf08\\ud83c\\udf08\\ud83c\\udf08", "EMOIMG"]], ["neutral", 0.0]]]', u'age': 22, u'working_area': u'Finance', u'rowid': 9, u'gender': u'w', u'id': 9999}
         #p([tokencontainer[0] for sentcontainer in json.loads(docs[1][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[0] for sentcontainer in json.loads(docs[1][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'einen', u'wundersch\xf6nen', u'Taaaaaagggggg', u'w\xfcnsche', u'ich', u'euch', u'.', u'Genieeeeeeeeeeesst', u'geniiiiiiiiiiiiist', u'das', u'Leben', u'.', u'Bleeeeeeeeibt', u'bleeeeibt', u'Huuuuuuuuuuuungrig', u'.', u'\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600', u'\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308'])
+        [tokencontainer[0] for sentcontainer in json.loads(docs[1][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'einen', u'wundersch\xf6nen', u'taaaaaagggggg', u'w\xfcnsche', u'ich', u'euch', u'.', u'geniesssstt', u'geniiiiiessssssssttttt', u'das', u'leben', u'.', u'bleeeeeeeeibt', u'bleeeeibt', u'huuuuuuuuuuuungrig', u'.', u'baseline', u'baseline', u'baseline', u'in', u'in', u'in', u'in', u'baseline', u'baseline', u'baseline', u'in', u'in', u'in', u'in'])
         #p(len(json.loads(docs[1][2])))
         len(json.loads(docs[1][2])).should.be.equal(3)
 
         #p(docs_dict[2]) #{u'star_constellation': u'lion', u'text': u'[[[["eine", "ART"], ["klitzeeee", "VAPPER"], ["kleine", "ADJA"], ["\\u00dcberrrraschung", "NN"], ["@sch\\u00f6nesleben", "mention"], ["#machwasdaraus", "hashtag"], ["#bewegedeinArsch", "hashtag"], ["https://www.freiesinternet.de", "URL"]], ["neutral", 0.0]]]', u'age': 35, u'working_area': u'Air Industry', u'rowid': 10, u'gender': u'w', u'id': 10000}
         #p([tokencontainer[0] for sentcontainer in json.loads(docs[2][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[0] for sentcontainer in json.loads(docs[2][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'eine', u'klitzeeee', u'kleine', u'\xdcberrrraschung', u'@sch\xf6nesleben', u'#machwasdaraus', u'#bewegedeinArsch', u'https://www.freiesinternet.de'])
+        [tokencontainer[0] for sentcontainer in json.loads(docs[2][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'eine', u'klitzeeee', u'kleeeeeine', u'\xfcberrrraschung', u'@sch\xf6nesleben', u'#machwasdaraus', u'#bewegedeinarsch', u'https://www.freiesinternet.de', u'besser', u'kannnnnn', u'kaaaannnnn', u'ess', u'.', u'kleineeeesssssss', u'kleinnnneeessss', u'kleeeeiiiiinnneesss', u'm\xe4dchennnnn', u'.....', u'kleinereeeee', u'kleineeerreeeee', u'auswahhhllll', u'.', u'klitz', u'kliiiitz', u'kliiiitzzz', u'kleeeiiinnn', u'kleinnnnn', u'.', u'klitzessss', u'kliiitzesss', u'kleinnnees', u'kleinessss'])
         #p(len(json.loads(docs[2][2])))
-        len(json.loads(docs[2][2])).should.be.equal(1)
+        len(json.loads(docs[2][2])).should.be.equal(3)
 
         #p(docs_dict[3]) # {u'star_constellation': u'crawfish', u'text': u'[[[["eine", "ART"], ["klitzeeee", "VAPPER"], ["kleine", "ADJA"], ["Sache", "NN"], [".", "symbol"]], ["neutral", 0.0]], [[["Die", "PDS"], ["aber", "ADV"], ["trotzdem", "PAV"], ["wichtiiiiiiiig", "ADJA"], ["isssssst", "NN"], ["!", "symbol"], ["11111", "number"], ["2222", "number"], ["33333", "number"], ["4444", "number"], ["55555", "number"], ["6", "number"]], ["neutral", 0.0]]]', u'age': 21, u'working_area': u'Industry', u'rowid': 11, u'gender': u'm', u'id': 11111}
         #p([tokencontainer[0] for sentcontainer in json.loads(docs[3][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[0] for sentcontainer in json.loads(docs[3][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'eine', u'klitzeeee', u'kleine', u'Sache', u'.', u'Die', u'aber', u'trotzdem', u'wichtiiiiiiiig', u'isssssst', u'!', u'11111', u'2222', u'33333', u'4444', u'55555', u'6'])
+        [tokencontainer[0] for sentcontainer in json.loads(docs[3][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'eine', u'klitzeeee', u'kleine', u'sache', u'.', u'die', u'aber', u'trotzdem', u'wichtiiiiiiiig', u'isssssst', u'!', u'weil', u'es', u'ja', u'eine', u'kleeeeeiinnnneeeee', u'\xfcberrrrraschung', u'ist', u'.', u'11111', u'2222', u'33333', u'4444', u'55555', u'6', u'.', u'kleineeeesssssss', u'kleinnnneeessss', u'kleeeeiiiiinnneesss', u'm\xe4dchennnnn', u'.....'])
         #p(len(json.loads(docs[3][2])))
-        len(json.loads(docs[3][2])).should.be.equal(2)
+        len(json.loads(docs[3][2])).should.be.equal(4)
 
         #p(docs_dict[4]) #{u'star_constellation': u'lion', u'text': u'[[[["Eine", "ART"], ["klitze", "NN"], ["klitze", "ADJD"], ["klitze", "PTKIFG"], ["klitze", "ADJD"], ["kleine", "ADJA"], ["\\u00dcberrrraschung", "NN"], [",", "symbol"], ["die", "PRELS"], ["ich", "PPER"], ["mal", "PTKMA"], ["gerne", "ADV"], ["hatte", "VAFIN"], [".", "symbol"]], ["neutral", 0.0]]]', u'age': 37, u'working_area': u'IT', u'rowid': 12, u'gender': u'w', u'id': 12222}
         #p([tokencontainer[0] for sentcontainer in json.loads(docs[4][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[0] for sentcontainer in json.loads(docs[4][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'Eine', u'klitze', u'klitze', u'klitze', u'klitze', u'kleine', u'\xdcberrrraschung', u',', u'die', u'ich', u'mal', u'gerne', u'hatte', u'.'])
+        [tokencontainer[0] for sentcontainer in json.loads(docs[4][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'eine', u'klitze', u'klitze', u'klitze', u'klitze', u'kleine', u'\xfcberrrraschung', u',', u'die', u'ich', u'mal', u'gerne', u'hatte', u'.', u'111111', u'\U0001f62b\U0001f62b\U0001f62b\U0001f62b', u'11111111', u'du', u'meintest', u',', u'es', u'war', u'so', u'eineeee', u'kleeeeiiiiinnnneeeeeeee', u'\xfcbeeeerrrrraaaschunnnnnnggg', u'.'])
         #p(len(json.loads(docs[4][2])))
         len(json.loads(docs[4][2])).should.be.equal(1)
 
@@ -1956,7 +2021,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
         #p(docs_dict[0]) #{u'star_constellation': u'lion', u'text': u'[[[["I", "PRP"], ["loved", "VBD"], ["it", "PRP"], [".", "symbol"]], ["positive", 0.7]], [[["But", "CC"], ["it", "PRP"], ["was", "VBD"], ["also", "RB"], ["verrrryyyyy", "JJ"], ["vvveRRRRRRrry", "NNP"], ["very", "RB"], ["piiiiiiiiity", "JJ"], ["pity", "NN"], ["pity", "NN"], ["piiitttyyy", "NN"], ["for", "IN"], ["me", "PRP"], ["......", "symbol"], [":-(((((", "EMOASC"], ["@real_trump", "mention"], ["#sheetlife", "hashtag"], ["#readytogo", "hashtag"], ["http://www.absurd.com", "URL"]], ["negative", -0.1875]]]', u'age': 37, u'working_area': u'IT', u'rowid': 1, u'gender': u'w', u'id': 1111}
         #p([tokencontainer[0] for sentcontainer in json.loads(docs[0][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[0] for sentcontainer in json.loads(docs[0][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'I', u'loved', u'it', u'.', u'But', u'it', u'was', u'also', u'verrrryyyyy', u'vvveRRRRRRrry', u'very', u'piiiiiiiiity', u'pity', u'pity', u'piiitttyyy', u'for', u'me', u'......', u':-(((((', u'@real_trump', u'#sheetlife', u'#readytogo', u'http://www.absurd.com'])
+        [tokencontainer[0] for sentcontainer in json.loads(docs[0][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'i', u'loved', u'it', u'.', u'but', u'it', u'was', u'also', u'verrrryyyyy', u'vvverrrrrrrry', u'very', u'piiiiiiiiity', u'pity', u'pity', u'piiitttyyy', u'for', u'me', u'......', u':-(((((', u'@real_trump', u'#sheetlife', u'#readytogo', u'http://www.absurd.com'])
         #p(len(json.loads(docs[0][2])))
         len(json.loads(docs[0][2])).should.be.equal(2)
 
@@ -1968,31 +2033,31 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
         #p(docs_dict[2]) #{u'star_constellation': u'aquarius', u'text': u'[[[["a", "DT"], ["baddddd", "JJ"], ["bad", "JJ"], ["bbbbbbbaaaaaa", "NNS"], ["bbbbaaaaddddd", "VBD"], ["baaaaaaad", "JJ"], ["news", "NN"], [",", "symbol"], ["which", "WDT"], ["we", "PRP"], ["can", "MD"], ["not", "RB"], ["accept", "VB"], [".", "symbol"], ["-", "symbol"], ["((((", "NN"], ["\\ud83d\\ude2b\\ud83d\\ude2b\\ud83d\\ude2b\\ud83d\\ude2b\\ud83d\\ude2b\\ud83d\\ude2b\\ud83d\\ude2b\\ud83d\\ude2b\\ud83d\\ude2b\\ud83d\\ude2b\\ud83d\\ude2b\\ud83d\\ude2b", "EMOIMG"], ["#sheetlife", "hashtag"], ["#sheetlife", "hashtag"], ["http://www.noooo.com", "URL"]], ["negative", -0.6999999999999998]]]', u'age': 22, u'working_area': u'Finance', u'rowid': 3, u'gender': u'w', u'id': 3333}
         #p([tokencontainer[0] for sentcontainer in json.loads(docs[2][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[0] for sentcontainer in json.loads(docs[2][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'a', u'baddddd', u'bad', u'bbbbbbbaaaaaad', u'bbbbaaaaddddd', u'baaaaaaad', u'news', u',', u'which', u'we', u'can', u'not', u'accept', u'.', u'-((((', u'\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b', u'#sheetlife', u'#sheetlife', u'http://www.noooo.com'])
+        [tokencontainer[0] for sentcontainer in json.loads(docs[2][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'a', u'baddddd', u'bad', u'bbbbbbbaaaaaad', u'bbbbaaaaddddd', u'baaaaaaad', u'news', u',', u'which', u'we', u'can', u'not', u'accept', u'.', u'-((((', u'\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b\U0001f62b', u':-(((((', u'#sheetlife', u'#sheetlife', u'http://www.noooo.com'])
         #p(len(json.loads(docs[2][2])))
         len(json.loads(docs[2][2])).should.be.equal(1)
 
         #p(docs_dict[3]) #{u'star_constellation': u'gemini', u'text': u'[[[["Tiny", "JJ"], ["tiny", "JJ"], ["tiny", "JJ"], ["tiny", "JJ"], ["tiqny", "JJ"], ["tiny", "JJ"], ["mooooooodelllllll", "NN"], [",", "symbol"], ["which", "WDT"], ["we", "PRP"], ["can", "MD"], ["use", "VB"], ["for", "IN"], ["explain", "VB"], ["a", "DT"], ["biiig", "NN"], ["biiiiiiiiiiiiiiig", "NN"], ["things", "NNS"], [".", "symbol"]], ["neutral", 0.0]]]', u'age': 27, u'working_area': u'IT', u'rowid': 4, u'gender': u'm', u'id': 4444}
         #p([tokencontainer[0] for sentcontainer in json.loads(docs[3][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[0] for sentcontainer in json.loads(docs[3][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'Tiny', u'tiny', u'tiny', u'tiny', u'tiny', u'tiny', u'mooooooodelllllll', u',', u'which', u'we', u'can', u'use', u'for', u'explain', u'a', u'biiig', u'biiiiiiiiiiiiiiig', u'things', u'.'])
+        [tokencontainer[0] for sentcontainer in json.loads(docs[3][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'tiny', u'tiny', u'tiny', u'tiny', u'tiny', u'tiny', u'mooooooodelllllll', u',', u'which', u'we', u'can', u'use', u'for', u'explain', u'a', u'biiig', u'biiiiiiiiiiiiiiig', u'things', u'.'])
         #p(len(json.loads(docs[3][2])))
         len(json.loads(docs[3][2])).should.be.equal(1)
 
         #p(docs_dict[4]) # {u'star_constellation': u'lion', u'text': u'[[[["Tiny", "JJ"], ["model", "NN"], [",", "symbol"], ["but", "CC"], ["a", "DT"], ["big", "JJ"], ["big", "JJ"], ["big", "JJ"], ["explaaaaanation", "NN"], [".", "symbol"]], ["neutral", 0.0]], [[["Riiiiiight", "UH"], ["?", "symbol"]], ["neutral", 0.0]], [[["What", "WP"], ["do", "VBP"], ["youuuuuu", "PRP"], ["think", "VB"], ["about", "IN"], ["it", "PRP"], ["????", "symbol"]], ["neutral", 0.0]]]', u'age': 35, u'working_area': u'Air Industry', u'rowid': 5, u'gender': u'w', u'id': 5555}
         #p([tokencontainer[0] for sentcontainer in json.loads(docs[4][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[0] for sentcontainer in json.loads(docs[4][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'Tiny', u'model', u',', u'but', u'a', u'big', u'big', u'big', u'explaaaaanation', u'.', u'Riiiiiight', u'?', u'What', u'do', u'youuuuuu', u'think', u'about', u'it', u'????'])
+        [tokencontainer[0] for sentcontainer in json.loads(docs[4][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'tiny', u'model', u',', u'but', u'a', u'big', u'big', u'big', u'explaaaaanation', u'.', u'riiiiiight', u'?', u'what', u'do', u'youuuuuu', u'think', u'about', u'it', u'????', u'111111', u'\U0001f62b\U0001f62b\U0001f62b\U0001f62b', u'11111111', u'.', u'bbbbbuuuutttt', u'buuuuutttt', u'yyyyyyou', u'yoooooou', u'bbbbbbut', u'bbbbbutttt', u'bbbbbuuuuut', u'yyyoouuuu'])
         #p(len(json.loads(docs[4][2])))
-        len(json.loads(docs[4][2])).should.be.equal(3)
+        len(json.loads(docs[4][2])).should.be.equal(4)
 
         #p(docs_dict[5]) # {u'star_constellation': u'crawfish', u'text': u'[[[["tinnnyy", "JJ"], ["tiny", "JJ"], ["tiny", "JJ"], ["surprise", "NN"]], ["neutral", 0.0]]]', u'age': 21, u'working_area': u'Industry', u'rowid': 6, u'gender': u'm', u'id': 6666}
         #p([tokencontainer[0] for sentcontainer in json.loads(docs[5][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[0] for sentcontainer in json.loads(docs[5][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'tinnnyy', u'tiny', u'tiny', u'surprise'])
+        [tokencontainer[0] for sentcontainer in json.loads(docs[5][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'tinnnyy', u'tiny', u'tiny', u'surprise', u'.', u'bbbbbut', u'buuuuut', u'yyyyyyou', u'yoooooou', u'bbbbbbut', u'bbbbbut', u'bbbbbut', u'yyyoouuuu', u'\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600', u'\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308', u'\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600', u'\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308', u'\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600'])
         #p(len(json.loads(docs[5][2])))
-        len(json.loads(docs[5][2])).should.be.equal(1)
+        len(json.loads(docs[5][2])).should.be.equal(2)
 
         #p(docs_dict[6]) #{u'star_constellation': u'lion', u'text': u'[[[["it", "PRP"], ["was", "VBD"], ["really", "RB"], ["bad", "JJ"], ["surprise", "NN"], ["for", "IN"], ["me", "PRP"], ["\\ud83d\\ude2b\\ud83d\\ude2b\\ud83d\\ude2b\\ud83d\\ude2b", "EMOIMG"], [",", "symbol"], ["buuuuuuuuuut", "MD"], ["i", "PRP"], ["really", "RB"], ["reallly", "VBD"], ["reeeeeallllyyy", "PRP"], ["liked", "VBD"], ["it", "PRP"], ["=))))))))))", "EMOASC"], [":P", "EMOASC"], ["\\ud83d\\ude00\\ud83d\\ude00\\ud83d\\ude00\\ud83d\\ude00\\ud83d\\ude00", "EMOIMG"], ["\\ud83c\\udf08\\ud83c\\udf08\\ud83c\\udf08\\ud83c\\udf08\\ud83c\\udf08\\ud83c\\udf08\\ud83c\\udf08", "EMOIMG"], ["\\ud83d\\ude00", "EMOIMG"]], ["positive", 0.27]]]', u'age': 37, u'working_area': u'IT', u'rowid': 7, u'gender': u'w', u'id': 7777}
         #p([tokencontainer[0] for sentcontainer in json.loads(docs[6][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[0] for sentcontainer in json.loads(docs[6][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'it', u'was', u'really', u'bad', u'surprise', u'for', u'me', u'\U0001f62b\U0001f62b\U0001f62b\U0001f62b', u',', u'buuuuuuuuuut', u'i', u'really', u'reallly', u'reeeeeallllyyy', u'liked', u'it', u'=))))))))))', u':P', u'\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600', u'\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308', u'\U0001f600'])
+        [tokencontainer[0] for sentcontainer in json.loads(docs[6][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'it', u'was', u'really', u'bad', u'surprise', u'for', u'me', u'\U0001f62b\U0001f62b\U0001f62b\U0001f62b', u',', u'buuuuuuuuuut', u'i', u'really', u'reallly', u'reeeeeallllyyy', u'liked', u'it', u':p', u'=))))))))))', u'\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600', u'\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308', u'\U0001f600'])
         #p(len(json.loads(docs[6][2])))
         len(json.loads(docs[6][2])).should.be.equal(1)
 
@@ -2020,31 +2085,31 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         
         # p(docs_dict[0])
         # p([tokencontainer[1] for sentcontainer in json.loads(docs[0][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[1] for sentcontainer in json.loads(docs[0][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'NN', u'VMFIN', u'NE', u'ADJA', u'NN', u'symbol', u'PAV', u'VAFIN', u'PPER', u'PPER', u'ADJD', u'VVPP', u'symbol', u'EMOASC', u'EMOASC'])
+        [tokencontainer[1] for sentcontainer in json.loads(docs[0][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'NN', u'VMFIN', u'NE', u'ADJA', u'NN', u'symbol', u'PAV', u'VAFIN', u'PPER', u'PPER', u'ADJD', u'VVPP', u'symbol', u'EMOASC', u'EMOASC', u'EMOIMG', u'EMOASC', u'EMOASC'])
         #p(len(json.loads(docs[0][2])))
         len(json.loads(docs[0][2])).should.be.equal(2)
 
         #p(docs_dict[1]) 
         # p([tokencontainer[1] for sentcontainer in json.loads(docs[1][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[1] for sentcontainer in json.loads(docs[1][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'ART', u'ADJA', u'NN', u'VVFIN', u'PPER', u'PRF', u'symbol', u'NN', u'VVFIN', u'ART', u'NN', u'symbol', u'NN', u'VVFIN', u'NN', u'symbol', u'EMOIMG', u'EMOIMG'])
+        [tokencontainer[1] for sentcontainer in json.loads(docs[1][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'ART', u'ADJA', u'NN', u'VVFIN', u'PPER', u'PRF', u'symbol', u'NE', u'VVFIN', u'ART', u'NN', u'symbol', u'NN', u'VVFIN', u'NN', u'symbol', u'NE', u'NE', u'NE', u'APPR', u'APPR', u'NN', u'APPR', u'NE', u'NE', u'NE', u'APPR', u'APPR', u'NN', u'APPR'])
         #p(len(json.loads(docs[1][2])))
         len(json.loads(docs[1][2])).should.be.equal(3)
 
         #p(docs_dict[2])
         # p([tokencontainer[1] for sentcontainer in json.loads(docs[2][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[1] for sentcontainer in json.loads(docs[2][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'ART', u'VAPPER', u'ADJA', u'NN', u'mention', u'hashtag', u'hashtag', u'URL'])
+        [tokencontainer[1] for sentcontainer in json.loads(docs[2][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'ART', u'ADJA', u'ADJA', u'NN', u'mention', u'hashtag', u'hashtag', u'URL', u'ADJD', u'VMFIN', u'NE', u'PTKVZ', u'symbol', u'NN', u'ADJA', u'ADJA', u'NN', u'symbol', u'NE', u'ADJA', u'NN', u'symbol', u'NE', u'VMFIN', u'ADR', u'FM', u'FM', u'symbol', u'FM', u'FM', u'FM', u'FM'])
         #p(len(json.loads(docs[2][2])))
-        len(json.loads(docs[2][2])).should.be.equal(1)
+        len(json.loads(docs[2][2])).should.be.equal(3)
 
         #p(docs_dict[3]) 
         # p([tokencontainer[1] for sentcontainer in json.loads(docs[3][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[1] for sentcontainer in json.loads(docs[3][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'ART', u'VAPPER', u'ADJA', u'NN', u'symbol', u'PDS', u'ADV', u'PAV', u'ADJA', u'NN', u'symbol', u'number', u'number', u'number', u'number', u'number', u'number'])
+        [tokencontainer[1] for sentcontainer in json.loads(docs[3][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'ART', u'VAPPER', u'ADJA', u'NN', u'symbol', u'PDS', u'ADV', u'PAV', u'NN', u'VVPP', u'symbol', u'KOUS', u'PPER', u'PTKMA', u'ART', u'ADJA', u'NN', u'VAFIN', u'symbol', u'number', u'number', u'number', u'number', u'number', u'number', u'symbol', u'NN', u'ADJA', u'ADJA', u'NN', u'symbol'])
         #p(len(json.loads(docs[3][2])))
-        len(json.loads(docs[3][2])).should.be.equal(2)
+        len(json.loads(docs[3][2])).should.be.equal(4)
 
         #p(docs_dict[4])
         # p([tokencontainer[1] for sentcontainer in json.loads(docs[4][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[1] for sentcontainer in json.loads(docs[4][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'ART', u'NN', u'ADJD', u'PTKIFG', u'ADJD', u'ADJA', u'NN', u'symbol', u'PRELS', u'PPER', u'PTKMA', u'ADV', u'VAFIN', u'symbol'])
+        [tokencontainer[1] for sentcontainer in json.loads(docs[4][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'ART', u'NN', u'ADJD', u'PTKIFG', u'ADJD', u'ADJA', u'NN', u'symbol', u'PRELS', u'PPER', u'PTKMA', u'ADV', u'VAFIN', u'symbol', u'number', u'EMOIMG', u'number', u'PPER', u'VVFIN', u'symbol', u'PPER', u'VAFIN', u'ADV', u'ART', u'ADJA', u'NN', u'symbol'])
         #p(len(json.loads(docs[4][2])))
         len(json.loads(docs[4][2])).should.be.equal(1)
 
@@ -2073,7 +2138,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
         #p(docs_dict[2])
         #p([tokencontainer[1] for sentcontainer in json.loads(docs[2][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[1] for sentcontainer in json.loads(docs[2][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'DT', u'JJ', u'JJ', u'NNS', u'IN', u'JJ', u'NN', u'symbol', u'WDT', u'PRP', u'MD', u'RB', u'VB', u'symbol', u'EMOASC', u'EMOIMG', u'hashtag', u'hashtag', u'URL'])
+        [tokencontainer[1] for sentcontainer in json.loads(docs[2][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'DT', u'JJ', u'JJ', u'NNS', u'IN', u'JJ', u'NN', u'symbol', u'WDT', u'PRP', u'MD', u'RB', u'VB', u'symbol', u'EMOASC', u'EMOIMG', u'EMOASC', u'hashtag', u'hashtag', u'URL'])
         #p(len(json.loads(docs[2][2])))
         len(json.loads(docs[2][2])).should.be.equal(1)
 
@@ -2085,15 +2150,15 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
         # p(docs_dict[4]) 
         # p([tokencontainer[1] for sentcontainer in json.loads(docs[4][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[1] for sentcontainer in json.loads(docs[4][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'JJ', u'NN', u'symbol', u'CC', u'DT', u'JJ', u'JJ', u'JJ', u'NN', u'symbol', u'UH', u'symbol', u'WP', u'VBP', u'PRP', u'VB', u'IN', u'PRP', u'symbol'])
+        [tokencontainer[1] for sentcontainer in json.loads(docs[4][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'JJ', u'NN', u'symbol', u'CC', u'DT', u'JJ', u'JJ', u'JJ', u'NN', u'symbol', u'UH', u'symbol', u'WP', u'VBP', u'PRP', u'VB', u'IN', u'PRP', u'symbol', u'number', u'EMOIMG', u'number', u'symbol', u'NNP', u'NN', u'NN', u'FW', u'FW', u'FW', u'FW', u'FW'])
         #p(len(json.loads(docs[4][2])))
-        len(json.loads(docs[4][2])).should.be.equal(3)
+        len(json.loads(docs[4][2])).should.be.equal(4)
 
         # p(docs_dict[5])
         # p([tokencontainer[1] for sentcontainer in json.loads(docs[5][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[1] for sentcontainer in json.loads(docs[5][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'JJ', u'JJ', u'JJ', u'NN'])
+        [tokencontainer[1] for sentcontainer in json.loads(docs[5][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'JJ', u'JJ', u'JJ', u'NN', u'symbol', u'NNP', u'VBD', u'JJ', u'NNS', u'CC', u'JJ', u'NN', u'VBD', u'EMOIMG', u'EMOIMG', u'EMOIMG', u'EMOIMG', u'EMOIMG'])
         #p(len(json.loads(docs[5][2])))
-        len(json.loads(docs[5][2])).should.be.equal(1)
+        len(json.loads(docs[5][2])).should.be.equal(2)
 
         # p(docs_dict[6])
         # p([tokencontainer[1] for sentcontainer in json.loads(docs[6][2]) for tokencontainer in sentcontainer[0]])
@@ -2130,6 +2195,24 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         inp = [(u'\U0001f600', u'emoticon'), (u'\U0001f600', u'emoticon'), (u'\U0001f600', u'emoticon'), (u'\U0001f600', u'emoticon'), (u'\U0001f600', u'emoticon'), (u'\U0001f308', u'emoticon'), (u'\U0001f308', u'emoticon'), (u'\U0001f308', u'emoticon'), (u'\U0001f308', u'emoticon'), (u'\U0001f308', u'emoticon'), (u'\U0001f308', u'emoticon'), (u'\U0001f308', u'emoticon')]
         outp = [(u'\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600', u'emoticon'), (u'\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308\U0001f308', u'emoticon') ]       
         corp._normalize_emojis(inp).should.be.equal(outp)
+
+
+
+
+    @attr(status='stable')
+    #@wipd
+    def test_count_general_stats_850(self):
+        self.prj_folder()
+        self._init_variables_for_preprocessing_test()
+
+        ##### DE #########
+        self.test_dbs()
+        corp = Corpus(mode=self.mode, status_bar=True)
+        corp.open(os.path.join(self.tempdir_testdbs,self.db_blogger_plaintext_corp_de))
+
+        corp.count_basic_stats()
+
+        #p(corp.corpdb.get_all_attr())
 
 
 #################################END##################################################

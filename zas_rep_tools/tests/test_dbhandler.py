@@ -2812,12 +2812,19 @@ class TestZAScorpusDBHandlerDBHandler(BaseTester,unittest.TestCase):
         num_of_insertions = len(random.choice(inp_dict.values()))
         db.insertdict("documents", inp_dict)
 
+
         if num_of_insertions != db.rownum("documents"):
             assert False
 
+
+
+        ## Just check existence
+        assert next(db.getlistlazy("documents", just_check_existence=True))
+
+
+        ### get all
         columns = inp_dict.keys()
         rows = inp_dict.values()
-
         ## test_get_all_rows_from_db_with_intern_getter Part
         for i in xrange(num_of_insertions):
             for col, value in  zip(self.configer.columns_in_doc_table["blogger"],list(db.getlistlazy("documents"))[i]):
@@ -2870,12 +2877,14 @@ class TestZAScorpusDBHandlerDBHandler(BaseTester,unittest.TestCase):
         rows = inp_dict.values()
 
 
-        #p(list(db.getdictlazy("documents"))[0]["gender"])
+        ## Just check existence
+        #p(list(db.getdictlazy("documents", just_check_existence=True)))
+        assert next(db.getdictlazy("documents", just_check_existence=True))
+
+
+        ### get all
         getted_output_from_db = list(db.getdictlazy("documents"))
-        #p(getted_output_from_db)
-        #p(db.getdictlazy("documents"))
-        #p(inp_dict)
-        # test_get_all_rows_from_db_with_intern_getter Part
+
         for i in xrange(num_of_insertions):
             for col in self.configer.columns_in_doc_table["blogger"]:
                 value_from_input = inp_dict[col][i]
@@ -2996,6 +3005,12 @@ class TestZAScorpusDBHandlerDBHandler(BaseTester,unittest.TestCase):
         rows = inp_dict.values()
 
 
+        ## Just check existence
+        #p(list(db.lazyget("documents", just_check_existence=True)))
+        assert next(db.getdictlazy("documents", just_check_existence=True))
+
+
+        ### get all
 
         # lazyget() -> dict
         #p(list(db.getdictlazy("documents", columns=["hhh", "id"]))[0])

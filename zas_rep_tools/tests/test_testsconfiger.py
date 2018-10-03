@@ -47,7 +47,7 @@ else:
 
 # create test data, id needed
 
-#Configer(mode="dev", rewrite=True).create_test_data(use_original_classes=True, corp_status_bar=True, corp_log_ignored=True, corp_language="en", corp_lang_classification=False, corp_pos_tagger="tweetnlp")
+#TestsConfiger(mode="dev", rewrite=True).create_test_data(use_original_classes=True, corp_status_bar=True, corp_log_ignored=True, corp_language="en", corp_lang_classification=False, corp_pos_tagger="tweetnlp")
 
 class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
     #_multiprocess_can_split_ = True
@@ -102,7 +102,7 @@ class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
     #@wipd
     def test_init_configer_000(self):
         self.prj_folder()
-        configer = Configer(mode=self.mode)
+        configer = TestsConfiger(mode=self.mode)
 
 
 
@@ -153,7 +153,7 @@ class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
     # #@attr(status='stable')
     # #@wipd
     # def test_create_all_test_dbs_5(self):
-    #     c = Configer(mode=self.mode, rewrite=True)
+    #     c = TestsConfiger(mode=self.mode, rewrite=True)
     #     #c.logger.info("ghjk")
     #     #c.logger.outsorted("ghjk")
     #     #c.logger.log(8, "fghjk")
@@ -184,7 +184,7 @@ class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
     #     # time.sleep(2)
     #     # p("fghjl")
     #     #c.create_test_dbs(abs_path_to_storage_place=self.tempdir_project_folder, use_original_classes=True, corp_status_bar=True, corp_log_ignored=True, corp_language="en", corp_lang_classification=False, corp_pos_tagger="tweetnlp")
-    #     #p(Configer(mode=self.mode).self.docs_row_values(token=True, unicode_str=True))
+    #     #p(TestsConfiger(mode=self.mode).self.docs_row_values(token=True, unicode_str=True))
 
     @attr(status='stable')
     #@wipd
@@ -192,7 +192,7 @@ class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
         self.prj_folder()
         #abs_path_to_storage_place=os.path.join(self.path_to_zas_rep_tools, self.path_to_testdbs)
         abs_path_to_storage_place=self.tempdir_project_folder
-        configer = Configer(mode=self.mode, rewrite=True)
+        configer = TestsConfiger(mode=self.mode, rewrite=True)
          
         configer.create_test_dbs(rewrite=True, abs_path_to_storage_place=abs_path_to_storage_place, use_original_classes=False)
         #configer.create_test_dbs(rewrite=False, abs_path_to_storage_place=self.path_to_zas_rep_tools)
@@ -263,7 +263,7 @@ class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
         #abs_path_to_storage_place=os.path.join(self.path_to_zas_rep_tools, self.path_to_testdbs)
         abs_path_to_storage_place=self.tempdir_project_folder
 
-        configer = Configer(mode=self.mode, rewrite=True)
+        configer = TestsConfiger(mode=self.mode, rewrite=True)
         #configer.create_test_dbs(abs_path_to_storage_place=abs_path_to_storage_place, use_original_classes=True, corp_status_bar=True, corp_log_ignored=True,corp_lang_classification=True)
         configer.create_test_dbs(abs_path_to_storage_place=abs_path_to_storage_place, use_original_classes=True, corp_status_bar=True, corp_log_ignored=True,corp_lang_classification=True, use_test_pos_tagger=False)
 
@@ -345,7 +345,7 @@ class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
     #@wipd
     def test_create_all_test_cases_for_diff_fileformats_502(self):
         self.prj_folder()
-        configer = Configer(mode=self.mode)
+        configer = TestsConfiger(mode=self.mode)
         abs_path_to_storage_place=self.tempdir_project_folder
 
         #sys.exit()
@@ -406,7 +406,7 @@ class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
         self.prj_folder()
         #abs_path_to_storage_place=os.path.join(self.path_to_zas_rep_tools, self.path_to_testdbs)
         abs_path_to_storage_place=self.tempdir_project_folder
-        configer = Configer(mode=self.mode, rewrite=False)
+        configer = TestsConfiger(mode=self.mode, rewrite=False)
         configer.create_test_data(abs_path_to_storage_place= abs_path_to_storage_place, use_original_classes=True,
                             corp_status_bar=True, corp_log_ignored=True,corp_lang_classification=True,
                             corp_pos_tagger=False, corp_sentiment_analyzer=False,  use_test_pos_tagger=True)
@@ -444,7 +444,7 @@ class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
     # #@attr(status='stable')
     # #@wipd
     # def test_get_user_data_for_error_tracking(self):
-    #     configer = Configer(mode=self.mode)        
+    #     configer = TestsConfiger(mode=self.mode)        
         
     #     #p(configer._cli_menu_error_agreement())
     #     #p(configer._user_data)
