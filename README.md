@@ -256,6 +256,45 @@ DB
         -> PrjDBs should have follwoing muster "prjName*.db" AND prjName should be in the main DB
 
 
+
+
+Stats:
+    full_repetativ_syntagma - it is possible to let compute stats just in full_repetativ syntagmas 
+
+
+
+Attention: 
+-> bei den repetativen Pattern for search (ex: "number", "number") -> be carefull. This algorithm just count the first number (scope) of the repetativ syntagma. Fo example: if in corpus "11 22 33 44 55". and you search for ["number", "number", "number"] than this algorithm will take just first part of this phase fron the cirpus "11 22 33" and count it as 1 occurency. 
+-> to search lexems with  reperativ paterm is nor possible -> example: "klein klein". Those lexem are as reduplication to search. So just search for reduplication with pattern  "klein"
+
+-> pattern length could be till context_lenght +1 
+
+
+Exporter:
+-> if redu+repl was selected, but no repl was found, than no redu will be exported for given syntagma, even if for gien syntagma redu also exist 
+
+
+
+
+Indexes:
+-> wenn ihr mit syntagmas ab scope 3 öffters arbeitet, dann empfihlt es sich die indexes für hight scope zu erstellen
+
+
+EMOJIS
+--- clustered EMOJI would be sometimes not correct recognized (like flags, skin colore, family 🧑🏻 👨‍👩‍👧 💁🏿‍♀️ 🇧🇭)
+
+
+
+--------
+$ zas-rep-tools corpora add --path_to_read . --file_format_to_read json --dbname streamed --language de  --visibility intern --platform_name twitter --read_from_zip True --reader_formatter_name twitter --stream_number 2
+
+update_attr 
+    $ zas-rep-tools corpora update_attr --dbname  9560_corpus_twitter_streamed_de_intern_encrypted.db -attr version --value 3 --encryption_key corp
+
+eport corp 
+zas-rep-tools corpora export --dbname 9560_corpus_twitter_streamed_de_intern_encrypted.db --type_to_export json --export_dir . --export_name ggg
+
+
 ##### __Descriptions:__   
 <!-- 
 1.  __annotate__    
