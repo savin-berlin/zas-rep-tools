@@ -30,6 +30,7 @@ from lxml import etree as ET
 import json
 import inspect
 import traceback
+import re
 
 from collections import defaultdict
 from raven import Client
@@ -70,7 +71,7 @@ class Exporter(BaseContent):
         #InstanceAttributes: Initialization
         self._used_fnames = {}
         self.sqlite_db = False
-        self._numbers_of_alredy_created_files = defaultdict(lambda: defaultdict(int))
+        self._numbers_of_alredy_created_files = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
         self._number_of_inserts_in_the_current_file = 0
 
         self.logger.debug('Intern InstanceAttributes was initialized')
@@ -119,7 +120,13 @@ class Exporter(BaseContent):
     def tocsv(self, path_to_export_dir , fname, fieldnames,  rows_limit_in_file=50000, encoding="utf-8"):
         self.current_csvfile = False
         rows_was_exported = 0
+        #p((len(self._inpdata), self._inpdata))
+        #p("NEW\n\n", "NEW", c="r")
+        #if 
         for row in self._inpdata:
+            if not row:
+                continue
+            #p(row, "row")
             if row == -1:
                 continue
             #p(row)
@@ -128,7 +135,7 @@ class Exporter(BaseContent):
                     if self._silent_ignore:
                         self.logger.debug("toCSV: File is already exist and extraction was stopped. ('silent_ignore' is 'on')")
                     else:    
-                        self.logger.info("toCSV: Test Files are already exist. Extraction to_json was stopped. Please remove those files or use 'rewrite' option. ")
+                        self.logger.info("toCSV: Test Files are already exist. Extraction to_csv was stopped. Please remove those files or use 'rewrite' option. ")
                     return False
                 
                 rows_was_exported += 1
@@ -136,9 +143,18 @@ class Exporter(BaseContent):
                 print_exc_plus() if self._ext_tb else ""
                 self.logger.error("CSVWriterError: Not possible to Export into CSV. Following Exception was throw: '{}'.".format(e), exc_info=self._logger_traceback)
                 return False
-        self.current_csvfile.close()
-        self.logger.info("CSVWriter: '{}' rows  was exported into CSV File(s) in '{}'.".format(rows_was_exported,path_to_export_dir))
-        return True
+        #p(self.current_csvfile, "000self.current_csvfile")
+        if self.current_csvfile:
+            self.current_csvfile.close()
+            self.logger.info("CSVWriter: '{}' rows  was exported into CSV File(s) in '{}'.".format(rows_was_exported,path_to_export_dir))
+            #p(self.current_csvfile, "11self.current_csvfile")
+            return True
+        else:
+            self.logger.error("No File was exported. Probably Data for export was empty.")
+            #p(self.current_csvfile, "22self.current_csvfile")
+            return False
+
+
 
 
 
@@ -170,33 +186,6 @@ class Exporter(BaseContent):
 
 
 
-
-    # def tojson(self, path_to_export_dir , fname, rows_limit_in_file=50000, encoding="utf-8", unicode_encode=True):
-    #     self.current_jsonfile = False
-    #     rows_was_exported = 0
-    #     for row in self._inpdata:
-    #         #p(row)
-    #         try:
-    #         #p((row,  path_to_export_dir, fname))
-    #             if not self._write_to_json_files(row,  path_to_export_dir, fname, rows_limit_in_file=rows_limit_in_file, encoding=encoding, unicode_encode=unicode_encode):
-    #                 self.logger.info("toJSON: Test Files are already exist. Extraction to_json was stopped. Please remove those files or use 'rewrite' option. ")
-    #                 return False
-    #             rows_was_exported += 1
-
-    #         except Exception, e:
-    #             print_exc_plus() if self._ext_tb else ""
-    #             self.logger.error("JSONWriterError: Not possible to Export into JSON. Following Exception was throw: '{}'.".format(e), exc_info=self._logger_traceback)
-    #             return False
-
-    #     self.current_jsonfile.seek(-1, os.SEEK_END)
-    #     #self.current_jsonfile.truncate()
-    #     #self.current_jsonfile.write("test")
-    #     self.current_jsonfile.write("\n\n ]")
-    #     self.current_jsonfile.close()
-    #     #self._save_output_into_current_xml_file()
-    #     self.logger.info("JSONWriter: '{}' rows  was exported into JSONS File(s) in '{}'.".format(rows_was_exported,path_to_export_dir))
-
-
     def tojson(self, path_to_export_dir , fname, rows_limit_in_file=50000, encoding="utf-8", unicode_encode=True):
         self.current_jsonfile = False
         rows_was_exported = 0
@@ -218,12 +207,16 @@ class Exporter(BaseContent):
                 self.logger.error("JSONWriterError: Not possible to Export into JSON. Following Exception was throw: '{}'.".format(e), exc_info=self._logger_traceback)
                 return False
 
-        self.current_jsonfile.seek(-1, os.SEEK_END)
-        self.current_jsonfile.write("\n\n ]")
-        self.current_jsonfile.close()
-        self.logger.info("JSONWriter: '{}' rows  was exported into JSONS File(s) in '{}'.".format(rows_was_exported,path_to_export_dir))
-        return True
 
+        if self.current_jsonfile:
+            self.current_jsonfile.seek(-1, os.SEEK_END)
+            self.current_jsonfile.write("\n\n ]")
+            self.current_jsonfile.close()
+            self.logger.info("JSONWriter: '{}' rows  was exported into JSONS File(s) in '{}'.".format(rows_was_exported,path_to_export_dir))
+            return True
+        else:#
+            self.logger.error("No File was exported. Probably Data for export was empty.")
+            return False
 
 
 
@@ -231,7 +224,7 @@ class Exporter(BaseContent):
     def tosqlite(self, path_to_export_dir, dbname, fieldnames,  encoding="utf-8", encryption_key=False, table_name= "Documents", attributs_names_with_types_as_str=False):
         self.current_jsonfile = False
         rows_was_exported = 0
-
+        #p("fghjkl")
         if not  attributs_names_with_types_as_str:
             attributs_names_with_types_as_str = self._create_list_with_columns_and_types_for_sqlite(fieldnames)
             #p(attributs_names_with_types_as_str)
@@ -333,42 +326,62 @@ class Exporter(BaseContent):
 
 
     def _get_new_file(self, path_to_dir, fname, file_extention, encoding="utf-8", file_flag="w", open_file_with_codecs=False):
+        #p(fname, "fname")
         if file_extention not in Exporter.supported_file_formats:
             self.logger.error("NewFileGetterError: Given file_format '{}' is not supported. Please use one of the following file formats: '{}'. ".format(file_extention,Exporter.supported_file_formats ), exc_info=self._logger_traceback)
             sys.exit()
 
-        count_of_existing_files = self._numbers_of_alredy_created_files[path_to_dir][fname]
+        pattern = re.compile("^(.+)_\d+\..+")
+        matched_fname_current = pattern.findall(fname)
+        matched_fname_current = matched_fname_current[0] if matched_fname_current else fname
+        count_of_existing_files = self._numbers_of_alredy_created_files[path_to_dir][file_extention][matched_fname_current]
         new_fname_without_extention = fname+ "_{}".format(count_of_existing_files)
         new_fname_with_extention =new_fname_without_extention+ "." + file_extention
         path_to_file = os.path.join(path_to_dir, new_fname_with_extention)
-        #p(count_of_existing_files, c="r")
+        
 
         if not os.path.isdir(path_to_dir):
             os.makedirs(path_to_dir)
             self.logger.warning("NewFileGetterProblem: '{}' Folder are not exist. It was created.".format(path_to_file))
         
         else:
+
             if count_of_existing_files == 0:
                 exist_fnames_in_dir = os.listdir(path_to_dir)
+                exist_fnames_in_dir = set([pattern.findall(fname)[0] if pattern.findall(fname) else fname for fname in exist_fnames_in_dir])
+                #p((fname,new_fname_without_extention,exist_fnames_in_dir),"fname")
+
                 for exist_fname in  exist_fnames_in_dir:
-                     if fname in exist_fname:
+                    matched_fname_from_listdir = pattern.findall(exist_fname)
+                    matched_fname_from_listdir = matched_fname_from_listdir[0] if matched_fname_from_listdir else exist_fname
+
+                    if matched_fname_current == matched_fname_from_listdir:
                         if self._rewrite:
-                            os.remove(os.path.join(path_to_dir, exist_fname))
-                            self.logger.debug("NewFileRewriter: '{}' File is already exist and  was removed from '{}'.  ('rewrite'-option is enabled.)".format(exist_fname, path_to_file))
+                            exist_fnames_in_dir = os.listdir(path_to_dir)
+                            #for 
+                            for exist_fname in  exist_fnames_in_dir:
+                                matched = pattern.findall(exist_fname)
+                                if matched:
+                                    matched = matched[0]
+                                    if matched == matched_fname_current:
+                                        os.remove(os.path.join(path_to_dir, exist_fname))
+                            #os.remove(os.path.join(path_to_dir, exist_fname))
+                            self.logger.debug("NewFileRewriter: '{}' File is already exist and  was removed from '{}'.  ('rewrite'-option is enabled.)".format(exist_fname,  path_to_dir))
                         else:
                             if not self._silent_ignore:
-                                self.logger.info("NewFileGetterProblem: '{}' File is already exist in '{}'.  Please delete it before you can do Export.".format(new_fname_with_extention, path_to_file))
-                                #return False
+                                self.logger.error("NewFileGetterProblem: '*{}*' NamePattern is already exist in '{}'-directory.  Please delete those files or give other fname, before you can process Export.".format(matched_fname_current,  path_to_dir))
+                                return False
                             else:
-                                self.logger.debug("NewFileGetter: '{}' File is already exist in '{}' and was silent ignored.".format(new_fname_with_extention, path_to_file))
+                                self.logger.debug("NewFileGetter: '{}' NamePattern is already exist in '{}'-directory and was silent ignored.".format(matched_fname_current, path_to_file))
                             return False
-
         if open_file_with_codecs:
             current_file = codecs.open(path_to_file, 'w', encoding)
         else:
             current_file = open(path_to_file, file_flag)
         #p(current_file,  c="r")
-        self._numbers_of_alredy_created_files[path_to_dir][fname] += 1
+        self._numbers_of_alredy_created_files[path_to_dir][file_extention][matched_fname_current] += 1
+        # if file_extention == "csv":
+        #     p(self._numbers_of_alredy_created_files,"222self._numbers_of_alredy_created_files")
         self.logger.debug("NewFileGetter: New File  '{}' was created in '{}'.".format(new_fname_with_extention, path_to_dir))
         return current_file
 
@@ -384,6 +397,7 @@ class Exporter(BaseContent):
                 self.current_csvfile.close()
                 self._number_of_inserts_in_the_current_file = 0
                 self.current_csvfile = self._get_new_file(path_to_dir , fname, "csv", encoding=encoding)
+                #p(self.current_csvfile, "self.current_csvfile")
                 if not self.current_csvfile:
                     return False
                 #p((self.current_csvfile, fieldnames))
@@ -392,6 +406,7 @@ class Exporter(BaseContent):
                 self.current_csv_writer.writeheader()
         else:
             self.current_csvfile = self._get_new_file(path_to_dir , fname, "csv", encoding=encoding)
+            #p(self.current_csvfile, "self.current_csvfile")
             if not self.current_csvfile:
                 return False
             #self.current_csv_writer = csv.DictWriter(self.current_csvfile, fieldnames=fieldnames, encoding=encoding)
@@ -412,34 +427,6 @@ class Exporter(BaseContent):
         #self.current_csv_writer.writerow(row_as_dict)
         self._number_of_inserts_in_the_current_file += 1
         return True
-
-
-    # def _write_to_json_files(self,row_as_dict, path_to_dir, fname, rows_limit_in_file=50000, encoding="utf-8",unicode_encode=True):
-    #     # check if current file has not more row as given rows limits
-        
-
-    #     if self.current_jsonfile:
-    #         if self._number_of_inserts_in_the_current_file >= rows_limit_in_file:
-    #             self.current_jsonfile.seek(-1, os.SEEK_END)
-    #             self.current_jsonfile.write("\n\n ]")
-    #             self.current_jsonfile.close()
-    #             self._number_of_inserts_in_the_current_file = 0
-    #             self.current_jsonfile = self._get_new_file(path_to_dir , fname, "json", encoding=encoding, file_flag="a+", open_file_with_codecs=unicode_encode)
-    #             if not self.current_jsonfile:
-    #                 return False
-    #             self.current_jsonfile.write("[ \n\n")
-        
-    #     else:
-    #         self.current_jsonfile = self._get_new_file(path_to_dir , fname, "json", encoding=encoding, file_flag="a+", open_file_with_codecs=unicode_encode)
-    #         if not self.current_jsonfile:
-    #             return False
-    #         self.current_jsonfile.write("[ \n\n")
-
-
-    #     #json.dump(row_as_dict, self.current_jsonfile,indent=4)
-    #     json.dump(row_as_dict, self.current_jsonfile,indent=4, ensure_ascii=False)
-    #     self.current_jsonfile.write(",")
-    #     self._number_of_inserts_in_the_current_file += 1
 
 
     def _write_row_to_xml(self,root_elem, row_as_dict, row_elem_name="Doc"):
@@ -531,8 +518,8 @@ class Exporter(BaseContent):
 
     def _eval_input_data(self):
         #p((isinstance(self._inpdata, list), isinstance(self._inpdata, types.GeneratorType)))
-
-        check = (isinstance(self._inpdata, list), isinstance(self._inpdata, LenGen))
+        import types
+        check = (isinstance(self._inpdata, list), isinstance(self._inpdata, LenGen),isinstance(self._inpdata, types.GeneratorType))
 
         if True not in check:
             self.logger.error("InputValidationError: Given 'inpdata' is not iterable. ", exc_info=self._logger_traceback)

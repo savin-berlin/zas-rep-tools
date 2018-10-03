@@ -77,12 +77,14 @@ class Reader(BaseContent):
 
                             
 
-    def __init__(self, inp_path, file_format, columns_source=False, regex_template=False,
+    def __init__(self, inp_path, file_format,  regex_template=False,
                 regex_for_fname=False, read_from_zip=False,
                 end_file_marker = -1, send_end_file_marker=False,
                 formatter_name=False, text_field_name = "text", id_field_name="id",
-                ignore_retweets=True,**kwargs):
+                ignore_retweets=True,stop_process_if_possible=True,
+                **kwargs):
 
+        #p(read_from_zip, "read_from_zip")
         super(type(self), self).__init__(**kwargs)
         #super(BaseContent, self).__init__(**kwargs)
 
@@ -90,7 +92,7 @@ class Reader(BaseContent):
         #Input: Encapsulation:
         self._inp_path = inp_path
         self._file_format = file_format.lower()
-        self._columns_source = columns_source
+        #self._columns_source = columns_source
         self._regex_template =regex_template  if regex_template else "blogger"
         self._regex_for_fname = regex_for_fname 
         self._formatter_name = formatter_name
@@ -100,7 +102,7 @@ class Reader(BaseContent):
         self._read_from_zip = read_from_zip
         self._end_file_marker = end_file_marker
         self._send_end_file_marker = send_end_file_marker
-
+        self._stop_process_if_possible = stop_process_if_possible
 
 
         #InstanceAttributes: Initialization
@@ -250,6 +252,9 @@ class Reader(BaseContent):
             adjust_to_cpu = True
             self.logger.debug("StreamNumber is less as 1. Automatic computing of strem number according cpu was enabled.")
         #p(stream_number, "stream_number")
+        if self._get_number_of_left_over_files() == 0:
+            self.logger.error("No one file was found in the given path ('{}'). Please check the correctness of the given path or  give other (correct one) path to the text data.".format(self._inp_path))
+            return []
         if adjust_to_cpu:
             stream_number= get_number_of_streams_adjust_cpu( min_files_pro_stream, self._get_number_of_left_over_files(), stream_number, cpu_percent_to_get=cpu_percent_to_get)
             if stream_number is None:
@@ -533,6 +538,12 @@ class Reader(BaseContent):
             headers = readCSV.fieldnames
 
             for row in readCSV:
+                if row:
+                    if (self._text_field_name not in row) or (self._id_field_name not in row):
+                        self.logger.outsorted_reader("CSVReader: Given CSV '{}' has wrong structure. Not one text or id element was found.".format(f.name))
+                        yield {}
+                        return 
+
                 if colnames:
                     yield self._get_data_from_dic_for_given_keys(colnames, row)
                 else:
@@ -575,6 +586,11 @@ class Reader(BaseContent):
                 # collect all columns into dict from the current child
                 for column in child:
                         row_dict[column.tag] = column.text
+                if row_dict:
+                    if (self._text_field_name not in  row_dict) or self._id_field_name not in row_dict:
+                        self.logger.outsorted_reader("XMLReader: Given XML '{}' has wrong structure. Not one text or id element was found.".format(f.name))
+                        yield {}
+                        return 
 
                 if colnames:
                     yield self._get_data_from_dic_for_given_keys(colnames, row_dict)
@@ -689,8 +705,9 @@ class Reader(BaseContent):
 
     def _readJSON(self, inp_object, encoding="utf_8", colnames=False, str_to_reread=False ):
         try: 
+            #p(inp_object, "inp_object")
             if not  str_to_reread:
-                if isinstance(inp_object, str):
+                if isinstance(inp_object, (str,unicode)):
                     if not  os.path.isfile(inp_object):
                         self.logger.error("JSONFileNotExistError: Following File wasn't found: '{}'. This File was ignored.".format(inp_object), exc_info=self._logger_traceback)
                         yield {}
@@ -734,6 +751,12 @@ class Reader(BaseContent):
                 data = [data]
 
             for row_dict in data:
+                if row_dict:
+                    if (self._text_field_name not in  row_dict) or self._id_field_name not in row_dict:
+                        self.logger.outsorted_reader("JSONReader: Given JSON '{}' has wrong structure. Not one text or id element was found.".format(f.name))
+                        yield {}
+                        return 
+
                 if colnames: 
                     yield self._get_data_from_dic_for_given_keys(colnames, row_dict)
                 else:
@@ -769,10 +792,20 @@ class Reader(BaseContent):
                     self.logger.error_insertion("JSONReaderError: Probably inconsistent JSON File. ('{}' was ignored)\n --->See Exception:  '{}';\n --->DataFromFile:'{}'; \n".format(f.name, e, raw_str), exc_info=self._logger_traceback)
                 else:
                     self.logger.error_insertion("JSONReaderError:  ('{}' was ignored)\n --->See Exception:  '{}';\n --->DataFromFile:'{}'; \n".format(f.name, e, raw_str), exc_info=self._logger_traceback)
+        #except AttributeError,e:
 
         except Exception, e:
+            #p(f,"f")
+            try:
+                if isinstance(f, (unicode, str)):
+                    fname = f
+                else:
+                    fname = f.name
+            except AttributeError:
+                fname = f
+
             print_exc_plus() if self._ext_tb else ""
-            self.logger.error("JSONReaderError: For current File '{}' following Exception was throw: '{}'. ".format(f.name, e), exc_info=self._logger_traceback)
+            self.logger.error("JSONReaderError: For current File '{}' following Exception was throw: '{}'. ".format(fname, e), exc_info=self._logger_traceback)
 
 
 
@@ -794,6 +827,7 @@ class Reader(BaseContent):
 
 
     def _extract_all_files_according_given_file_format(self):
+        #p(self._read_from_zip, "read_from_zip")
         try:
             output_path_to_file = []
             #self.files_to_read_orig = []
@@ -808,10 +842,11 @@ class Reader(BaseContent):
 
             if len(self.files_to_read_orig)==0 and len(self.zips_to_read)==0:
                 #p((self._inp_path))
-                self.logger.warning("FilesExtractionProblem: No '{}'-Files or ZIPs was found. (check given FileFormat).".format(self._file_format), exc_info=self._logger_traceback)
+                self.logger.warning("FilesExtractionProblem: No '{}'-Files or ZIPs was found. (check given FileFormat or given path to text collection).".format(self._file_format), exc_info=self._logger_traceback)
                 #return self.files_to_read_orig
             self.files_to_read_leftover = copy.deepcopy(self.files_to_read_orig)
-
+            #p(read_from_zip, "444read_from_zip")
+            #p(self._read_from_zip, "read_from_zip")
             if self._read_from_zip:
                 for path_to_zip in self.zips_to_read:
                     archive = zipfile.ZipFile(path_to_zip, 'r')
@@ -824,7 +859,7 @@ class Reader(BaseContent):
                 self.files_from_zips_to_read_left_over = copy.deepcopy(self.files_from_zips_to_read_orig)
 
             self.logger.info("FilesExtraction: '{}' '{}'-Files (unzipped) was found in the given folder Structure: '{}'. ".format(len(self.files_to_read_orig),self._file_format, self._inp_path))
-            
+            #p(repr(self._read_from_zip), "------1-1-1-1-read_from_zip")
             if self._read_from_zip:
                 if self.zips_to_read:
                     self.files_number_in_zips = sum([len(v) for v in self.files_from_zips_to_read_orig.values() ])

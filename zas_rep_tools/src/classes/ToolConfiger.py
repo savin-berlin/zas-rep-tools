@@ -69,9 +69,9 @@ class ToolConfiger(BaseContent,ConfigerData):
 
 
         self._get_user_config_db() 
-        if not self._check_correctness_of_the_test_data():
-            self.logger.error("TestDataCorruption: Please check test data.", exc_info=self._logger_traceback)
-            sys.exit()
+        # if not self._check_correctness_of_the_test_data():
+        #     self.logger.error("TestDataCorruption: Please check test data.", exc_info=self._logger_traceback)
+        #     sys.exit()
 
         self.logger.debug('Intern InstanceAttributes was initialized')
 
@@ -735,8 +735,10 @@ class ToolConfiger(BaseContent,ConfigerData):
             while status:
                 prj_fldr = raw_input("Enter Project Folder: ")
                 if os.path.isdir(prj_fldr):
-                    getted_project_folder = prj_fldr
+                    abs_path = os.path.abspath(prj_fldr)
+                    getted_project_folder = abs_path
                     status = False
+
                 else: 
                     self.logger.critical("DirValidation: Given project Folder is not exist. Please retype it. (or type 'Ctrl+D' or 'Ctrl+C' to interrupt this process.)")
                     #print 

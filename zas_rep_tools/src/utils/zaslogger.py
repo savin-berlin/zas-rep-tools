@@ -96,8 +96,10 @@ class ZASLogger(object):
 
 
     def getLogger(self):
+        #p((self._logger_usage, self._logger_name), c="m")
         self._set_usage()
         self._logger = logging.getLogger(self._logger_name)
+        if not self._logger_usage: self._logger.handlers = []
         ZASLogger._loggers[self._logger_name] = self._logger
         self._set_filters()
         self._add_additional_levels()
@@ -107,6 +109,7 @@ class ZASLogger(object):
                 self._makedirs()
                 self._add_multihandler()
                 self._add_default_file_handlers()
+        #p(self._logger.handlers)
         return self._logger
         
 
@@ -116,6 +119,14 @@ class ZASLogger(object):
             logging.disable(logging.NOTSET)
         else:
             logging.disable(sys.maxint)
+            self._root_logger.setLevel(sys.maxint)
+            ZASLogger._handlers[self._logger_name]["StreamHandler"] = []
+            ZASLogger._handlers[self._logger_name]["FileHandler"] = defaultdict(lambda:[])
+            ZASLogger._handlers["MultiHandler"] = []
+            #p(self._logger.handlers, "self._logger.handlers")
+            # if self._logger.handlers:
+            #     pass
+            #self._logger.setLevel(100)
 
     def _clear(self):
         clear_logger()
@@ -325,7 +336,7 @@ class ZASLogger(object):
                 l = False
 
             if l == False:
-                if self._save_logs:
+                if self._save_logs and self._logger_usage:
                     self._makedirs()
                     if level_num==9:
                         if ZASLogger._save_lower_debug:
@@ -503,7 +514,7 @@ class ContextFilter(logging.Filter):
                         str(record.thread)) > 10 else str(record.thread)
         if record.funcName == "current_level_logger":
             try:
-                record.funcName = traceback.extract_stack()[-9][2]
+                record.funcName = traceback.extract_stack()[-8][2]
             except:
                 record.funcName = "UNKNOWN_FUNKTION"
         return True

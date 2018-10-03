@@ -25,15 +25,19 @@ auto_clear = True
 
 
 def connect(*args, **kwargs):
+        #p(kwargs, "1**kwargs", c="r")
         
-        return MultiThreadMultiCursor().connect(*args, **kwargs)
+        return MultiThreadMultiCursor(*args, **kwargs).connect(*args, **kwargs)
 
 
-class MultiThreadMultiCursor(BasicConnection,threading.Thread,BaseContent):#, sqlite):
+class MultiThreadMultiCursor(BaseContent,BasicConnection,threading.Thread):#, sqlite):
     def __init__(self, *args, **kwargs):
-        super(type(self), self).__init__(*args, **kwargs)
-        BaseContent.__init__(self,*args, **kwargs)
-        BasicConnection.__init__(self,*args, **kwargs)
+        #p(kwargs, "2.1**kwargs", c="r")
+        super(type(self), self).__init__( **kwargs)
+        #p(kwargs, "2.2**kwargs", c="r")
+        #BaseContent.__init__(self,*args, **kwargs)
+        #p(kwargs, "2.2**kwargs", c="r")
+        #BasicConnection.__init__(self,*args, **kwargs)
         threading.Thread.__init__(self)
         self.lock_connection = threading.Lock()
         #self.active_cursor = False
@@ -43,8 +47,16 @@ class MultiThreadMultiCursor(BasicConnection,threading.Thread,BaseContent):#, sq
         #5/0
 
     def connect(self, *args, **kwargs):
+        #p(args, "3args")
+        #p(kwargs, "3kwargs")
+        isolation_level = kwargs.get("isolation_level", None)
+        check_same_thread = kwargs.get("check_same_thread", None)
+        kargs = {}
+        if isolation_level != None: kargs["isolation_level"] = isolation_level
+        if check_same_thread != None: kargs["check_same_thread"] = check_same_thread
+
         if not self._connection:
-            self._connection = sqlite.connect(*args, **kwargs)
+            self._connection = sqlite.connect(*args, **kargs)
             return self
         else:
             raise ZASConnectionError, "Connection is already exist!"     

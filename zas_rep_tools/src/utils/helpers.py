@@ -38,26 +38,464 @@ from decimal import Decimal, ROUND_HALF_UP, ROUND_UP, ROUND_HALF_DOWN, ROUND_DOW
 import threading
 import inspect
 import ctypes
-from collections import OrderedDict
+from collections import OrderedDict, Callable, defaultdict, Counter
 from multiprocessing import Process, RawValue
 import traceback
-from collections import defaultdict, Counter
+#from collections import 
 import platform
+
 
 
 
 from zas_rep_tools.src.utils.zaslogger import ZASLogger
 from zas_rep_tools.src.utils.debugger import p
 
-
+L = ZASLogger("Helpers", level=logging.INFO,
+                    folder_for_log="stats",
+                    logger_usage=True,
+                    save_logs=False)
+logger = L.getLogger()
 
 path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(p))))
 
 
-modi = ["test", "dev","dev+","dev-", "prod", "free", "prod+t", "test+s+","test+s-", "silent", "prod+","prod-"]
+modi = ["error","test", "dev","dev+","dev-", "prod", "free", "prod+t", "test+s+","test+s-", "silent", "prod+","prod-", "blind"]
 punkt_str = set(""".!:;-"#$%&'()*+,/<=>?@[\\]^_`{|}~""")
-emoticons = set([')','(','-(', '-)', '=p', ':-p','-p', '8-)',  '=)','=(', ':-)', ':)', '<3', '{}',  'o:-)', 'x-(',  ':-d',  ':-#', ':-(', ':(',   ':p', ':o', ':-|', 'x-p', ':-)*', ':-*', ':*', 'b-)', ':_(', ":'(", '\\:d/', '*-*', ':o3', '#-o', ':*)', '/_^', '>:)', '<><',  '(-}{-)', 'xd', '=d', ')-:', '(-:',  '=/', ':-)(-:', '<:3)~', '~,~', ':-b', '^_^', '<l:0', ':-/', '=8)', '@~)~',    ':s', ':-@', '=o', ':-o',  ':-q', ':>', ':-j', ':-&', '=-o', ':-\\', ':-e',  ';-)', ';)', '|-o', '(.v.)', '~:0', '(*v*)', '=^.^=', '</3','*<:o)', 'o.o','$_$', ':->', '8-#' ])
+emoticons = set(['-(', '-)', '=p', ':-p','-p', '8-)',  '=)','=(', ':-)', ':)', '<3', '{}',  '(-',')-',')-:','(-:','):','(:', 'o:-)', 'x-(',  ':-d',  ':-#', ':-(', ':(', ')','(',  ':p', ':o', ':-|', 'x-p', ':-)*', ':-*', ':*', 'b-)', ':_(', ":'(", '\\:d/', '*-*', ':o3', '#-o', ':*)', '/_^', '>:)', '<><',  '(-}{-)', 'xd', '=d', ')-:', '(-:',  '=/', ':-)(-:', '<:3)~', '~,~', ':-b', '^_^', '<l:0', ':-/', '=8)', '@~)~',    ':s', ':-@', '=o', ':-o',  ':-q', ':>', ':-j', ':-&', '=-o', ':-\\', ':-e',  ';-)', ';)', '|-o', '(.v.)', '~:0', '(*v*)', '=^.^=', '</3','*<:o)', 'o.o','$_$', ':->', '8-#' ])
 
+emoji.UNICODE_EMOJI[u'\ufe0f'] = "additional"
+emoji.UNICODE_EMOJI[u'\u200d'] = "additional"
+emoji.UNICODE_EMOJI[u'\u2640'] = "additional"
+emoji.UNICODE_EMOJI[u'\u2642'] = "additional"
+emoji.UNICODE_EMOJI[u'\ufe0f'] = "additional"
+emoji.UNICODE_EMOJI[u'\U0001f3ff'] = "additional: skin coloure"
+emoji.UNICODE_EMOJI[u'\U0001f3fe'] = "additional: skin coloure"
+emoji.UNICODE_EMOJI[u"\U0001f3fd"] = "additional: skin coloure"
+emoji.UNICODE_EMOJI[u"\U0001f3fc"] = "additional: skin coloure"
+emoji.UNICODE_EMOJI[u"\U0001f3fb"] = "additional: skin coloure"
+
+
+
+from_ISO639_2= {
+             u'test':u'en',
+             u'aa': u'afar',
+             u'ab': u'abkhaz',
+             u'ae': u'avestan',
+             u'af': u'afrikaans',
+             u'ak': u'akan',
+             u'am': u'amharic',
+             u'an': u'aragonese',
+             u'ar': u'arabic',
+             u'as': u'assamese',
+             u'av': u'avaric',
+             u'ay': u'aymara',
+             u'az': u'azerbaijani',
+             u'ba': u'bashkir',
+             u'be': u'belarusian',
+             u'bg': u'bulgarian',
+             u'bh': u'bihari',
+             u'bi': u'bislama',
+             u'bm': u'bambara',
+             u'bn': u'bengali',
+             u'bo': u'tibetan',
+             u'br': u'breton',
+             u'bs': u'bosnian',
+             u'ca': u'catalan; valencian',
+             u'ce': u'chechen',
+             u'ch': u'chamorro',
+             u'co': u'corsican',
+             u'cr': u'cree',
+             u'cs': u'czech',
+             u'cu': u'old church slavonic',
+             u'cv': u'chuvash',
+             u'cy': u'welsh',
+             u'da': u'danish',
+             u'de': u'german',
+             u'dv': u'divehi; maldivian;',
+             u'dz': u'dzongkha',
+             u'ee': u'ewe',
+             u'el': u'greek, modern',
+             u'en': u'english',
+             u'eo': u'esperanto',
+             u'es': u'spanish; castilian',
+             u'et': u'estonian',
+             u'eu': u'basque',
+             u'fa': u'persian',
+             u'ff': u'fula',
+             u'fi': u'finnish',
+             u'fj': u'fijian',
+             u'fo': u'faroese',
+             u'fr': u'french',
+             u'fy': u'western frisian',
+             u'ga': u'irish',
+             u'gd': u'scottish gaelic',
+             u'gl': u'galician',
+             u'gn': u'guaran\xed',
+             u'gu': u'gujarati',
+             u'gv': u'manx',
+             u'ha': u'hausa',
+             u'he': u'hebrew (modern)',
+             u'hi': u'hindi',
+             u'ho': u'hiri motu',
+             u'hr': u'croatian',
+             u'ht': u'haitian',
+             u'hu': u'hungarian',
+             u'hy': u'armenian',
+             u'hz': u'herero',
+             u'ia': u'interlingua',
+             u'id': u'indonesian',
+             u'ie': u'interlingue',
+             u'ig': u'igbo',
+             u'ii': u'nuosu',
+             u'ik': u'inupiaq',
+             u'io': u'ido',
+             u'is': u'icelandic',
+             u'it': u'italian',
+             u'iu': u'inuktitut',
+             u'ja': u'japanese',
+             u'jv': u'javanese',
+             u'ka': u'georgian',
+             u'kg': u'kongo',
+             u'ki': u'kikuyu, gikuyu',
+             u'kj': u'kwanyama, kuanyama',
+             u'kk': u'kazakh',
+             u'kl': u'kalaallisut',
+             u'km': u'khmer',
+             u'kn': u'kannada',
+             u'ko': u'korean',
+             u'kr': u'kanuri',
+             u'ks': u'kashmiri',
+             u'ku': u'kurdish',
+             u'kv': u'komi',
+             u'kw': u'cornish',
+             u'ky': u'kirghiz, kyrgyz',
+             u'la': u'latin',
+             u'lb': u'luxembourgish',
+             u'lg': u'luganda',
+             u'li': u'limburgish',
+             u'ln': u'lingala',
+             u'lo': u'lao',
+             u'lt': u'lithuanian',
+             u'lu': u'luba-katanga',
+             u'lv': u'latvian',
+             u'mg': u'malagasy',
+             u'mh': u'marshallese',
+             u'mi': u'm\u0101ori',
+             u'mk': u'macedonian',
+             u'ml': u'malayalam',
+             u'mn': u'mongolian',
+             u'mr': u'marathi (mar\u0101\u1e6dh\u012b)',
+             u'ms': u'malay',
+             u'mt': u'maltese',
+             u'my': u'burmese',
+             u'na': u'nauru',
+             u'nb': u'norwegian bokm\xe5l',
+             u'nd': u'north ndebele',
+             u'ne': u'nepali',
+             u'ng': u'ndonga',
+             u'nl': u'dutch',
+             u'nn': u'norwegian nynorsk',
+             u'no': u'norwegian',
+             u'nr': u'south ndebele',
+             u'nv': u'navajo, navaho',
+             u'ny': u'chichewa; chewa; nyanja',
+             u'oc': u'occitan',
+             u'oj': u'ojibwe, ojibwa',
+             u'om': u'oromo',
+             u'or': u'oriya',
+             u'os': u'ossetian, ossetic',
+             u'pa': u'panjabi, punjabi',
+             u'pi': u'p\u0101li',
+             u'pl': u'polish',
+             u'ps': u'pashto, pushto',
+             u'pt': u'portuguese',
+             u'qu': u'quechua',
+             u'rm': u'romansh',
+             u'rn': u'kirundi',
+             u'ro': u'romanian, moldavan',
+             u'ru': u'russian',
+             u'rw': u'kinyarwanda',
+             u'sa': u'sanskrit (sa\u1e41sk\u1e5bta)',
+             u'sc': u'sardinian',
+             u'sd': u'sindhi',
+             u'se': u'northern sami',
+             u'sg': u'sango',
+             u'si': u'sinhala, sinhalese',
+             u'sk': u'slovak',
+             u'sl': u'slovene',
+             u'sm': u'samoan',
+             u'sn': u'shona',
+             u'so': u'somali',
+             u'sq': u'albanian',
+             u'sr': u'serbian',
+             u'ss': u'swati',
+             u'st': u'southern sotho',
+             u'su': u'sundanese',
+             u'sv': u'swedish',
+             u'sw': u'swahili',
+             u'ta': u'tamil',
+             u'te': u'telugu',
+             u'tg': u'tajik',
+             u'th': u'thai',
+             u'ti': u'tigrinya',
+             u'tk': u'turkmen',
+             u'tl': u'tagalog',
+             u'tn': u'tswana',
+             u'to': u'tonga',
+             u'tr': u'turkish',
+             u'ts': u'tsonga',
+             u'tt': u'tatar',
+             u'tw': u'twi',
+             u'ty': u'tahitian',
+             u'ug': u'uighur, uyghur',
+             u'uk': u'ukrainian',
+             u'ur': u'urdu',
+             u'uz': u'uzbek',
+             u've': u'venda',
+             u'vi': u'vietnamese',
+             u'vo': u'volap\xfck',
+             u'wa': u'walloon',
+             u'wo': u'wolof',
+             u'xh': u'xhosa',
+             u'yi': u'yiddish',
+             u'yo': u'yoruba',
+             u'za': u'zhuang, chuang',
+             u'zh': u'chinese',
+             u'zu': u'zulu'}
+
+to_ISO639_2 = {
+             u'test':u'en',
+             u'abkhaz': u'ab',
+             u'afar': u'aa',
+             u'afrikaans': u'af',
+             u'akan': u'ak',
+             u'albanian': u'sq',
+             u'amharic': u'am',
+             u'arabic': u'ar',
+             u'aragonese': u'an',
+             u'armenian': u'hy',
+             u'assamese': u'as',
+             u'avaric': u'av',
+             u'avestan': u'ae',
+             u'aymara': u'ay',
+             u'azerbaijani': u'az',
+             u'bambara': u'bm',
+             u'bashkir': u'ba',
+             u'basque': u'eu',
+             u'belarusian': u'be',
+             u'bengali': u'bn',
+             u'bihari': u'bh',
+             u'bislama': u'bi',
+             u'bosnian': u'bs',
+             u'breton': u'br',
+             u'bulgarian': u'bg',
+             u'burmese': u'my',
+             u'valencian': u'ca',
+             u'catalan': u'ca',
+             u'chamorro': u'ch',
+             u'chechen': u'ce',
+             u'chichewa; chewa; nyanja': u'ny',
+             u'chinese': u'zh',
+             u'chuvash': u'cv',
+             u'cornish': u'kw',
+             u'corsican': u'co',
+             u'cree': u'cr',
+             u'croatian': u'hr',
+             u'czech': u'cs',
+             u'danish': u'da',
+             u'divehi; maldivian;': u'dv',
+             u'dutch': u'nl',
+             u'dzongkha': u'dz',
+             u'english': u'en',
+             u'esperanto': u'eo',
+             u'estonian': u'et',
+             u'ewe': u'ee',
+             u'faroese': u'fo',
+             u'fijian': u'fj',
+             u'finnish': u'fi',
+             u'french': u'fr',
+             u'fula': u'ff',
+             u'galician': u'gl',
+             u'georgian': u'ka',
+             u'german': u'de',
+             u'greek, modern': u'el',
+             u'guaran\xed': u'gn',
+             u'gujarati': u'gu',
+             u'haitian': u'ht',
+             u'hausa': u'ha',
+             u'hebrew (modern)': u'he',
+             u'herero': u'hz',
+             u'hindi': u'hi',
+             u'hiri motu': u'ho',
+             u'hungarian': u'hu',
+             u'icelandic': u'is',
+             u'ido': u'io',
+             u'igbo': u'ig',
+             u'indonesian': u'id',
+             u'interlingua': u'ia',
+             u'interlingue': u'ie',
+             u'inuktitut': u'iu',
+             u'inupiaq': u'ik',
+             u'irish': u'ga',
+             u'italian': u'it',
+             u'japanese': u'ja',
+             u'javanese': u'jv',
+             u'kalaallisut': u'kl',
+             u'kannada': u'kn',
+             u'kanuri': u'kr',
+             u'kashmiri': u'ks',
+             u'kazakh': u'kk',
+             u'khmer': u'km',
+             u'kikuyu, gikuyu': u'ki',
+             u'kinyarwanda': u'rw',
+             u'kirghiz, kyrgyz': u'ky',
+             u'kirundi': u'rn',
+             u'komi': u'kv',
+             u'kongo': u'kg',
+             u'korean': u'ko',
+             u'kurdish': u'ku',
+             u'kwanyama, kuanyama': u'kj',
+             u'lao': u'lo',
+             u'latin': u'la',
+             u'latvian': u'lv',
+             u'limburgish': u'li',
+             u'lingala': u'ln',
+             u'lithuanian': u'lt',
+             u'luba-katanga': u'lu',
+             u'luganda': u'lg',
+             u'luxembourgish': u'lb',
+             u'macedonian': u'mk',
+             u'malagasy': u'mg',
+             u'malay': u'ms',
+             u'malayalam': u'ml',
+             u'maltese': u'mt',
+             u'manx': u'gv',
+             u'marathi': u'mr',
+             u'marshallese': u'mh',
+             u'mongolian': u'mn',
+             u'm\u0101ori': u'mi',
+             u'nauru': u'na',
+             u'navajo, navaho': u'nv',
+             u'ndonga': u'ng',
+             u'nepali': u'ne',
+             u'north ndebele': u'nd',
+             u'northern sami': u'se',
+             u'norwegian': u'no',
+             u'norwegian bokm\xe5l': u'nb',
+             u'norwegian nynorsk': u'nn',
+             u'nuosu': u'ii',
+             u'occitan': u'oc',
+             u'ojibwe, ojibwa': u'oj',
+             u'old church slavonic': u'cu',
+             u'oriya': u'or',
+             u'oromo': u'om',
+             u'ossetian, ossetic': u'os',
+             u'panjabi, punjabi': u'pa',
+             u'pashto, pushto': u'ps',
+             u'persian': u'fa',
+             u'polish': u'pl',
+             u'portuguese': u'pt',
+             u'p\u0101li': u'pi',
+             u'quechua': u'qu',
+             u'romanian': u'ro',
+             u'moldavan': u'ro',
+             u'romansh': u'rm',
+             u'russian': u'ru',
+             u'samoan': u'sm',
+             u'sango': u'sg',
+             u'sanskrit': u'sa',
+             u'sardinian': u'sc',
+             u'scottish': u'gd',
+             u'gaelic': u'gd',
+             u'serbian': u'sr',
+             u'shona': u'sn',
+             u'sindhi': u'sd',
+             u'sinhala, sinhalese': u'si',
+             u'slovak': u'sk',
+             u'slovene': u'sl',
+             u'somali': u'so',
+             u'south ndebele': u'nr',
+             u'southern sotho': u'st',
+             u'spanish': u'es',
+             u'castilian': u'es',
+             u'sundanese': u'su',
+             u'swahili': u'sw',
+             u'swati': u'ss',
+             u'swedish': u'sv',
+             u'tagalog': u'tl',
+             u'tahitian': u'ty',
+             u'tajik': u'tg',
+             u'tamil': u'ta',
+             u'tatar': u'tt',
+             u'telugu': u'te',
+             u'thai': u'th',
+             u'tibetan': u'bo',
+             u'tigrinya': u'ti',
+             u'tonga': u'to',
+             u'tsonga': u'ts',
+             u'tswana': u'tn',
+             u'turkish': u'tr',
+             u'turkmen': u'tk',
+             u'twi': u'tw',
+             u'uighur, uyghur': u'ug',
+             u'ukrainian': u'uk',
+             u'urdu': u'ur',
+             u'uzbek': u'uz',
+             u'venda': u've',
+             u'vietnamese': u'vi',
+             u'volap\xfck': u'vo',
+             u'walloon': u'wa',
+             u'welsh': u'cy',
+             u'western frisian': u'fy',
+             u'wolof': u'wo',
+             u'xhosa': u'xh',
+             u'yiddish': u'yi',
+             u'yoruba': u'yo',
+             u'zhuang, chuang': u'za',
+             u'zulu': u'zu'}
+
+class DefaultOrderedDict(OrderedDict):
+    # Source: http://stackoverflow.com/a/6190500/562769
+    def __init__(self, default_factory=None, *a, **kw):
+        if (default_factory is not None and
+           not isinstance(default_factory, Callable)):
+            raise TypeError('first argument must be callable')
+        OrderedDict.__init__(self, *a, **kw)
+        self.default_factory = default_factory
+
+    def __getitem__(self, key):
+        try:
+            return OrderedDict.__getitem__(self, key)
+        except KeyError:
+            return self.__missing__(key)
+
+    def __missing__(self, key):
+        if self.default_factory is None:
+            raise KeyError(key)
+        self[key] = value = self.default_factory()
+        return value
+
+    def __reduce__(self):
+        if self.default_factory is None:
+            args = tuple()
+        else:
+            args = self.default_factory,
+        return type(self), args, None, None, self.items()
+
+    def copy(self):
+        return self.__copy__()
+
+    def __copy__(self):
+        return type(self)(self.default_factory, self)
+
+    def __deepcopy__(self, memo):
+        import copy
+        return type(self)(self.default_factory,
+                          copy.deepcopy(self.items()))
+
+    def __repr__(self):
+        return 'OrderedDefaultDict(%s, %s)' % (self.default_factory,
+                                               OrderedDict.__repr__(self))
 
 
 def function_name(n=-2):
@@ -449,11 +887,16 @@ def NestedDictValues(d):
 #Rle().del_rep()
 
 class Rle(object):
-    def __init__(self, logger=False):
+    def __init__(self, inplogger=False):
         #from zas_rep_tools.src.extensions.uniseg import graphemecluster as gc
         #self.gc = gc
         self.re_pattern_char_recognition= regex.compile(ur'[\ud800-\udbff][\udc00-\udfff]|.',regex.UNICODE)
-        self.logger = logger
+        global logger
+        if inplogger:
+            self.logger = inplogger
+        else:
+            self.logger = logger
+
 
     def del_rep_from_sent(self, input_string):
         #time.sleep(8)
@@ -968,10 +1411,15 @@ def categorize_token_list(inpliste):
 
 def categorize_emoticon(inptoken):
     try:
+
         if is_emoji(inptoken):
+            #p((inptoken,"EMOIMG"), "inptoken", c="m")
             return "EMOIMG"
         elif is_emoticon(inptoken):
+            #p((inptoken,"EMOASC"), "inptoken", c="m")
             return "EMOASC"
+        #elif is_emoji(inptoken[0]):
+        #    return "EMOIMG"
         return None
     except:
         return None
@@ -981,8 +1429,10 @@ def recognize_emoticons_types(inpliste):
     for token in inpliste:
         cat = categorize_emoticon(token[0])
         if cat:
+            #print "(token[0], cat)", (token[0], cat)
             output_list.append((token[0], cat))
         else:
+            #print "token", token
             output_list.append(token)
     return output_list
 
@@ -1012,6 +1462,7 @@ def text_has_punkt(text):
 
 def is_emoji(character):
     return character in emoji.UNICODE_EMOJI
+
 
 
 
@@ -1085,6 +1536,19 @@ def set_class_mode(mode):
         elif mode == "test":
             logger_level = logging.ERROR
             logger_traceback = True
+            Status.light_mode = True
+            logger_save_logs = False
+            ZASLogger._save_lower_debug = False
+            ZASLogger._save_debug = False
+            ZASLogger._set_functon_name_as_event_name = False
+            save_status = False
+            log_content = False
+            save_settings = False
+            logger_usage = True
+            ext_tb = False
+        elif mode == "error":
+            logger_level = logging.ERROR
+            logger_traceback = False
             Status.light_mode = True
             logger_save_logs = False
             ZASLogger._save_lower_debug = False
@@ -1195,8 +1659,23 @@ def set_class_mode(mode):
             save_settings = False
             logger_usage = False
             ext_tb = False
+        elif mode == "blind":
+            logger_level = 70
+            logger_traceback = False
+            logger_save_logs = False
+            Status.light_mode = True
+            ZASLogger._save_lower_debug = False
+            ZASLogger._save_debug = False
+            save_status = False
+            log_content = False
+            Status.allow_full_tb = False
+            Status.allow_auto_func_names = False
+            Status.allow_auto_arginfo = False#
+            ZASLogger._set_functon_name_as_event_name = False
+            save_settings = False
+            logger_usage = True
+            ext_tb = False
 
-            
     else:
         msg = "CorpusError: Given Mode '{}' is not supported. Please use one of the following modi: '{}'. ".format(mode,  modi)
         if platform.uname()[0].lower() !="windows":
@@ -1368,9 +1847,14 @@ def write_data_to_json(path, data):
 
 #send_email("egor@savin.berlin", "dfghjkl", "fghjkl")
 
-def send_email(toaddr,Subject, text):
-    logger = main_logger("MailSender")
 
+
+
+
+
+def _send_email(toaddr,Subject, text):
+    #logger = main_logger("MailSender")
+    #num = None
     if toaddr:
         fromaddr = 'zas.rep.tools@gmail.com'
         #toaddrs  = ['receiving@gmail.com']
@@ -1400,13 +1884,15 @@ def send_email(toaddr,Subject, text):
                 if try_number==0:
                     logger_msg = "\rEmailSendingError: (Socket.gaierror) Smtplib returned  the following Problem: ‘{}‘. (Check your Internet Connection or DNS Server.)".format(e)
                     logger.error(logger_msg) 
-                    print logger_msg
+                    #print logger_msg
                 time.sleep(30)
                 try_number+=1
             except Exception, e:
                 logger_msg = "\nEmailSendingError: SMTP-Server returned  the following Problem: ‘{}‘ ".format(e)
-                print logger_msg
+                #print logger_msg
                 logger.error(logger_msg) 
+                #return False
+
             finally:
                 #p(server_answer)
                 if server_answer:
@@ -1414,5 +1900,28 @@ def send_email(toaddr,Subject, text):
                     return False
                 
                 break
+    return True
+
+
+def send_email(toaddr,Subject, text):
+    #num = None
+    if toaddr:
+        if isinstance(toaddr, (list, tuple)):
+            for addr in toaddr:
+                if not _send_email(addr,Subject, text):
+                    return False
+        elif isinstance(toaddr, (str, unicode)):
+            if not _send_email(toaddr,Subject, text):
+                return False
+        else:
+            logger.error("Given Email Address has illegal structure.")
+            return False
+
+    return True
+
+
+
+
+
 
 #\033[1A

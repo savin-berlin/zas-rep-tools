@@ -228,15 +228,21 @@ attributs_names_corpus = [
                             ("case_sensitiv", "INTEGER"),
                             ("lang_classification", "INTEGER"),
                             ("emojis_normalization", "INTEGER"),
+                            ("sent_num", "INTEGER"),
+                            ("token_num", "INTEGER"),
+                            ("doc_num", "INTEGER"),
+                            ("text_field_name", "TEXT"),
+                            ("id_field_name", "TEXT"),
                         ]
 
 
 
 ### Documnets_Table (default)
+doc_id_tag = "id"
 
 default_columns_and_types_for_corpus_documents = [
                                 ('rowid','INTEGER PRIMARY KEY'),
-                                ('id','INTEGER'),
+                                (doc_id_tag,'INTEGER'),
                                 ('text','JSON NOT NULL')
                                 ]
 
@@ -248,7 +254,7 @@ default_constraints_for_corpus_documents = [
 
 
 default_index_for_corpus_documents = [
-                        'CREATE INDEX "ix_id" ON "documents" ("id");',
+                        'CREATE UNIQUE INDEX IF NOT EXISTS ix_id ON documents (id);',
                             ]
 
 
@@ -305,15 +311,15 @@ extended_columns_and_types_for_corpus_documents_blogger =[
 
 attributs_names_stats = [
                             ("id", "INTEGER NOT NULL"),
-                            ("corpus_id", "INTEGER NOT NULL"),
+                            ("corpus_id", "INTEGER"),
                             ("name", "TEXT NOT NULL"),
                             ("version", "TEXT"),
                             ("created_at", "TEXT NOT NULL"),
                             ("visibility", "TEXT NOT NULL"),
                             ("typ", "TEXT NOT NULL"),
-                            ("was_space_optimized", "INTEGER"),
-                            ("context_left", "INTEGER"),
-                            ("context_right", "INTEGER"),
+                            ("db_frozen", "INTEGER"),
+                            ("context_lenght", "INTEGER"),
+                            ("language", "TEXT"),
                             ("repl_up", "INTEGER"),
                             ("ignore_hashtag", "INTEGER"),
                             ("ignore_url", "INTEGER"),
@@ -324,6 +330,9 @@ attributs_names_stats = [
                             ("case_sensitiv", "INTEGER"),
                             ("text_field_name", "TEXT"),
                             ("id_field_name", "TEXT"),
+                            ("full_repetativ_syntagma", "INTEGER"),
+                            ("min_scope_for_indexes", "INTEGER"),
+                            
                                                   
                         ]
 
@@ -335,12 +344,37 @@ attributs_names_stats = [
 ### Baseline_Tables (default)
 #default_columns_and_types_for_stats_baseline
 
+default_col_baseline_main = (   
+                                ('syntagma','TEXT PRIMARY KEY NOT NULL'),
+                                ('stemmed','TEXT NOT NULL'),
+                                ("scope", "INTEGER NOT NULL"),
+                                ('occur_syntagma_all','INTEGER NOT NULL'),
+                            )
+
+
+default_col_baseline_repls_core = (
+                                    ('occur_repl_uniq','TEXT'),
+                                    ('occur_repl_exhausted','TEXT'),
+                                )
+
+
+default_col_baseline_redus_core = (
+                                    ('occur_redu_uniq','TEXT'),
+                                    ('occur_redu_exhausted','TEXT'),
+                                )
+
+default_col_baseline_repls_addit = (
+                                    ('occur_full_syn_repl','TEXT'),
+                                )
+
+default_col_baseline_redus_addit = (
+                                    ('occur_full_syn_redu','TEXT'),
+                                )
 
 #repl_baseline
-default_columns_and_types_for_stats_baseline = [
-                                ('syntagma','TEXT PRIMARY KEY NOT NULL'),
-                                ('counter','INTEGER NOT NULL'),
-                                ]
+default_columns_and_types_for_stats_baseline = list(default_col_baseline_main + default_col_baseline_repls_core +default_col_baseline_redus_core +default_col_baseline_repls_addit +default_col_baseline_redus_addit)
+                                
+
 
 
 
@@ -364,71 +398,162 @@ default_columns_and_types_for_stats_baseline = [
 
 default_constraints_for_stats_baseline = [
                                     'CONSTRAINT "Uniq_Syntagma" UNIQUE ("syntagma")',
+                                    'CONSTRAINT "Uniq_Syntagma" UNIQUE ("stemmed")',
                                     ]
 
 
 
-# default_indexes_for_stats_baseline = [
-#                                 'CREATE INDEX "ix_word" ON "baseline" ("word");',
-#                                 'CREATE INDEX "ix_all_counts" ON "baseline" ("all_counts");',                            
-#                                 ]
+default_indexes_for_stats_baseline = [
+                                'CREATE UNIQUE INDEX IF NOT EXISTS "ix_syntagma" ON "baseline" ("syntagma");',
+                                #'CREATE UNIQUE INDEX IF NOT EXISTS "ix_scope" ON "baseline" ("scope");',                            
+                                ]
 
 
 
 
 ### Replications_Table (default)
 
-default_columns_and_types_for_stats_replications = [
-                                ('repl_id','INTEGER PRIMARY KEY'),
+tag_normalized_word = 'normalized_word'
+
+default_col_for_rep_core = (
+                                ('id','INTEGER PRIMARY KEY'),
+                            )
+
+default_col_for_rep_doc_info = (
                                 ('doc_id','INTEGER NOT NULL'),
-                                ('token_index','JSON NOT NULL'),
+                                ('redufree_len','JSON NOT NULL'),
+                            )
+
+
+
+default_col_for_rep_indexes = (
+                                ('index_in_corpus','JSON NOT NULL'),
+                                ('index_in_redufree','JSON NOT NULL'),
+                            )
+
+default_col_for_repl_word_info = (
+                                (tag_normalized_word,' TEXT NOT NULL'),
                                 ('rle_word','TEXT NOT NULL'),
-                                ('normalized_word',' TEXT NOT NULL'),
-                                ('pos',' TEXT NOT NULL'),
-                                ('polarity','JSON NOT NULL'),
+                                ('stemmed','TEXT NOT NULL'),
+                            )
+
+
+
+default_col_for_rep_repl_data = (
                                 ('repl_letter','TEXT NOT NULL'),
-                                ("in_redu",'JSON NOT NULL'),
                                 ('repl_length','INTEGER NOT NULL'),
                                 ('index_of_repl','INTEGER NOT NULL'),
-                                ]
+                                ("in_redu",'JSON'),
+                            )
+
+default_col_for_rep_addit_info_word = (
+                                ('pos',' TEXT NOT NULL'),
+                                ('polarity','JSON NOT NULL'),
+                            )
+
+
+default_columns_and_types_for_stats_replications = list(
+                                                        default_col_for_rep_core + 
+                                                        default_col_for_rep_doc_info+
+                                                        default_col_for_rep_indexes +
+                                                        default_col_for_repl_word_info +
+                                                        default_col_for_rep_repl_data +
+                                                        default_col_for_rep_addit_info_word
+
+                                                        )
+
+
+# default_columns_and_types_for_stats_replications = [
+#                                 ('id','INTEGER PRIMARY KEY'),
+#                                 ('doc_id','INTEGER NOT NULL'),
+#                                 ('redufree_len','JSON NOT NULL'),
+#                                 ('index_in_corpus','JSON NOT NULL'),
+#                                 ('index_in_redufree','JSON NOT NULL'),
+#                                 (tag_normalized_word,' TEXT NOT NULL'),
+#                                 ('rle_word','TEXT NOT NULL'),
+#                                 ('stemmed','TEXT NOT NULL'),
+
+#                                 ('repl_letter','TEXT NOT NULL'),
+#                                 ('repl_length','INTEGER NOT NULL'),
+#                                 ('index_of_repl','INTEGER NOT NULL'),
+
+#                                 ('pos',' TEXT NOT NULL'),
+#                                 ('polarity','JSON NOT NULL'),
+#                                 ("in_redu",'JSON'),
+#                                 ]
+
+
 
 
 default_constraints_for_stats_replications = [
-                                'CONSTRAINT "Uniq_Repl_ID" UNIQUE ("repl_id")',
+                                'CONSTRAINT "Uniq_Repl_ID" UNIQUE ("id")',
                                 ]
 
 
 default_indexes_for_stats_replications = [
-                                #'CREATE INDEX "ix_replID" ON "replications" ("repl_id");',
-                                'CREATE INDEX "ix_norm_word_repl" ON "replications" ("normalized_word");',
+                                #'CREATE UNIQUE INDEX IF NOT EXISTS "ix_replID" ON "replications" ("repl_id");',
+                                #'CREATE UNIQUE INDEX IF NOT EXISTS ix_norm_word_repl ON replications (normalized_word);',
                                 ]
+
+
+
+
+
+
+
 
 ### Reduplications_Table (default)
 
 
-
-default_columns_and_types_for_stats_reduplications = [
-                                ('redu_id','INTEGER PRIMARY KEY'),
-                                ('doc_id','INTEGER NOT NULL'),
-                                ("redu_length",'INTEGER NOT NULL'),
-                                ('normalized_word',' TEXT NOT NULL'),
-                                ('start_index','TEXT'),
-                                ('pos',' TEXT NOT NULL'),
+default_col_for_rep_redu_data = (
                                 ('orig_words','JSON NOT NULL'),
-                                ('polarity','JSON NOT NULL'),
+                                ("redu_length",'INTEGER NOT NULL'),
+                            )
+
+default_col_for_redu_word_info = (
+                                (tag_normalized_word,' TEXT NOT NULL'),
+                                ('stemmed','TEXT NOT NULL'),
+                            )
+
+
+default_columns_and_types_for_stats_reduplications =  list(
+                                                        default_col_for_rep_core + 
+                                                        default_col_for_rep_doc_info+
+                                                        default_col_for_rep_indexes +
+                                                        default_col_for_redu_word_info +
+                                                        default_col_for_rep_redu_data +
+                                                        default_col_for_rep_addit_info_word
+                                                        )
+
+
+
+# default_columns_and_types_for_stats_reduplications = [
+#                                 ('id','INTEGER PRIMARY KEY'),
+#                                 ('doc_id','INTEGER NOT NULL'),
+#                                 ('redufree_len','JSON NOT NULL'),
+#                                 ('index_in_corpus','JSON NOT NULL'),
+#                                 ('index_in_redufree','JSON NOT NULL'),
+#                                 (tag_normalized_word,' TEXT NOT NULL'),
+#                                 ('stemmed','TEXT NOT NULL'),
                                 
-                                #('scopus','BLOB'),
-                                ]
+#                                 ('orig_words','JSON NOT NULL'),
+#                                 ("redu_length",'INTEGER NOT NULL'),
+#                                 ('pos',' TEXT NOT NULL'),
+#                                 ('polarity','JSON NOT NULL'),
+#                                 #('scopus','BLOB'),
+#                                 ]
+
+
 
 
 default_constraints_for_stats_reduplications = [
-                                    'CONSTRAINT "Uniq_Redu-ID" UNIQUE ("redu_id")',
+                                    'CONSTRAINT "Uniq_Redu-ID" UNIQUE ("id")',
                                     ]
 
 
 default_indexes_for_stats_reduplications = [
-                                    #'CREATE INDEX "ix_reduID" ON "reduplications" ("redu-id");',
-                                    'CREATE INDEX "ix_norm_word_redu" ON "reduplications" ("normalized_word");',
+                                    #'CREATE UNIQUE INDEX IF NOT EXISTS "ix_reduID" ON "reduplications" ("redu-id");',
+                                    #'CREATE UNIQUE INDEX IF NOT EXISTS ix_norm_word_redu ON reduplications (normalized_word);',
                                     ]
 
 default_indexes = {
@@ -438,7 +563,8 @@ default_indexes = {
                     "stats": {
                             #"baseline":default_indexes_for_stats_baseline,
                             "replications":default_indexes_for_stats_replications,
-                            "reduplications":default_indexes_for_stats_reduplications
+                            "reduplications":default_indexes_for_stats_reduplications,
+                            "baseline":default_indexes_for_stats_baseline,
                             }
                 }
 
@@ -644,7 +770,10 @@ def list_of_select_objects_to_str(inputobj):
     '''
     without Datatypes
     '''
-    if isinstance(inputobj, list):
+    try:
+        inputobj + "" # if True, than
+        outputstr += " {}".format(inputobj)
+    except TypeError: 
         outputstr = ""
         i=1
         for obj in inputobj:
@@ -662,11 +791,8 @@ def list_of_select_objects_to_str(inputobj):
 
             else:
                 return False
-    elif isinstance(inputobj, str):
-        outputstr += " {}".format(inputobj)
-    else:
-        return False
-    #p(outputstr)
+    #except:
+
     return outputstr
 
 
@@ -746,88 +872,118 @@ def clean_value(value):
     else:
         return False
 
-     
+
+
+
+
 
 def values_to_tuple(values, mode):
     values_as_list = list()
     if mode == "one":
-        if isinstance(values, list):
+        try:
             for value in values:
-                if isinstance(value, (str, unicode)):
-                    values_as_list.append(value)
-                    #values_as_list.append(clean_value(value))
-                elif isinstance(value, (list,dict,tuple)):
+                 #values_as_list.append(clean_value(value))
+                if  isinstance(value, (list,dict,tuple)):
                     values_as_list.append(json.dumps(value))
                 else:
                     values_as_list.append(value)
-        else:
+
+        except:
             return False
     else:
-        if isinstance(values, list):
+        try:
             for row in values:
                 temp_row = []
                 for item in row:
-                    if isinstance(item, (str, unicode)):
-                        temp_row.append(item)
-                        #temp_row.append(clean_value(value))
-                    elif isinstance(item, (list,dict,tuple)):
+                    if isinstance(item, (list,dict,tuple)):
                         temp_row.append(unicode(json.dumps(item)))
                     else:
                         temp_row.append(item)
                 values_as_list.append(tuple(temp_row))
-        else:
+        except:
             return False
 
     return tuple(values_as_list)
 
+     
 
-# def values_list_to_str(values):
-#     '''
-#     without Datatypes
-#     '''
-#     if isinstance(values, list):
-#         str_values = ""
-#         i=1
-#         for value in values:
-#             if isinstance(value, unicode):
-#                 value = value.encode('utf8')
-#             if value is None:
-#                 value = "NULL"
-#             if value == "NULL":
-#                 if len(values) > 1:
-#                     if i < len(values):
-#                         str_values += "\n{}, ".format(clean_value(value))
-#                     else:
-#                         str_values += "\n{} ".format(clean_value(value))
-#                     i+=1
-#                 elif len(values) == 1:
-#                     str_values += "{}".format(clean_value(value))
-#                 else:
-#                     return False
-#             else:
-#                 if len(values) > 1:
-#                     if i < len(values):
-#                         if isinstance(value, list):
-#                             str_values += '\n"{}", '.format(unicode(clean_value(value)))
-#                         else:
-#                             str_values += '\n"{}", '.format(clean_value(value))
-#                     else:
-#                         if isinstance(value, list):
-#                             str_values += '\n"{}" '.format(unicode(clean_value(value)))
-#                         else:
-#                             str_values += '\n"{}" '.format(clean_value(value))
-#                     i+=1
-#                 elif len(values) == 1:
-#                     if isinstance(value, list):
-#                         str_values += '"{}"'.format(unicode(clean_value(value)))
-#                     else:
-#                         str_values += '"{}"'.format(clean_value(value))
-#                 else:
-#                     return False
+
+
+def values_to_list(values, mode):
+    values_as_list = list()
+    if mode == "one":
+        try:
+            for value in values:
+                 #values_as_list.append(clean_value(value))
+                if  isinstance(value, (tuple,list,dict)):
+                    values_as_list.append(json.dumps(value))
+                else:
+                    values_as_list.append(value)
+
+        except:
+            return False
+    else:
+        try:
+            for row in values:
+                temp_row = []
+                for item in row:
+                    if isinstance(item, (tuple,list,dict)):
+                        temp_row.append(unicode(json.dumps(item)))
+                    else:
+                        temp_row.append(item)
+                values_as_list.append(temp_row)
+        except:
+            return False
+
+    return values_as_list
+
+
+
+
+
+# def values_to_list10(values, mode):
+#     values_as_list = list()
+#     if mode == "one":
+#         try:
+#             for value in values:
+#                  #values_as_list.append(clean_value(value))
+#                 try:
+#                     value.decode ## if str, unicode
+#                     values_as_list.append(value)
+
+#                 except:
+#                     try:
+#                         value.__getitem__
+#                         values_as_list.append(json.dumps(value))
+#                     except: #if None
+#                         values_as_list.append(value)
+
+#         except:
+#             return False
 #     else:
-#         return False
+#         try:
+#             for row in values:
+#                 temp_row = []
+#                 for item in row:
+#                     try:
+#                         value.decode
+#                         temp_row.append(item)
 
-#     return str_values
+#                     except:
+#                         try:
+#                             value.__getitem__
+#                             temp_row.append(unicode(json.dumps(item)))
+#                         except:
+#                             temp_row.append(item)
+#                     values_as_list.append(temp_row)
+
+
+#         except:
+#             return False
+
+#     return values_as_list
+
+
 
 
 

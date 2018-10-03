@@ -169,6 +169,20 @@ class DBHandler(BaseContent, BaseDB):
             EXCLUSIVE #Immediately acquire and hold EXCLUSIVE locks on all databases opened by this connection. This instantly blocks out all other connections for the duration of this transaction. BEGIN EXCLUSIVE TRANSACTION will block or fail if another connection has any kind of lock on any of this connection’s open DBs.
             '''
             _arguments_for_connection["isolation_level"] = self._isolation_level
+
+        if self._thread_safe:
+            _arguments_for_connection["logger_usage"] = self._logger_usage
+            _arguments_for_connection["logger_level"] = self._logger_level
+            _arguments_for_connection["logger_save_logs"] = self._logger_save_logs
+            _arguments_for_connection["logger_traceback"] = self._logger_traceback
+            _arguments_for_connection["save_status"] = self._save_status
+            _arguments_for_connection["save_settings"] = self._save_settings
+            _arguments_for_connection["ext_tb"] = self._ext_tb
+            _arguments_for_connection["mode"] = self._mode
+            _arguments_for_connection["error_tracking"] = self._error_tracking
+
+
+            
         #p(_arguments_for_connection)
         return _arguments_for_connection
 
@@ -194,8 +208,8 @@ class DBHandler(BaseContent, BaseDB):
             platform_name=False,  encryption_key=False, fileName=False,
             source=False, license=False, template_name=False, version=False,
             additional_columns_with_types_for_documents=False, corpus_id=False,
-            stats_id=False, retrival_template_automat = True, thread_name="Thread0", was_space_optimized=False,
-            context_left=None, context_right=None):
+            stats_id=False, retrival_template_automat = True, thread_name="Thread0", db_frozen=False,
+            context_lenght=None):
 
         additional_columns_with_types_for_documents = copy.deepcopy(additional_columns_with_types_for_documents)
         supported_typs = DBHandler.supported_db_typs
@@ -213,11 +227,11 @@ class DBHandler(BaseContent, BaseDB):
             return Status(status=True)
 
         elif typ == "stats":
-            if not corpus_id:
-                self.logger.error("'Corpus_id' wasn't given. 'Stats' initialization need Corpus_id.", exc_info=self._logger_traceback)
-                return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
+            #if not corpus_id:
+            #    self.logger.error("'Corpus_id' wasn't given. 'Stats' initialization need Corpus_id.", exc_info=self._logger_traceback)
+            #    return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
                 
-            status = self.init_stats(prjFolder, DBname, language, visibility, corpus_id, encryption_key=encryption_key,fileName=fileName, version=version, stats_id=stats_id, thread_name=thread_name, was_space_optimized=was_space_optimized, context_left=context_left, context_right=context_right)
+            status = self.init_stats(prjFolder, DBname, language, visibility, corpus_id, encryption_key=encryption_key,fileName=fileName, version=version, stats_id=stats_id, thread_name=thread_name, db_frozen=db_frozen, context_lenght=context_lenght)
             if not status["status"]:
                 return status
             
@@ -270,9 +284,11 @@ class DBHandler(BaseContent, BaseDB):
             return self._check_db_should_not_exist()
 
 
+
+
         if os.path.isdir(prjFolder):
             path_to_db =":memory:"  if self._in_memory else path_to_db
-            self._db = sqlite.connect(path_to_db, **self._arguments_for_connection)
+            self._db = sqlite.connect(path_to_db,  **self._arguments_for_connection)
             #p(self._arguments_for_connection,"self._arguments_for_connection")
             self._init_threads_cursors_obj()
             if self._optimizer:
@@ -340,8 +356,8 @@ class DBHandler(BaseContent, BaseDB):
 
 
     def init_stats(self, prjFolder, DBname, language, visibility, corpus_id, thread_name="Thread0",
-                    encryption_key=False,fileName=False, version=False, stats_id=False,  was_space_optimized=False,
-                    context_left=None, context_right=None):
+                    encryption_key=False,fileName=False, version=False, stats_id=False,  db_frozen=False,
+                    context_lenght=None):
 
         self._encryption_key = encryption_key
 
@@ -400,7 +416,7 @@ class DBHandler(BaseContent, BaseDB):
             created_at = strftime("%Y-%m-%d %H:%M:%S", gmtime())
             attributs_list = db_helper.default_tables[typ]["info"]
             #p(attributs_list, "attributs_list")
-            values = [stats_id,corpus_id, DBname, version,  created_at, visibility,typ,was_space_optimized,context_left, context_right]
+            values = [stats_id,corpus_id, DBname, version,  created_at, visibility,typ,db_frozen,context_lenght]
             #p(values, "values")
 
             status = self._init_info_table(attributs_list)
@@ -532,6 +548,7 @@ class DBHandler(BaseContent, BaseDB):
 
     def connect(self,path_to_db, encryption_key=False, reconnection=False, logger_debug=False, thread_name="Thread0"):
         #p(logger_debug, "logger_debug")
+
         if not self._check_file_existens(path_to_db):
             return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
 
@@ -543,7 +560,7 @@ class DBHandler(BaseContent, BaseDB):
 
         status = self._validation_DBfile(path_to_db, encryption_key=encryption_key)
         if not status["status"]:
-            self.logger.error("ValidationError: DB cannot be connected!", exc_info=self._logger_traceback)
+            self.logger.debug("ValidationError: DB cannot be connected!", exc_info=self._logger_traceback)
             return status
         else:
             self._db = status["out_obj"]
@@ -605,7 +622,7 @@ class DBHandler(BaseContent, BaseDB):
 
 
 
-    def attach(self,path_to_db, encryption_key=False, reattaching=False, thread_name="Thread0"):
+    def attach(self,path_to_db, encryption_key=False, reattaching=False, db_name=False,thread_name="Thread0"):
         #p((path_to_db, encryption_key), c="m")
         status = self._check_file_existens(path_to_db)
         if not status["status"]:
@@ -624,7 +641,7 @@ class DBHandler(BaseContent, BaseDB):
             del status["out_obj"]
         gc.collect()
 
-        dbName = "_" + os.path.splitext(os.path.basename(path_to_db))[0]
+        dbName = db_name if db_name else "_" + os.path.splitext(os.path.basename(path_to_db))[0]
         
         if self._encryption_key:
             if encryption_key:
@@ -894,18 +911,24 @@ class DBHandler(BaseContent, BaseDB):
             return s
         if not isinstance(attributName, (str, unicode)):
             self.logger.error("Given AttributName should be an string or unicode object.", exc_info=self._logger_traceback)
-            return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
-
+            #return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
+            return None
          
         if not self._attributs_dict:
             self.logger.warning("Temporary AttributesList is empty")
-            return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
+            #return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
+            return None
 
         # if given attribute exist in the Info_Table
-        if attributName not in self._attributs_dict[dbname]:
-            self.logger.error("Given Attribute ('{}') is not exist in the '{}'-DB.".format(attributName,dbname), exc_info=self._logger_traceback)
-            return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
-
+        #p((attributName, self._attributs_dict,dbname))
+        try:
+            if attributName not in self._attributs_dict[dbname]:
+                self.logger.error("Given Attribute ('{}') is not exist in the '{}'-DB.".format(attributName,dbname), exc_info=self._logger_traceback)
+                #return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
+                return None
+        except KeyError: 
+            self.logger.error("'{}'-DB is not found.".format(dbname))
+            return None
 
         if dbname  in self.dbnames:
             try:
@@ -915,8 +938,8 @@ class DBHandler(BaseContent, BaseDB):
             #[dbname][attributName]
         else:
             self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
-            return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
-
+            #return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
+            return None
 
 
 
@@ -1101,12 +1124,13 @@ class DBHandler(BaseContent, BaseDB):
                 self.logger.error_insertion(msg, exc_info=self._logger_traceback)
                 self.error_insertion_counter.incr()
                 return Status(status=False, track_id=track_id,
-                            desc=repr(exception),
-                            level="error_insertion", action="ignored",
+                            desc="It is not possible to insert all got columns into CorpDB. Possible Explanation: 1. Current DB was initialized with wrong and not full number of columns, please reinitialize current CorpusDB with right column names and types. Or use also option  precomputed corp types. For this use option  'template_name' on the Corpus Level ( while Initialization) (ex:template_name='twitter',or template_name='blogger'  ) or also on the Reader Level 'reader_formatter_name='twitter'.",
+                            level="error_insertion", action="stop_execution",
                             inp_obj= (query, values,dbname),  func_name=function_name(-3),
-                            error_name=exception.__class__.__name__, exception=exception)
+                            error_name=exception.__class__.__name__, exception=repr(exception))
 
         except sqlite.InterfaceError as  exception:
+            p((query, values))
             track_id = self._error_track_id.incr()
             l_query = query if self._log_content else "!!LogContentDisable!!"
             l_values =  values if self._log_content else "!!LogContentDisable!!"
@@ -1357,7 +1381,7 @@ class DBHandler(BaseContent, BaseDB):
 
 
 
-    def rownum(self, tableName,dbname="main", thread_name="Thread0"):
+    def rownum(self, tableName,dbname="main", thread_name="Thread0", where=False, connector_where="AND"):
         s =  self._check_db_should_exist()
         if not s["status"]:
             return s
@@ -1367,12 +1391,24 @@ class DBHandler(BaseContent, BaseDB):
             return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
 
 
+        if where:
+            where_cond_as_str = db_helper.where_condition_to_str(where, connector=connector_where)
+            #p(where_cond_as_str)
+            if not where_cond_as_str:
+                self.logger.error("GetRowNum: Where-Condition(s) wasn't compiled to String!", exc_info=self._logger_traceback)
+                return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
+
+
         ## check existents of the dbName
         if dbname  in self.dbnames:
-            query = "select count(*) from {dbname}.{table_name}; ".format(table_name=tableName, dbname=dbname)
+            if where:
+                query = "select count(*) from {dbname}.{table_name} WHERE {where} ; ".format(table_name=tableName, dbname=dbname,where=where_cond_as_str)
+            else:
+                query = "select count(*) from {dbname}.{table_name}; ".format(table_name=tableName, dbname=dbname)
         else:
             self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
             return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
+
 
         try:
             #cursor = self._db.cursor()
@@ -1395,6 +1431,7 @@ class DBHandler(BaseContent, BaseDB):
 
 
     def getall(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True):
+        
         s = self._intern_getter(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv)
         #p(s["out_obj"])
         if s["status"]:
@@ -1403,16 +1440,26 @@ class DBHandler(BaseContent, BaseDB):
             self.logger.error("GetterError: Nor Cursor Element was passed from intern getter.")
             return []
             
+    def getone(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True):
+        #p(dbname, "dbname")
+        s = self._intern_getter(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv)
+        #p(s["out_obj"])
+        if s["status"]:
+            return s["out_obj"].fetchone()
+        else:
+            self.logger.error("GetterError: Nor Cursor Element was passed from intern getter.")
+            return []
+            
 
 
-
-    def lazyget(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", size_to_fetch=1000, output="list", limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True):
+    def lazyget(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", size_to_fetch=1000, output="list", limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True, just_check_existence=False,):
+        self.logger.low_debug("LazyGet was invoked.")
         if output == "list":
-            for row in  self.getlistlazy(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv):
+            for row in  self.getlistlazy(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv, just_check_existence=just_check_existence):
                 yield row
 
         elif output == "dict":
-            for getted_dict in  self.getdictlazy( tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv):
+            for getted_dict in  self.getdictlazy( tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv,just_check_existence=just_check_existence):
                 yield getted_dict
 
         else:
@@ -1423,7 +1470,8 @@ class DBHandler(BaseContent, BaseDB):
 
 
 
-    def getdictlazy(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", size_to_fetch=1000, limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True):
+    def getdictlazy(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", size_to_fetch=1000, limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True,just_check_existence=False):
+        self.logger.low_debug("GetDictLazy was invoked.")
         list_with_keys = []
         if columns:
             if isinstance(columns, (unicode, str)):
@@ -1431,8 +1479,8 @@ class DBHandler(BaseContent, BaseDB):
             list_with_keys += columns
 
         if not columns:
-            columns = self.col(tableName, dbname=dbname)
-            list_with_keys += columns
+            #columns = self.col(tableName, dbname=dbname)
+            list_with_keys += self.col(tableName, dbname=dbname)
 
         if select:       
             if isinstance(select, (unicode, str)):
@@ -1440,31 +1488,64 @@ class DBHandler(BaseContent, BaseDB):
             list_with_keys += select
 
         #p(list(self.getlistlazy( tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset)))
-        for row in self.getlistlazy( tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv):
+        generator = self.getlistlazy(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv,just_check_existence=just_check_existence)
+        if just_check_existence:
+            if next(generator):
+                yield True
+            else:
+                yield False
+            return 
+
+        for row in generator:
             yield {k:v for k,v in zip(list_with_keys,row)}
 
 
 
-    def getlistlazy(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", size_to_fetch=1000, limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True):
+    def getlistlazy(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", size_to_fetch=1000, limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True,just_check_existence=False):
+        self.logger.low_debug("GetListLazy was invoked.")
         cursor = self._intern_getter(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where,limit=limit, offset=offset, thread_name=thread_name,case_sensitiv=case_sensitiv)
+        try:
+            if cursor["status"]:
+                #try:
+                if just_check_existence:
+                    #p(cursor["out_obj"].fetchone())
 
-        if cursor["status"]:
-            while True:
-                results = cursor["out_obj"].fetchmany(size_to_fetch)
-                results = list(results)
-                if not results:
-                    break
-                for row in results:
-                    yield row
-        else:
-            self.logger.error("GetterError: Nor Cursor Element was passed from intern getter.")
+                    if cursor["out_obj"].fetchone():
+                        yield True
+                    else:
+                        yield False
+                    return 
+     
+                else:
+                    while True:
+                        #p(cursor, "cursor")
+                        results = cursor["out_obj"].fetchmany(size_to_fetch)
+                        results = list(results)
+                        #p(results, "results")
+                        if not results:
+                            break
+                        for row in results:
+                            #p(row,"row")
+                            yield row
+                #except:
+
+
+            else:
+                self.logger.error("GetterError: Nor Cursor Element was passed from intern getter.")
+                yield []
+                return
+        except Exception as e:
+            self.logger.error("Exception was throw: '{}'. (cursor_obj='{}',tableName='{}', columns='{}', select='{}', where='{}', ) ".format(repr(e), cursor["out_obj"], tableName, columns, select, where))
             yield []
-            return
+            return 
 
  
 
     def _intern_getter(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True):
         # return cursor object
+        #p((columns, select, where))
+        #p(dbname, "2dbname")
+        self.logger.low_debug("InternGetter was invoked.")
         s =  self._check_db_should_exist()
         if not s["status"]:
             return s
@@ -1476,33 +1557,39 @@ class DBHandler(BaseContent, BaseDB):
 
 
         if columns:
+            #p((repr(columns), type(columns)))
             if isinstance(columns, (str, unicode)):
-                columns = [columns]
-            if not self._check_if_given_columns_exist(tableName, columns, dbname=dbname)["status"]:
-                return self._check_if_given_columns_exist(tableName, columns, dbname=dbname)
+                columns = (columns,)
+            #p((repr(columns), type(columns)))
+
+            columns_existens = self._check_if_given_columns_exist(tableName, columns, dbname=dbname)
+            if not columns_existens["status"]:
+                return columns_existens
 
             if select:
                 if isinstance(select, (str, unicode)):
-                    select = [select]
+                    select = (select,)
             else:
-                select = []
+                select = ()
+            #p((columns,select))
+            try:
+                select_conditions = db_helper.list_of_select_objects_to_str(columns+select)
+            except TypeError:
+                select_conditions = db_helper.list_of_select_objects_to_str(tuple(columns)+tuple(select))
 
-            select_conditions = db_helper.list_of_select_objects_to_str(columns+select)
-            if not  select_conditions:
-                self.logger.error("TypeError: Given Columns should be given as a list. '{}' was given. ".format(type(columns)), exc_info=self._logger_traceback)
-                return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
         elif select:
             if isinstance(select, (str, unicode)):
-                select = [select]
+                select = (select,)
             select_conditions = db_helper.list_of_select_objects_to_str(select)
-
-            if not  select_conditions:
-                self.logger.error("TypeError: Given Columns should be given as a list. '{}' was given. ".format(type(columns)), exc_info=self._logger_traceback)
-                return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
 
         else:
             select_conditions = '*'
 
+        #p(select_conditions, "select_conditions")
+
+        if not  select_conditions:
+            self.logger.error("TypeError: Select columns is not given in the right way!  '{}' was given. ".format(type(columns)), exc_info=self._logger_traceback)
+            return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
 
         if where:
             where_cond_as_str = db_helper.where_condition_to_str(where, connector=connector_where)
@@ -1532,11 +1619,17 @@ class DBHandler(BaseContent, BaseDB):
         try:
             #cursor = self._db.cursor()
             self._threads_cursors[thread_name].execute(query)
+            #p((self._threads_cursors[thread_name]), c="r")
             #return Status(status=True, out_obj=self._threads_cursors[thread_name])
             return Status(status=True, out_obj=self._threads_cursors[thread_name]) 
         except Exception as  exception:
             print_exc_plus() if self._ext_tb else ""
-            self.logger.error("Exception was throw:  '{}' for following query: '{}'".format( repr(exception), query.replace("\n", " ") ), exc_info=self._logger_traceback)
+            q = query.replace("\n", " ")
+            try:
+                q = q.decode("utf-8")
+            except:
+                pass
+            self.logger.error(u"Exception was throw:  '{}' for following query: '{}'".format( repr(exception), q ), exc_info=self._logger_traceback)
             return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
 
 
@@ -2228,9 +2321,11 @@ class DBHandler(BaseContent, BaseDB):
             return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
 
         number  = len(inp_list[0])
-        values_as_tuple = db_helper.values_to_tuple(inp_list, "many")
+        #values_as_tuple = db_helper.values_to_tuple(inp_list, "many")
+        values_as_list = db_helper.values_to_list(inp_list, "many")
+        #
 
-        if not values_as_tuple:
+        if not values_as_list:
             self.logger.error_insertion("Given  Values wasn't packet into the list.", exc_info=self._logger_traceback)
             self.error_insertion_counter.incr()
             return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
@@ -2239,7 +2334,7 @@ class DBHandler(BaseContent, BaseDB):
         query = 'INSERT {} INTO {}.{}  \nVALUES ({});'.format(self._double_items,dbname,table_name, db_helper.values_to_placeholder(number))
 
         if table_name in self.tables(dbname=dbname):
-            status = self._executemany(query, values=values_as_tuple, dbname=dbname, thread_name=thread_name)
+            status = self._executemany(query, values=values_as_list, dbname=dbname, thread_name=thread_name)
             if not status["status"]:
                 status["inp_obj"] = inp_list
                 return status
@@ -2254,7 +2349,7 @@ class DBHandler(BaseContent, BaseDB):
             if outsorted:
                 track_id = self._error_track_id.incr()
                 l_query = query if self._log_content else "!!LogContentDisable!!"
-                l_values =  values_as_tuple if self._log_content else "!!LogContentDisable!!"
+                l_values =  values_as_list if self._log_content else "!!LogContentDisable!!"
                 self.logger.outsorted_corpus("'{}'-rows was outsorted/ignored while insertion process. (probably that was redundant rows.) |ErrorTrackID:'{}'|  InpQuery: '{}'.  InpValues: '{}'. ".format(outsorted,track_id,  l_query, l_values))
 
             self.logger.low_debug("Insertion: Many row was inserted into '{}.{}'-Table. ".format(table_name, dbname))
@@ -2284,10 +2379,11 @@ class DBHandler(BaseContent, BaseDB):
             self.error_insertion_counter.incr()
             return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
 
-        values_as_tuple = db_helper.values_to_tuple(inp_list, "one")
+        #values_as_tuple = db_helper.values_to_tuple(inp_list, "one")
+        values_as_list = db_helper.values_to_list(inp_list, "one")
         number  = len(inp_list)
         #p(self.colt("documents"))
-        if  not values_as_tuple:
+        if  not values_as_list:
             self.logger.error_insertion("Given  Values wasn't packet into the list.", exc_info=self._logger_traceback)
             self.error_insertion_counter.incr()
             return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
@@ -2298,11 +2394,11 @@ class DBHandler(BaseContent, BaseDB):
             self.error_insertion_counter.incr()
             return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
 
-        #p(values_as_tuple, c="m")
+        #p(values_as_list, c="m")
         query = 'INSERT {} INTO {}.{}  \nVALUES ({});'.format(self._double_items, dbname,table_name, db_helper.values_to_placeholder(number))
-        #p((query, values_as_tuple), c="b")
+        #p((query, values_as_list), c="b")
         if table_name in self.tables(dbname=dbname):
-            status = self._execute(query, values=values_as_tuple, dbname=dbname, thread_name=thread_name)
+            status = self._execute(query, values=values_as_list, dbname=dbname, thread_name=thread_name)
             if not status["status"]:
                 status["inp_obj"] = inp_list
                 return status
@@ -2316,7 +2412,7 @@ class DBHandler(BaseContent, BaseDB):
             if outsorted:
                 track_id = self._error_track_id.incr()
                 l_query = query if self._log_content else "!!LogContentDisable!!"
-                l_values =  values_as_tuple if self._log_content else "!!LogContentDisable!!"
+                l_values =  values_as_list if self._log_content else "!!LogContentDisable!!"
                 self.logger.outsorted_corpus("'{}'-rows was outsorted/ignored while insertion process. (probably that was redundant rows.) |ErrorTrackID:'{}'|  InpQuery: '{}'.  InpValues: '{}'. ".format(outsorted,track_id,  l_query, l_values))
 
             self.logger.low_debug("Insertion: One row was inserted into '{}.{}'-Table. ".format(table_name, dbname))
@@ -2359,12 +2455,12 @@ class DBHandler(BaseContent, BaseDB):
         try:
             for k,v in inp_dict.iteritems():
                 if mode == "one":
-                    if isinstance(v, (list,dict,tuple)):
+                    if isinstance(v, (dict,tuple,list)):
                         inp_dict[k] = json.dumps(v)
                 else:
                     values_list = []
                     for item in v:
-                        if isinstance(item, (list,dict,tuple)):
+                        if isinstance(item, (dict,tuple,list)):
                             values_list.append(json.dumps(item))
                         else:
                             values_list.append(item)
@@ -2880,8 +2976,11 @@ class DBHandler(BaseContent, BaseDB):
 
 
     def _check_if_given_columns_exist(self, tableName,columns, dbname="main"):
+        #p((tableName,columns))
+        self.logger.low_debug("Check_if_given_columns_exist was invoke.")
+        columns_from_db = self.col(tableName,dbname=dbname)
         for column in columns:
-            if column not in  self.col(tableName):
+            if column not in  columns_from_db:
                 if "json_extract" not in column:
                     msg = "Given Column '{}' is not exist in the following Table '{}' (dbname='{}') ".format(column,tableName,dbname)
                     self.logger.error(msg, exc_info=self._logger_traceback)
@@ -2889,6 +2988,7 @@ class DBHandler(BaseContent, BaseDB):
                                     desc=msg,
                                     func_name=function_name(-3))
         
+        self.logger.low_debug("All Given Columns ({}) exist in the '{}'-table.".format(columns,tableName,))
         return Status(status=True)
 
     def _check_if_table_exist(self,tableName, dbname="main"):
@@ -3120,7 +3220,8 @@ class DBHandler(BaseContent, BaseDB):
                     self.logger.error("ValidationError: '{}'. Or maybe a given Key is incorrect. Please give another one.  PathToDB: '{}'. ".format( e, path_to_db), exc_info=self._logger_traceback)
                 else:
                     self.logger.error("ValidationError: '{}'. PathToDB: '{}'. ".format( e, path_to_db), exc_info=self._logger_traceback)
-                    return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
+                
+                return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
             except Exception as  exception:
                 print_exc_plus() if self._ext_tb else ""
                 self.logger.error("Something wrong happens while Validation '{}'. PathToDB: '{}'. ".format( repr(exception), path_to_db), exc_info=self._logger_traceback)
@@ -3218,6 +3319,8 @@ class DBHandler(BaseContent, BaseDB):
         c.execute("PRAGMA table_info('info'); ")
         columns_and_types = c.fetchall()
         columns_and_types = [(col[1], col[2])for col in columns_and_types]
+        #p(set(columns_and_types), "set(columns_and_types)")
+        #p(set(attributs_and_types), "set(attributs_and_types)")
 
         if set(columns_and_types) !=set(attributs_and_types):
             self.logger.error("StatsDBValidationError: Given Stats-DB contain not correct attributes. Following col_and_types was extracted: '{}' and they are incorrect. Please use following data as golden standard: '{}'. ".format(columns_and_types, attributs_and_types), exc_info=self._logger_traceback)

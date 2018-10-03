@@ -20,7 +20,7 @@ InterfaceError = sqlite.InterfaceError
 
 class BasicConnection(object):#, sqlite):
     
-    def __init__(self):
+    def __init__(self,*args, **kwargs):
         self._connection = False
         #self._init_cursors = []
 

@@ -19,341 +19,116 @@ import ast
 import re
 import json
 import sys
+from blessings import Terminal
+import enlighten
 
 
-from zas_rep_tools.src.classes.corpus import Corpus
+#from zas_rep_tools.src.classes.corpus import Corpus
 from zas_rep_tools.src.utils.debugger import p
+from zas_rep_tools.src.utils.helpers import set_class_mode
+from zas_rep_tools.src.utils.zaslogger import ZASLogger
 
-path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Corpus))))
-path_to_file_with_twitter_creditials = "user-config/twitter_api_credentials.json"
-path_to_file_with_user_agreements = "user-config/user_agreement.json"
-path_to_file_with_db_settings = "user-config/db_settings.json"
+# path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Corpus))))
+# path_to_file_with_twitter_creditials = "user-config/twitter_api_credentials.json"
+# path_to_file_with_user_agreements = "user-config/user_agreement.json"
+# path_to_file_with_db_settings = "user-config/db_settings.json"
 
-def logger_initialisation(logger_name,use_logger, save_logs, logs_dir):
-    # ##### Logger Initialisation: #######
-    if (use_logger== "False" or use_logger== u"False"):
-        use_logger = False
+def cli_logger(level=logging.INFO, folder_for_log="stats", logger_usage=True,save_logs=False):
+    L = ZASLogger("CLI", level=level,
+                        folder_for_log=folder_for_log,
+                        logger_usage=logger_usage,
+                        save_logs=save_logs)
+    logger = L.getLogger()
+    return logger
 
-    if (save_logs== "True" or save_logs== u"True"):
-        save_logs = True
+def get_settings(mode):
+    settings = tuple(set_class_mode(mode))
+    level = settings[0]
+    logger_usage = settings[6]
+    save_logs = settings[2] 
+    return level, logger_usage, save_logs
 
-    # use_logger = False if (use_logger== "False" or use_logger== u"False") else
-    global logger 
-    logger = Logger()
-    logger = logger.myLogger2(folder_for_log=logs_dir, logger_name=logger_name, use_logger=use_logger, save_logs=save_logs)
 
-
-    
-    self.logger = main_logger(self.__class__.__name__, level=self._logger_level, folder_for_log=logger_folder_to_save, use_logger=logger_usage, save_logs=logger_save_logs, num_buffered=logger_num_buffered)
-
+def get_cli_logger(mode,folder_for_log):
+    level, logger_usage, save_logs = get_settings(mode)
+    logger = cli_logger(level=logging.INFO, folder_for_log="logs", logger_usage=True,save_logs=False)
     return logger
 
 
-def was_user_asked_for_agreement():
-    if os.path.isfile(os.path.join(path_to_zas_rep_tools, path_to_file_with_user_agreements)):
-        agreement_data = get_agreement_data()
-        try:
-            agreement_data['error_tracking']
-        except:
-            return False
+def set_main_folders(project_folder):
+    main_folders = {
+                    "corp": os.path.join(project_folder, "corpora")  if project_folder else None,
+                    "stats": os.path.join(project_folder, "stats")  if project_folder else None,
+                    "export": os.path.join(project_folder, "export")  if project_folder else None,
+                    }
+    try:
+        for t, path in main_folders.items():
+            #p((t, path))
+            if not path:
+                continue
+            if not os.path.isdir(path):
+                os.makedirs(path)
+    except Exception as e:
+       print "ERROR: Folders in the ProjectDirectory wasn't created. ({}) Please select other ProjectDirectory.".format(repr(e))
 
-        return True
+    return main_folders
+
+
+
+def strtobool(obj):
+    #p(obj, "obj")
+    try:
+        return ast.literal_eval(obj)
+    except:
+        return obj
+
+def get_corp_dbname(main_folders):
+    
+    files = os.listdir(main_folders["corp"])
+    files = [fname for fname in files if ".db" in fname]
+    return files
+
+def _get_status_bars_manager():
+    config_status_bar = {'stream': sys.stdout,
+              'useCounter': True, 
+              "set_scroll": True,
+              "resize_lock": True
+              }
+    enableCounter_status_bar = config_status_bar['useCounter'] and config_status_bar['stream'].isatty()
+    return enlighten.Manager(stream=config_status_bar['stream'], enabled=enableCounter_status_bar, set_scroll=config_status_bar['set_scroll'], resize_lock=config_status_bar['resize_lock'])
+
+def _get_new_status_bar( total, desc, unit, counter_format=False, status_bars_manager=False):
+    if counter_format:
+        counter = status_bars_manager.counter(total=total, desc=desc, unit=unit, leave=True, counter_format=counter_format)
     else:
-        return False
+        counter = status_bars_manager.counter(total=total, desc=desc, unit=unit, leave=True)
+    return counter
 
 
-def get_agreement_data():
-    if os.path.isfile(os.path.join(path_to_zas_rep_tools, path_to_file_with_user_agreements)):
-        f = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_user_agreements), "r", encoding="utf-8")
-        agreement_data= json.load(f)
-        return agreement_data
-
-    return False
-
-def respeak_agreement():
-    ask_user_agreement()
-
-
-def is_error_tracking_allowed():
-    if os.path.isfile(os.path.join(path_to_zas_rep_tools, path_to_file_with_user_agreements)):
-        agreement_data = get_agreement_data()
-        if not agreement_data:
-            return False
-
-        if agreement_data['error_tracking'] == True:
-            return True
-        else:
-            return False
-
-def ask_user_agreement():
-    print "\n\n----------------------------------------\n"
-    print "----------------------------------------\n"
-    print "1. Thank you for choosing this module. For making this tool better for you in the future we want to  tracking error automatically.\n Please answer yes/no if you agree or disagree with that.\n"
-    input_var_1 = ""
-
-    while input_var_1 not in ["yes", "no", True, False]:
-        #p(input_var_1)
-        input_var_1 = raw_input("Your answer: ")
-        #p(input_var)
-        if input_var_1 == "yes":
-            print "\n\nThank you for allow error tracking."
-            input_var_1 = True
-        elif input_var_1 == "no":
-            print "\n\nWe deactivate error tracking for this copy of the zas-rep-tool. Enjoy!=)=)=)"
-            input_var_1 = False
-        else: 
-            print "We can not understand your answer. Please  choice one of the both possible answers ['yes','no']"
-
-
-    print "\n\n----------------------------------------\n"
-    print "----------------------------------------\n"
-    print "2. For some functions we need your E-mail Address. (e.g. Send Error Messages, if streaming was stopped)\n    Your Email Address will be not given to the third party and you can every time delete it.\n    Just use following command 'zas-rep-tools deleteAllUserData' or 'zas-rep-tools respeakAgreement' \n\n (Please answer yes/no if you want to enter your Email Address)\n"
-    
-
-    input_var_2 = ""
-    while input_var_2 not in ["yes", "no", True, False]:
-        input_var_2 = raw_input("Your answer: ")
-        if input_var_2 == "yes":
-
-
-            input_var_3 = ""
-            found = False
-            while not found:
-                if not found:
-                    patter_email = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9.]+$)"
-                    input_var_3 = raw_input("\nGive your Email Address: ")
-                    matcher = re.match(patter_email, input_var_3)
-                #p(matcher)
-                if matcher:
-                    found = True
-                    email = matcher.group(0)
-                    print "\n\nYour Email Address was added. "
-                else:
-                    print "Given Email Address is not valid. Please retype it"
-                    #email = None
-
-
-        elif input_var_2 == "no":
-            print "\n\nWe deactivate email-communication for this copy of the zas-rep-tool. Enjoy!=)=)=)"
-            email = False
-        else: 
-            print "We can not understand your answer. Choice one of the both possible answers ['yes','no']"
-            #print "Exit...."
-            #os._exit(1)
-    #exit()
-    if not os.path.isdir(os.path.join(path_to_zas_rep_tools,"user-config")):
-        os.mkdir(os.path.join(path_to_zas_rep_tools,"user-config"))
-    #email = "'{}'".format(email) if email else email
-
-
-    user_agreements_data = {}
-    user_agreements_data.update({'error_tracking': input_var_1, 'email': email, }) 
-    
-    json_file = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_user_agreements), "w", encoding="utf-8")
-    json_file.write(unicode(json.dumps(user_agreements_data,
-                        indent=4, sort_keys=True,
-                        separators=(',', ': '), ensure_ascii=False)))
-    json_file.close()
-
-    msg = u"\nYour agreement was saved in the following file:\n '{path}'.\n\n Every time in the future you can respeak this agreement.\nJust Use the following command: 'zas-rep-tools respeakAgreement' "
-    
-    print msg.format(path = os.path.join(path_to_zas_rep_tools, path_to_file_with_user_agreements) )
-    #print "Your agreement was saved in the following file "+path_to_file_with_user_agreements + "Every time in the future you can respeak this agreement. For it you need just to change 'True'  to 'False'"
-
-
-
-
-
-def ask_user_for_twitter_api_data():
-    print "\n\n----------------------------------------\n"
-    print "----------------------------------------\n"
-    print "Bevore you can start with twitter streaming you need enter twitter credentials. \n You can consult a README File (https://github.com/savin-berlin/zas-rep-tools) under 'Start to use streamer' to see  how you can exactly get this data."
-    consumer_key = raw_input("\nEnter consumer_key: ")
-    consumer_secret = raw_input("Enter consumer_secret: ")
-    access_token = raw_input("Enter access_token: ")
-    access_token_secret = raw_input("Enter access_token_secret: ")
-    
-    print "\n\nThank you for entering your data. Do you want to save them on the disk? [yes,no]  \nIt can be helpful for you, if you want to use this streamer more often.\n Notice: You data will be save as plain text, without any encryption and could be visible."
-    
-    answer = ""
-    while answer not in ["yes", "no", True, False]:
-        answer = raw_input("\nYour answer: ")
-        if answer == "no":
-            answer = False
-            print "\nYour Twitter API credentials will be just temporary used and after script execution immediately  deleted."
-        elif answer == "yes":
-            answer = True
-        else: 
-            print "We can not understand your answer. Please  choice one of the both possible answers ['yes','no']"
-
-
-    if answer is True:
-        api_data = {}
-        api_data.update({'consumer_key': consumer_key, 'consumer_secret': consumer_secret, 'access_token':access_token, 'access_token_secret':access_token_secret})
-        #file = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "w")
-        #file.write("{} 'consumer_key':'{}','consumer_secret':'{}', 'access_token':'{}', 'access_token_secret':'{}' {}".format("{", consumer_key,consumer_secret,access_token,access_token_secret, "}") )
-        #file.close()
-        #p(api_data)
-        json_file = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "w", encoding="utf-8")
-        json_file.write(unicode(json.dumps(api_data,
-                            indent=4, sort_keys=True,
-                            separators=(',', ': '), ensure_ascii=False)))
-        json_file.close()
-        msg = "\nYour twitter API Data was saved in the following file:\n'{}'.\n Every time in the future you can re-speak this agreement and delete all saved user data.\nJust use following command 'zas-rep-tools deleteAllUserData'"
-        print msg.format(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials))
-
-    return consumer_key, consumer_secret, access_token, access_token_secret 
-
-
-def was_user_asked_for_path_to_file_with_twitter_creditials():
-    if os.path.isfile(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials)):
-        #api_data = ast.literal_eval(codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "r").read().strip() )
-        f = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "r", encoding="utf-8")
-
-        api_data = json.load(f)
-        try:
-            api_data['consumer_key']
-        except:
-            return False
-
-        return True
-    else:
-        return False
-
-
-def get_api_data():
-    if os.path.isfile(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials)):
-        #api_data = ast.literal_eval(codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "r").read().strip() )
-        f = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "r", encoding="utf-8")
-        api_data = json.load(f)
-        #return api_data
-        return api_data["consumer_key"], api_data["consumer_secret"], api_data["access_token"], api_data["access_token_secret"] 
-
-    return False
-
-
-
-
-def ask_user_for_projects_folder():
-    print "\n\n----------------------------------------\n"
-    print "----------------------------------------\n"
-    print "Before you can start to use this tool, you need to give an project folder."
-    status = True
-
-    while status:
-        projects_folder = raw_input("\nEnter projects_folder: ")
-        if os.path.isdir(projects_folder):
-
-            settings = {}
-            settings.update({'projects_folder': projects_folder})
-            #file = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "w")
-            #file.write("{} 'consumer_key':'{}','consumer_secret':'{}', 'access_token':'{}', 'access_token_secret':'{}' {}".format("{", consumer_key,consumer_secret,access_token,access_token_secret, "}") )
-            #file.close()
-            #p(api_data)
-            json_file = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings), "w", encoding="utf-8")
-            json_file.write(unicode(json.dumps(settings,
-                                indent=4, sort_keys=True,
-                                separators=(',', ': '), ensure_ascii=False)))
-            json_file.close()
-            msg = "\nYour Answer was saved in the following file:\n'{}'.\n Every time in the future you can re-speak this agreement and delete all saved user data.\nJust use following command 'zas-rep-tools deleteAllUserData'"
-            print msg.format(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings))
-            status=False
-        else:
-            print "ERROR: Given Project-folder is not exist. Please give the right one. Or use 'ctrl+c' to close the program."
-            #sys.exit()
-    #return consumer_key, consumer_secret, access_token, access_token_secret 
-
-def change_projects_folder():
-    print "\n\n----------------------------------------\n"
-    print "----------------------------------------\n"
-    print "You want to change your project folder. Notice: after this changing, possibly all old projects will be not reachable to the zas-rep-tools."
-    status = True
-
-    while status:
-        projects_folder = raw_input("\nEnter new projects folder: ")
-        if os.path.isdir(projects_folder):
-
-            settings = {}
-            settings.update({'projects_folder': projects_folder})
-            #file = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "w")
-            #file.write("{} 'consumer_key':'{}','consumer_secret':'{}', 'access_token':'{}', 'access_token_secret':'{}' {}".format("{", consumer_key,consumer_secret,access_token,access_token_secret, "}") )
-            #file.close()
-            #p(api_data)
-            json_file = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings), "r", encoding="utf-8")
-            try:
-                data = json.load(json_file)
-                data['projects_folder'] = projects_folder
-                json_file.close()
-
-
-                json_file = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings), "w", encoding="utf-8")
-                json_file.write(unicode(json.dumps(data,
-                        indent=4, sort_keys=True,
-                        separators=(',', ': '), ensure_ascii=False)))
-            except:
-                print "Error: There is nothing to change. Project Folder wasn't saved before."
-                sys.exit()
-            
-            json_file.close()
-            msg = "\nYour Answer was saved in the following file:\n'{}'.\n Every time in the future you can re-speak this agreement and delete all saved user data.\nJust use following command 'zas-rep-tools deleteAllUserData'"
-            print msg.format(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings))
-            status=False
-        else:
-            print "ERROR: Given Project-folder is not exist. Please give the right one. Or use 'ctrl+c' to close the program."
-            #sys.exit()
-    #return consumer_key, consumer_secret, access_token, access_token_secret 
-
-
-def is_project_folder_still_exist():
-    if os.path.isfile(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings)):
-        #api_data = ast.literal_eval(codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "r").read().strip() )
-        f = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings), "r", encoding="utf-8")
-
-        settings = json.load(f)
-        try:
-            p_folder = settings['projects_folder']
-            if  os.path.isdir(p_folder):
-                return True
+def validate_corp_dbname(files=False):
+    files = files  if isinstance(files, (list, tuple)) else get_corp_dbname()
+    validated = []
+    possibly_encrypted = []
+    wrong = []
+    handl = DBHandler(mode="blind")
+    opened_db = []
+    for fname in files:
+        status = handl._validation_DBfile(os.path.join(main_folders["corp"],fname))
+        if status["status"]:
+            h = DBHandler(mode="blind")
+            h.connect(os.path.join(main_folders["corp"],fname))
+            if h.typ() == "corpus":
+                validated.append(fname)
+                opened_db.append(h)
             else:
-                print "ERROR: Saved Project folder is not exist. Please re-create or change the project folder. \n     Following Project Folder was given: '{}'\n     For changing the project folder, please use the following command: 'zas-rep-tools changeProjectsFolder' ".format(p_folder)
-                return False
-        except:
-            pass
+                wrong.append(fname)
+        else:
+            possibly_encrypted.append(fname)
+    return validated,possibly_encrypted,wrong,opened_db
 
 
 
-def was_user_asked_for_path_to_projects_folder():
-    if os.path.isfile(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings)):
-        #api_data = ast.literal_eval(codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "r").read().strip() )
-        f = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings), "r", encoding="utf-8")
-
-        settings = json.load(f)
-        try:
-            p_folder = settings['projects_folder']
-        except:
-            return False
-
-        return True
-    else:
-        return False
 
 
 
-def get_db_settings():
-    if os.path.isfile(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings)):
-        #api_data = ast.literal_eval(codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_twitter_creditials), "r").read().strip() )
-        f = codecs.open(os.path.join(path_to_zas_rep_tools, path_to_file_with_db_settings), "r", encoding="utf-8")
-        settings = json.load(f)
-        #return api_data
-        return settings
-
-    return False
-
-def check_projects_folder():
-    #### projects folder
-    if not  was_user_asked_for_path_to_projects_folder():
-        ask_user_for_projects_folder()
-
-    global db_settings
-    db_settings = get_db_settings()
 

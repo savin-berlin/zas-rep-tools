@@ -124,12 +124,11 @@ class BaseContent(object):
 
 
 
-
 class BaseDB(object):
     def __init__(self, optimizer=False, make_backup=True,  lazyness_border=100000,
                 isolation_level=False, in_memory=False,thread_safe=True,
-                rewrite= False, stop_if_db_already_exist=False, replace_double_items=False, 
-                use_cash=False,
+                rewrite=False, stop_if_db_already_exist=False, replace_double_items=True, 
+                use_cash=False, stop_process_if_possible=True,
                 optimizer_page_size = 4096,
                 optimizer_cache_size=1000000, # The cache_size pragma can get or temporarily set the maximum size of the in-memory page cache.
                 optimizer_locking_mode="EXCLUSIVE",
@@ -158,9 +157,9 @@ class BaseDB(object):
         self._optimizer_journal_mode = optimizer_journal_mode
         self._optimizer_temp_store = optimizer_temp_store
         self._replace_double_items = replace_double_items
+        self._stop_process_if_possible = stop_process_if_possible
 
         super(BaseDB, self).__init__(**kwargs)
-
 
 
 

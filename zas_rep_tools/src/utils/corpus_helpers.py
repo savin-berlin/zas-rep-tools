@@ -14,6 +14,7 @@
 #
 #
 
+#import Stemmer
 
 class CorpusData(object):
     info = {
@@ -190,14 +191,35 @@ class CorpusData(object):
                      },
 
             "splitter":{
-                        "somajo":{},
+                        "somajo":{
+                                    "link":"https://github.com/tsproisl/SoMaJo",
+                                    "supported_lang":"de, en, fr",
+                                    },
 
                         },
 
             "tokenizer":{
-                        "somajo":{},
-                        "nltk":{},
+                        "somajo":{
+                                    "link":"https://github.com/tsproisl/SoMaJo",
+                                    "supported_lang":"de, en,fr",
+                                    },
+                        "nltk":{
+                                    "link":"http://www.nltk.org",
+                                    "supported_lang":"en",
+                                    },
                         },
+            "stemmer":{
+                        "pystemmer":{
+                                    "algorithm":"snowball",
+                                    "links":["https://github.com/snowballstem/pystemmer", "http://snowball.tartarus.org"],
+                                    }
+                        },
+            "lang_classification": {
+                            "langid":{
+                                    "link":"https://github.com/saffsd/langid.py",
+                                    "supported_lang":"af, am, an, ar, as, az, be, bg, bn, br, bs, ca, cs, cy, da, de, dz, el, en, eo, es, et, eu, fa, fi, fo, fr, ga, gl, gu, he, hi, hr, ht, hu, hy, id, is, it, ja, jv, ka, kk, km, kn, ko, ku, ky, la, lb, lo, lt, lv, mg, mk, ml, mn, mr, ms, mt, nb, ne, nl, nn, no, oc, or, pa, pl, ps, pt, qu, ro, ru, rw, se, si, sk, sl, sq, sr, sv, sw, ta, te, th, tl, tr, ug, uk, ur, vi, vo, wa, xh, zh, zu",
+                                    },
+                    },
 
 
             }
@@ -254,3 +276,29 @@ class CorpusData(object):
     supported_sentiment_analyzer = set([v  for values in sentiment_analyzer_for_languages.itervalues() for v in values])
     
 
+
+    #### Stemmer
+    stemmer_for_languages = {
+                     u'da': ["pystemmer",],
+                     u'nl': ["pystemmer",],
+                     u'en': ["pystemmer",],
+                     u'fi': ["pystemmer",],
+                     u'fr': ["pystemmer",],
+                     u'de': ["pystemmer",],
+                     u'hu': ["pystemmer",],
+                     u'it': ["pystemmer",],
+                     u'no': ["pystemmer",],
+                     u'pt': ["pystemmer",],
+                     u'ro': ["pystemmer",],
+                     u'ru': ["pystemmer",],
+                     u'es': ["pystemmer",],
+                     u'sv': ["pystemmer",],
+                     u'tr': ["pystemmer",],
+                     u"test": ["pystemmer",],
+                    }
+    supported_languages_stemmer = [key for key in stemmer_for_languages] 
+    supported_stemmer = set([v  for values in stemmer_for_languages.itervalues() for v in values])
+    
+
+
+    ### 

@@ -37,7 +37,7 @@ import enlighten
 
 
 from  zas_rep_tools.src.extensions.tweet_nlp.ark_tweet_nlp.CMUTweetTagger import check_script_is_present, runtagger_parse
-from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, LenGen, path_to_zas_rep_tools, is_emoji, text_has_emoji, char_is_punkt, text_has_punkt, text_is_punkt, text_is_emoji, categorize_token_list, recognize_emoticons_types,removetags, remove_html_codded_chars, get_number_of_streams_adjust_cpu, Rle, instance_info, MyThread, SharedCounterExtern, SharedCounterIntern, Status,function_name,statusesTstring,rle
+from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, LenGen, path_to_zas_rep_tools, is_emoji, text_has_emoji, char_is_punkt, text_has_punkt, text_is_punkt, text_is_emoji, categorize_token_list, recognize_emoticons_types,removetags, remove_html_codded_chars, get_number_of_streams_adjust_cpu, Rle, instance_info, MyThread, SharedCounterExtern, SharedCounterIntern, Status,function_name,statusesTstring,rle,from_ISO639_2, to_ISO639_2
 from zas_rep_tools.src.utils.traceback_helpers import print_exc_plus
 from zas_rep_tools.src.classes.dbhandler import DBHandler
 from zas_rep_tools.src.classes.reader import Reader
@@ -53,62 +53,32 @@ if platform.uname()[0].lower() !="windows":
     #p("hjklhjk")
     import colored_traceback
     colored_traceback.add_hook()
-    os.system('setterm  -back black -fore white -store -clear')
+    #os.system('setterm  -back black -fore white -store -clear')
     #os.system('setterm -term linux -back 0b2f39 -fore a3bcbf -store -clear')
 else:
     import colorama
     os.system('color 09252d') # change background colore of the terminal 
 
-
-
 class Corpus(BaseContent,BaseDB,CorpusData):
-    def __init__(self, language="de", preprocession=True, lang_classification=False, diff_emoticons=True,
-                tokenizer=True, pos_tagger=False,sent_splitter=False, sentiment_analyzer=False, use_test_pos_tagger=False,
-                tok_split_camel_case=True, end_file_marker = -1, use_end_file_marker = False,  emojis_normalization=True,
-                del_url=False, del_punkt = False, del_num=False, del_mention=False, del_hashtag=False, del_html=False,
-                case_sensitiv=True, status_bar= True,**kwargs):
+    def __init__(self,  use_test_pos_tagger=False, tok_split_camel_case=True, end_file_marker = -1, 
+                use_end_file_marker = False, status_bar= True,**kwargs):
         super(type(self), self).__init__(**kwargs)
         
         #Input: Encapsulation:
-        self._language = language
-        self._tokenizer= tokenizer
-        self._pos_tagger = pos_tagger
-        self._sentiment_analyzer = sentiment_analyzer
-        self._sent_splitter = sent_splitter
-        self._preprocession = preprocession
-        self._lang_classification = lang_classification if self._language != "test" else False
-        self._del_url = del_url
-        self._del_punkt = del_punkt
-        self._del_num = del_num
-        self._del_mention = del_mention
-        self._del_hashtag = del_hashtag
-        self._del_html = del_html
-        self._case_sensitiv = case_sensitiv
         self._end_file_marker = end_file_marker
         self._use_end_file_marker = use_end_file_marker
         self._status_bar = status_bar
         self._tok_split_camel_case = tok_split_camel_case
         self._raise_exception_if_error_insertion = True if "test" in self._mode  else False
-        self._emojis_normalization = emojis_normalization
-        #self._decoding_to_unicode = decoding_to_unicode
         self._use_test_pos_tagger = use_test_pos_tagger
-        self._diff_emoticons = diff_emoticons
-        #self._test_goal = test_goal
+        #self._diff_emoticons = diff_emoticons
 
-        
 
         #InstanceAttributes: Initialization
         self.corpdb = False
         self.offshoot = defaultdict(list)
         self.runcount = 0
 
-
-        # Validate Input variables
-        if False in set(list(self._valid_input())):
-            self.logger.error("InputValidationError: Corpus Instance can not be initialized!", exc_info=self._logger_traceback)
-            sys.exit()
-
-        
 
         self.logger.low_debug('Intern InstanceAttributes was initialized')
         self.logger.debug('An instance of Corpus() was created ')
@@ -153,36 +123,68 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 ####################################################################################
 ####################################################################################
 
-    def additional_attr(self):
+
+
+
+    def additional_attr(self, language, tokenizer,pos_tagger,sentiment_analyzer,
+                        sent_splitter,preprocession, lang_classification,del_url,
+                        del_punkt,del_num,del_mention,del_hashtag,del_html,case_sensitiv,
+                        emojis_normalization,text_field_name,id_field_name):
         additional_attributes = {
-                "preprocession":self._preprocession,
-                "tokenizer":self._tokenizer,
-                "sent_splitter":self._sent_splitter,
-                "pos_tagger":self._pos_tagger,
-                "sentiment_analyzer":self._sentiment_analyzer,
-                "lang_classification":self._lang_classification,
-                "del_url":self._del_url,
-                "del_punkt":self._del_punkt ,
-                "del_num":self._del_num,
-                "del_html":self._del_html,
-                "del_mention":self._del_mention,
-                "del_hashtag":self._del_hashtag,
-                "case_sensitiv":self._case_sensitiv,
-                "emojis_normalization":self._emojis_normalization,
+                "language":language,
+                "tokenizer":tokenizer,
+                "pos_tagger":pos_tagger,
+                "sentiment_analyzer":sentiment_analyzer,
+                "sent_splitter":sent_splitter,
+                "preprocession":preprocession,
+                "lang_classification":lang_classification if language != "test" else False,
+                "del_url":del_url,
+                "del_punkt":del_punkt,
+                "del_num":del_num,
+                "del_mention":del_mention,
+                "del_hashtag": del_hashtag,
+                "del_html":del_html,
+                "case_sensitiv":case_sensitiv,
+                "emojis_normalization":emojis_normalization,
+                "text_field_name":text_field_name,
+                "id_field_name":id_field_name,
                 }
         return additional_attributes
 
+        
 
     ###########################INITS + Open##########################
 
     def init(self, prjFolder, DBname, language,  visibility, platform_name,
                     encryption_key=False,fileName=False, source=False, license=False,
-                    template_name=False, version=False,
-                    additional_columns_with_types_for_documents=False, corpus_id=False):
+                    template_name=False, version=False, additional_columns_with_types_for_documents=False, corpus_id=False,
+                    tokenizer=True,pos_tagger=False,sentiment_analyzer=False,
+                    sent_splitter=False,preprocession=True, lang_classification=False,del_url=False,
+                    del_punkt=False,del_num=False,del_mention=False,del_hashtag=False,del_html=False,case_sensitiv=False,
+                    emojis_normalization=True,text_field_name="text",id_field_name="id"):
 
         if self.corpdb:
             self.logger.error("CorpusInitError: An active Corpus Instance was found. Please close already initialized/opened Corpus, before new initialization.", exc_info=self._logger_traceback)
             return False
+
+        # Validate Input variables
+        valid_answer = list(self._valid_input(language, preprocession, tokenizer, sent_splitter, pos_tagger, sentiment_analyzer))
+        if False in valid_answer[:-1]:
+            self.logger.error("InputValidationError: Corpus Instance can not be initialized!", exc_info=self._logger_traceback)
+            return False
+        setted_options = valid_answer[-1]
+        #p(setted_options,"setted_options")
+        if not isinstance(setted_options, dict):
+            self.logger.error("Setted Options after Validation wasn't given.")
+            return False
+
+        tokenizer = setted_options["tokenizer"]
+        sent_splitter = setted_options["sent_splitter"]
+        pos_tagger = setted_options["pos_tagger"]
+        sentiment_analyzer = setted_options["sentiment_analyzer"]
+
+
+
         #p(self._logger_level,"!!self._logger_level")
         #p(self._logger_save_logs, "!!self._logger_save_logs")
         self.corpdb = DBHandler( **self._init_attributesfor_dbhandler())
@@ -197,12 +199,15 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             return False
         #self.corpdb.add_attributs()
         
-        self.corpdb.update_attrs(self.additional_attr())
+        self.corpdb.update_attrs(self.additional_attr(language, tokenizer,pos_tagger,sentiment_analyzer,
+                        sent_splitter,preprocession, lang_classification,del_url,
+                        del_punkt,del_num,del_mention,del_hashtag,del_html,case_sensitiv,
+                        emojis_normalization,text_field_name,id_field_name))
         self.set_all_intern_attributes_from_db()
         if self._save_settings:
             self.logger.settings("InitCorpusDBAttributes: {}".format( instance_info(self.corpdb.get_all_attr(), attr_to_len=False, attr_to_flag=False, as_str=True)))
         if self.corpdb.exist():
-            self.logger.info("CorpusInit: '{}'-Corpus was successful initialized.".format(DBname))
+            self.logger.debug("CorpusInit: '{}'-Corpus was successful initialized.".format(DBname))
             return True
         else:
             self.logger.error("CorpusInit: '{}'-Corpus wasn't  initialized.".format(DBname), exc_info=self._logger_traceback)
@@ -240,7 +245,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             self.logger.settings("OpenedCorpusDBAttributes: {}".format( instance_info(self.corpdb.get_all_attr(), attr_to_len=False, attr_to_flag=False, as_str=True)))
             return True
         else:
-            self.logger.error("CorpusOpener: Unfortunately '{}'-Corpus wasn't opened.".format(os.path.basename(path_to_corp_db)), exc_info=self._logger_traceback)
+            self.logger.warning("CorpusOpener: Unfortunately '{}'-Corpus wasn't opened.".format(os.path.basename(path_to_corp_db)), exc_info=self._logger_traceback)
             return False
 
     def set_all_intern_attributes_from_db(self):
@@ -250,6 +255,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         self._template_name = info_dict["template_name"]
         self._sentiment_analyzer = info_dict["sentiment_analyzer"]
         self._preprocession = info_dict["preprocession"]
+
         self._id = info_dict["id"]
         self._pos_tagger = info_dict["pos_tagger"]
         self._del_hashtag = info_dict["del_hashtag"]
@@ -297,6 +303,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                         "optimizer_journal_mode":self._optimizer_journal_mode,
                         "optimizer_temp_store":self._optimizer_temp_store,
                         "use_cash":self._use_cash,
+                        "stop_process_if_possible":self._stop_process_if_possible,
                         }
         return init_attributes_db_handler
 
@@ -345,6 +352,15 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         self._last_insertion_was_successfull = False
         self.counters_attrs = defaultdict(lambda:defaultdict(dict))
         self.status_bars_manager =  self._get_status_bars_manager()
+        #self._cleaned_token = (None, u":DEL:")
+        self._tags_to_delete = self._compute_tags_to_delete()
+        self._cleaned_tags = {
+                                "number":":number:",
+                                "URL":":URL:",
+                                "symbol":":symbol:",
+                                "mention":":mention:",
+                                "hashtag":":hashtag:",
+                            }
 
     def insert_duration(self):
         if not self._last_insertion_was_successfull:
@@ -398,6 +414,56 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                 return status_bar_insertion_in_the_current_thread
             self._check_termination(thread_name=thread_name)
             return None
+
+
+
+    def count_basic_stats(self):
+        if not self._check_db_should_exist():
+            return False
+        sent_num = 0
+        token_num = 0
+        doc_num = self.corpdb.rownum("documents")
+        if self._status_bar:
+            try:
+                if not self.status_bars_manager.enabled:
+                    self.status_bars_manager = self._get_status_bars_manager()
+            except:
+                self.status_bars_manager = self._get_status_bars_manager()
+
+            status_bar_start = self._get_new_status_bar(None, self.status_bars_manager.term.center("CorpSummarizing") , "", counter_format=self.status_bars_manager.term.bold_white_on_magenta("{fill}{desc}{fill}"))
+            status_bar_start.refresh()
+            status_bar_current = self._get_new_status_bar(doc_num, "Processed:", "document(s)")
+
+
+        #if doc_num["status"]
+        #p((sent_num, token_num,doc_num))
+        #p(list(self.docs()))
+        if self._preprocession:
+            for text_elem in self.docs(columns="text"):
+                #p((type(text_elem),repr(text_elem)))
+                text_elem = json.loads(text_elem[0])
+                #p(text_elem)
+                for sent_cont in text_elem:
+                    sent_num += 1
+                    #p(sent_cont[0], "sent_cont")
+                    token_num += len(sent_cont[0])
+
+                if self._status_bar:
+                    status_bar_current.update(incr=1)
+
+            self.corpdb.update_attr("sent_num", sent_num)
+            self.corpdb.update_attr("token_num", token_num)
+            self.corpdb.update_attr("doc_num", doc_num)
+            self.corpdb.commit()
+        else:
+            self.logger.info("Basic Statistics can not be computed, because current Corpus wasn't preprocessed.")
+
+
+        if self._status_bar:
+            status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("DocNum: '{}'; SentNum: '{}'; TokenNum: '{}'; ".format(doc_num, sent_num, token_num) ), "",  counter_format=self.status_bars_manager.term.bold_white_on_magenta('{fill}{desc}{fill}\n'))
+            status_bar_total_summary.refresh()
+            self.status_bars_manager.stop()
+
 
     def _insert(self, inp_data, tablename="documents",text_field_name="text",  thread_name="Thread0",  log_ignored=True, dict_to_list=False):
         try:  
@@ -459,9 +525,13 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                         #p(text_preprocessed, "text_preprocessed")
                     except KeyError, e: 
                         print_exc_plus() if self._ext_tb else ""
-                        self.logger.error("PreprocessingError: (KeyError) See Exception: '{}'. Probably text_field wasn't matched. The wrong text_field name was given or row  was given as list and not as dict.   ".format(e), exc_info=self._logger_traceback)
+                        msg = "PreprocessingError: (KeyError) See Exception: '{}'. Probably text_field wasn't matched. Possible Explanations:  1. The wrong text_field name was given or 2. matched file has not right structure (every text file should have min an text_element and an id_element)  or 3. ImplemenationError, where row  was given as list and not as dict.  Possible Solution: 1. Check if given file has an id and text element, if not, than you can sort this file out, to be sure, that every thing going right. And than create CorpusDB one more time. ".format(e)
+                        #self.logger.error(msg, exc_info=self._logger_traceback)
                         self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
-                        return False
+                        if log_ignored:
+                            self.logger.error_insertion(msg, exc_info=self._logger_traceback)
+                    
+                        #return False
                     except Exception, e:
                         self.logger.error("PreprocessingError:  See Exception: '{}'. ".format(e),  exc_info=self._logger_traceback)
                         self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
@@ -475,6 +545,8 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                         #self.logger.warning("Text in the current DictRow (id='{}') wasn't preprocessed. This Row was ignored.".format(row_as_dict["id"]))
                         self.outsorted_insertion_status_general[thread_name] +=1
                         continue
+                #else:
+                #    row_as_dict[text_field_name] = (row_as_dict[text_field_name], None)
 
 
                 ############################################################
@@ -507,6 +579,13 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                     if log_ignored:
                         self.logger.error_insertion("IgnoredRow: |ErrorTrackID:'{}'| Current Row: '{}' wasn't inserted (by dbhandler.lazyinsert()) into DB. Consult logs to find the reason.".format(insertion_status["track_id"],row_as_dict))
                     continue
+                elif insertion_status["action"] == "stop_execution":
+                    self.error_insertion_status_general[thread_name] +=1
+                    if log_ignored:
+                        self.logger.error_insertion("IgnoredRow: |ErrorTrackID:'{}'| Current Row: '{}' wasn't inserted (by dbhandler.lazyinsert()) into DB. Consult logs to find the reason.".format(insertion_status["track_id"],row_as_dict))
+                    self.logger.error(insertion_status["desc"])
+                    self._terminated = True
+                    
                 else:
                     self.error_insertion_status_general[thread_name] +=1
                     if log_ignored:
@@ -566,11 +645,12 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             #Manager.term
             #self.status_bars_manager.term print(t.bold_red_on_bright_green('It hurts my eyes!'))
             if self._status_bar:
+                print "\n"
                 if self._in_memory:
                     dbname = ":::IN-MEMORY-DB:::"
                 else:
                     dbname = '{}'.format(self.corpdb.fname())
-                status_bar_starting_corpus_insertion = self._get_new_status_bar(None, self.status_bars_manager.term.center( dbname) , "", counter_format=self.status_bars_manager.term.bold_white_on_green("{fill}{desc}{fill}"))
+                status_bar_starting_corpus_insertion = self._get_new_status_bar(None, self.status_bars_manager.term.center( dbname) , "", counter_format=self.status_bars_manager.term.bold_white_on_red("{fill}{desc}{fill}"))
                 status_bar_starting_corpus_insertion.refresh()
             ## threads
             if self._status_bar:
@@ -645,16 +725,27 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                 error_insertion = sum(self.error_insertion_status_general.values())
                 empty_insertion = sum(self.outsorted_insertion_status_general.values())
                 was_ignored = error_insertion + empty_insertion
-                status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("TotalRowInserted:'{}'; TotalIgnored:'{}' ('{}'-error, '{}'-outsorted)".format(was_inserted, was_ignored,error_insertion,empty_insertion ) ), "",  counter_format=self.status_bars_manager.term.bold_white_on_green('{fill}{desc}{fill}\n'))
+                status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("TotalRowInserted:'{}'; TotalIgnored:'{}' ('{}'-error, '{}'-outsorted)".format(was_inserted, was_ignored,error_insertion,empty_insertion ) ), "",  counter_format=self.status_bars_manager.term.bold_white_on_red('{fill}{desc}{fill}\n'))
                 status_bar_total_summary.refresh()
                 self.status_bars_manager.stop()
 
-            self.corpdb.commit()
-            self.logger.info("Current CorpusDB has '{}' rows in the Documents Table.".format(self.corpdb.rownum("documents")))
+            self.corpdb._commit()
+            rownum = self.corpdb.rownum("documents")
+            if rownum >0:
+                self.logger.info("Current CorpusDB has '{}' rows in the Documents Table.".format(rownum))
+            else:
+                self.logger.error("InsertionProcessFailed: No one Document was added into CorpDB.")
+                return False
 
             if create_def_indexes:
                 self.corpdb.init_default_indexes(thread_name=thread_name)
-                self.corpdb.commit()
+                self.corpdb._commit()
+
+
+            self._last_insertion_was_successfull = True
+            self._end_time_of_the_last_insertion = time.time()
+            self.count_basic_stats()
+
 
             if len(self.threads_unsuccess_exit) >0:
                 self.logger.error("Insertion process is failed. (some thread end with error)")
@@ -663,9 +754,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             else:
                 self.logger.info("Insertion process end successful!!!")
                 return True
-
-            self._last_insertion_was_successfull = True
-            self._end_time_of_the_last_insertion = time.time()
+            
 
         except KeyboardInterrupt:
             #self.logger.warning("KeyboardInterrupt: Process was stopped from User. Some inconsistence in the current DB may situated.")
@@ -867,12 +956,18 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
 
 
+
     def _init_preprocessors(self, thread_name="Thread0"):
+        if not self._check_db_should_exist():
+            return False
         try:
+            #p(self._preprocession, "self._preprocession", c="r")
+            #print self._preprocession
+
             if self._preprocession:
                 ### Step 1: Init Status Bar 
                 if not self._terminated:
-                    p_list = [self._sent_splitter, self._pos_tagger, self._lang_classification, self._tokenizer]
+                    p_list = [self._sent_splitter, self._pos_tagger, self._lang_classification, self._tokenizer] #,self._stemmer
                     preprocessors_number = sum([True for p in p_list if p ])
                     if self._status_bar:
                         status_bar_preprocessors_init = self._get_new_status_bar(preprocessors_number, "{}:PreprocessorsInit".format(thread_name), "unit")
@@ -885,6 +980,14 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                     if self._status_bar:
                         status_bar_preprocessors_init.update(incr=1)
                         status_bar_preprocessors_init.refresh()
+
+                # if not self._terminated: 
+                #     if not self._set_stemmer(thread_name=thread_name):
+                #         #return False
+                #         return Status(status=False, desc="SetStemmerFailed")
+                #     if self._status_bar:
+                #         status_bar_preprocessors_init.update(incr=1)
+                #         status_bar_preprocessors_init.refresh()
 
                 if not self._terminated: 
                     if self._sent_splitter:
@@ -917,7 +1020,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
 
                 if not self._terminated: 
-                    self.logger.info("PreprocessorsInit: All Preprocessors for '{}'-Thread was initialized.".format(thread_name))
+                    self.logger.debug("PreprocessorsInit: All Preprocessors for '{}'-Thread was initialized.".format(thread_name))
                     return Status(status=True, desc=preprocessors_number)
 
 
@@ -1076,7 +1179,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         
         self.total_ignored_last_insertion += (self.total_outsorted_insertion_during_last_insertion_process+self.total_error_insertion_during_last_insertion_process)
         #self.logger.info("Summary for {}:\n Total inserted: {} rows; Total ignored: {} rows, from that was {} was error insertions and {} was out-sorted insertions (exp:  cleaned tweets/texts, ignored retweets, etc.).".format(thread_name, self.inserted_insertion_status_general[thread_name], self.error_insertion_status_general[thread_name]+ self.outsorted_insertion_status_general[thread_name], self.error_insertion_status_general[thread_name], self.outsorted_insertion_status_general[thread_name]))
-        self.logger.info(">>>Summary<<< Total inserted: {} rows; Total ignored: {} rows, from that was {} was error insertions and {} was out-sorted insertions (exp:  cleaned tweets/texts, ignored retweets, etc.).".format(self.total_inserted_during_last_insert, self.total_ignored_last_insertion, self.total_error_insertion_during_last_insertion_process, self.total_outsorted_insertion_during_last_insertion_process))
+        self.logger.info(">>>Summary<<< Total inserted: {} rows; Total ignored: {} rows, from that  {} was error insertions and {} was out-sorted insertions (exp:  cleaned tweets/texts, ignored retweets, ignored files with wrong structure etc.). If you want to see all ignored data than set 'mode'-option  to 'prod+' and consult logs which contain following pattern '*outsorted*'. ".format(self.total_inserted_during_last_insert, self.total_ignored_last_insertion, self.total_error_insertion_during_last_insertion_process, self.total_outsorted_insertion_during_last_insertion_process))
         
         if self.total_error_insertion_during_last_insertion_process >0:
             msg = "'{}'-ErrorInsertion was processed.".format(self.total_error_insertion_during_last_insertion_process)
@@ -1085,125 +1188,183 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             else:
                 self.logger.error(msg)
 
-    def _valid_input(self):
+    def _valid_input(self, language, preprocession, tokenizer, sent_splitter, pos_tagger, sentiment_analyzer):
         # if not self._decoding_to_unicode:
         #     self.logger.warning("InputValidation: Automaticly Decoding Input byte string to unicode string is deactivated. This could lead to wrong work of this tool. (ex. Emojis will not recognized in the right way, etc.). To ensure correct work of this Tool, please switch on following option ->  'decoding_to_unicode'.")
 
-        if self._language not in Corpus.supported_languages_tokenizer:
-            self.logger.error("InputValidationError: Given Language '{}' is not supported by tokenizer.".format(self._language), exc_info=self._logger_traceback)
+        if  language not in from_ISO639_2 and language != "test":
+            self.logger.error("InputValidationError: Given Language '{}' is not valid code by ISO639_2. Please use the valid language code by ISO639_2.".format(language), exc_info=self._logger_traceback)
             yield False
+            return 
 
-        if self._preprocession:
+        if language not in Corpus.supported_languages_tokenizer:
+            self.logger.error("InputValidationError: Given Language '{}' is not supported by tokenizer.".format(language), exc_info=self._logger_traceback)
+            yield False
+            return
+
+        if preprocession:
             ## Choice Tokenizer
-            if self._tokenizer is False:
-                self.logger.critical("Tokenizer is deactivate. For Text-Preprocessing tokenizer should be activate. Please activate tokenizer and run this tool one more time.")
-                yield False
-                return
-            if not self._tokenizer or self._tokenizer is True:
-                self._tokenizer = Corpus.tokenizer_for_languages[self._language][0]
+            if tokenizer is False:
+                tokenizer = True
+                self.logger.critical("Tokenizer was automatically activated. For Text-Preprocessing tokenizer should be activate. ")
+                #yield False
+                #return
+            if  tokenizer is True:
+                try:
+                    tokenizer = Corpus.tokenizer_for_languages[language][0]
+                except:
+                    self.logger.critical("Tokenized for '{}' is not implemented. Please switch off this function or select other language.".format(language))
+                    yield False
+                    return
 
             else:
-                if self._tokenizer not in Corpus.supported_tokenizer:
-                    self.logger.error("InputValidationError: Given Tokenizer '{}' is not supported.".format(self._tokenizer), exc_info=self._logger_traceback)
+                if tokenizer not in Corpus.supported_tokenizer:
+                    self.logger.error("InputValidationError: Given Tokenizer '{}' is not supported.".format(tokenizer), exc_info=self._logger_traceback)
                     yield False
-                if self._tokenizer not in Corpus.tokenizer_for_languages[self._language]:
-                    self.logger.critical("InputValidationError: '{}'-tokenizer is not support '{}'-language. Please use another one. For this session the default one will be used. ".format(self._tokenizer, self._language))
-                    self._tokenizer = Corpus.tokenizer_for_languages[self._language][0]
+                if tokenizer not in Corpus.tokenizer_for_languages[language]:
+                    self.logger.critical("InputValidationError: '{}'-tokenizer is not support '{}'-language. Please use another one. For this session the default one will be used. ".format(tokenizer, language))
+                    tokenizer = Corpus.tokenizer_for_languages[language][0]
                     #yield False
-            self.logger.debug("'{}'-Tokenizer was chosen.".format(self._tokenizer))
+            self.logger.debug("'{}'-Tokenizer was chosen.".format(tokenizer))
 
+            # ## Choice Stemmer
+            # if stemmer is False:
+            #     stemmer = True
+            #     self.logger.critical("Stemmer was automatically activated. For Text-Preprocessing tokenizer should be activate.")
+
+            # if  stemmer is True:
+            #     try:
+            #         stemmer = Corpus.stemmer_for_languages[language][0]
+            #     except:
+            #         self.logger.critical("Stemmer for '{}' is not implemented. Please switch off this function or select other language.".format(language))
+            #         yield False
+            #         return
+            # else:
+            #     if stemmer not in Corpus.supported_languages_stemmer:
+            #         self.logger.error("InputValidationError: Given Stemmer '{}' is not supported.".format(stemmer), exc_info=self._logger_traceback)
+            #         yield False
+            #     if stemmer not in Corpus.stemmer_for_languages[language]:
+            #         self.logger.critical("InputValidationError: '{}'-stemmer is not support '{}'-language. Please use another one. For this session the default one will be used. ".format(stemmer, language))
+            #         stemmer = Corpus.stemmer_for_languages[language][0]
+            #         #yield False
+            # self.logger.debug("'{}'-Stemmer was chosen.".format(stemmer))
 
 
             ## Choice Sent Splitter
-            if self._sent_splitter:
-                if self._language not in Corpus.supported_languages_sent_splitter:
-                    self.logger.error("InputValidationError: Given Language '{}' is not supported by Sentences Splitter.".format(self._language), exc_info=self._logger_traceback)
+            if sent_splitter:
+                if language not in Corpus.supported_languages_sent_splitter:
+                    self.logger.error("InputValidationError: Given Language '{}' is not supported by Sentences Splitter.".format(language), exc_info=self._logger_traceback)
                     yield False
-                if self._sent_splitter is True:
-                    self._sent_splitter = Corpus.sent_splitter_for_languages[self._language][0]
+                if sent_splitter is True:
+                    sent_splitter = Corpus.sent_splitter_for_languages[language][0]
                 else:
-                    if self._sent_splitter not in Corpus.supported_sent_splitter:
-                        self.logger.error("InputValidationError: Given SentenceSplitter '{}' is not supported.".format(self._sent_splitter), exc_info=self._logger_traceback)
+                    if sent_splitter not in Corpus.supported_sent_splitter:
+                        self.logger.error("InputValidationError: Given SentenceSplitter '{}' is not supported.".format(sent_splitter), exc_info=self._logger_traceback)
                         yield False
-                    if self._sent_splitter not in Corpus.sent_splitter_for_languages[self._language]:
-                        self.logger.critical("InputValidationError: '{}'-SentenceSplitter  is not support '{}'-language. Please use another one. For this session the default one will be used. ".format(self._sent_splitter, self._language))
-                        self._sent_splitter = Corpus.sent_splitter_for_languages[self._language][0]
-                self.logger.debug("'{}'-SentSplitter was chosen.".format(self._sent_splitter))
+                    if sent_splitter not in Corpus.sent_splitter_for_languages[language]:
+                        self.logger.critical("InputValidationError: '{}'-SentenceSplitter  is not support '{}'-language. Please use another one. For this session the default one will be used. ".format(sent_splitter, language))
+                        sent_splitter = Corpus.sent_splitter_for_languages[language][0]
+                self.logger.debug("'{}'-SentSplitter was chosen.".format(sent_splitter))
 
 
             ## Choice POS Tagger
-            if self._pos_tagger:
+            if pos_tagger:
 
-                if self._language not in Corpus.supported_languages_pos_tagger:
-                    self.logger.error("InputValidationError: Given Language '{}' is not supported by POS-Tagger.".format(self._language), exc_info=self._logger_traceback)
+                if language not in Corpus.supported_languages_pos_tagger:
+                    self.logger.error("InputValidationError: Given Language '{}' is not supported by POS-Tagger.".format(language), exc_info=self._logger_traceback)
                     yield False
-                if self._pos_tagger is True:
-                    self._pos_tagger = Corpus.pos_tagger_for_languages[self._language][0]
+                if pos_tagger is True:
+                    try:
+                        pos_tagger = Corpus.pos_tagger_for_languages[language][0]
+                    except:
+                        self.logger.critical("POS-Tagger for '{}' is not imlemented. Please switch off this function or select other language.".format(language))
+                        yield False
+                        return
+
                 else:
-                    if self._pos_tagger not in Corpus.supported_pos_tagger:
-                        self.logger.error("InputValidationError: Given POS-Tagger '{}' is not supported.".format(self._pos_tagger), exc_info=self._logger_traceback)
+                    if pos_tagger not in Corpus.supported_pos_tagger:
+                        self.logger.error("InputValidationError: Given POS-Tagger '{}' is not supported.".format(pos_tagger), exc_info=self._logger_traceback)
                         yield False
                     if not self._use_test_pos_tagger:
-                        if self._pos_tagger not in Corpus.pos_tagger_for_languages[self._language]:
-                            self.logger.critical("InputValidationError: '{}'-POS-Tagger is not support '{}'-language. Please use another one. For this session the default one will be used. ".format(self._pos_tagger, self._language))
-                            self._pos_tagger = Corpus.pos_tagger_for_languages[self._language][0]
+                        if pos_tagger not in Corpus.pos_tagger_for_languages[language]:
+                            self.logger.critical("InputValidationError: '{}'-POS-Tagger is not support '{}'-language. Please use another one. For this session the default one will be used. ".format(pos_tagger, language))
+                            pos_tagger = Corpus.pos_tagger_for_languages[language][0]
                             #yield True
-                    if not  self._sent_splitter:
+                    if not  sent_splitter:
                         self.logger.error("InputError: POS-Tagging require sentence splitter. Please use an option to activate it!",  exc_info=self._logger_traceback)
                         yield False
                 
                 if self._use_test_pos_tagger:
-                  self._pos_tagger = "tweetnlp"
+                  pos_tagger = "tweetnlp"
 
 
-                self.logger.debug("'{}'-POS-Tagger was chosen.".format(self._pos_tagger))
+                self.logger.debug("'{}'-POS-Tagger was chosen.".format(pos_tagger))
 
 
-            if self._sentiment_analyzer:
-                if self._language not in Corpus.supported_languages_sentiment_analyzer:
-                    self.logger.error("InputValidationError: Given Language '{}' is not supported by SentimentAnalyzer.".format(self._language), exc_info=self._logger_traceback)
+            if sentiment_analyzer:
+                if language not in Corpus.supported_languages_sentiment_analyzer:
+                    self.logger.error("InputValidationError: Given Language '{}' is not supported by SentimentAnalyzer.".format(language), exc_info=self._logger_traceback)
                     yield False
-                if self._sentiment_analyzer is True:
-                    self._sentiment_analyzer = Corpus.sentiment_analyzer_for_languages[self._language][0]
+                if sentiment_analyzer is True:
+                    try:
+                        sentiment_analyzer = Corpus.sentiment_analyzer_for_languages[language][0]
+                    except:
+                        self.logger.critical("SentimentAnalyzer for '{}' is not imlemented. Please switch off this function or select other language.".format(language))
+                        yield False
+                        return
+
                 else:
-                    if self._sentiment_analyzer not in Corpus.supported_sentiment_analyzer:
-                        self.logger.error("InputValidationError: Given SentimentAnalyzer '{}' is not supported.".format(self._sentiment_analyzer), exc_info=self._logger_traceback)
+                    if sentiment_analyzer not in Corpus.supported_sentiment_analyzer:
+                        self.logger.error("InputValidationError: Given SentimentAnalyzer '{}' is not supported.".format(sentiment_analyzer), exc_info=self._logger_traceback)
                         yield False
 
-                self.logger.debug("'{}'-SentimentAnalyzer was chosen.".format(self._sentiment_analyzer))
+                self.logger.debug("'{}'-SentimentAnalyzer was chosen.".format(sentiment_analyzer))
 
 
         else:
             self.logger.warning("Preprocessing is disable. -> it will be not possible to compute statistics for it. Please enable preprocessing, if you want to compute statistics later.")
             #yield False
         yield True 
+        yield {
+                "tokenizer": tokenizer, 
+                "sent_splitter": sent_splitter, 
+                "pos_tagger": pos_tagger,  
+                "sentiment_analyzer": sentiment_analyzer, 
+                }
         return 
 
 
-        # self._del_mention = del_mention
-        # self._del_hashtag = del_hashtag
+
+
+
+    def _compute_tags_to_delete(self):
+        #p((del_url, self._del_punkt, self._del_num, self._del_mention, ))
+        tags_to_delete = set()
+        if self._del_url:
+            tags_to_delete.add("URL")
+        if self._del_punkt:
+            tags_to_delete.add("symbol")
+        if self._del_num:
+            tags_to_delete.add("number")
+        if self._del_mention:
+            tags_to_delete.add("mention")
+        if self._del_hashtag:
+            tags_to_delete.add("hashtag")
+        return tags_to_delete
+
+
 
     def _clean_sents_list(self, inp_sent_list):
-        # Step 1: Find out what exactly should be erased
-        tags_to_delete = []
-        if self._del_url:
-            tags_to_delete.append("URL")
-        if self._del_punkt:
-            tags_to_delete.append("symbol")
-        if self._del_num:
-            tags_to_delete.append("number")
-        if self._del_mention:
-            tags_to_delete.append("mention")
-        if self._del_mention:
-            tags_to_delete.append("hashtag")
-        #p(tags_to_delete)
-        # Step 2: Cleaning 
+        #p(self._tags_to_delete, "self._tags_to_delete")
         cleaned = []
         for sents in inp_sent_list:
             cleaned_sent = []
             for token in sents:
-                if token[1] not in tags_to_delete:
+                #p(token, "token")
+                if token[1] not in self._tags_to_delete:
                     cleaned_sent.append(token)
+                else:
+                    cleaned_sent.append((None, self._cleaned_tags[token[1]]))
             cleaned.append(cleaned_sent)
 
         return cleaned
@@ -1221,29 +1382,75 @@ class Corpus(BaseContent,BaseDB,CorpusData):
     #         return categorize_token_list(inp_token_list)
 
 
-
-
     def _lower_case_sents(self, inpsents):
             lower_cased = []
             for sents in inpsents:
                 lower_cased_sent = []
                 for token in sents:
                     #p(token[0].lower(), c="m")
-                    lower_cased_sent.append((token[0].lower(), token[1]))
+                    tok = token[0]
+                    if tok:
+                        lower_cased_sent.append((tok.lower(), token[1]))
+                    else:
+                        lower_cased_sent.append(token)
                 
                 lower_cased.append(lower_cased_sent)
             return lower_cased
 
 
 
+    def _re_recognize_complex_clustered_emojis(self,inp_list):
+        #p(inp_list,"inp_list")
+        pattern = ['EMOIMG',"emoticon",]
+        prev_pos = ""
+        collected_elem = ()
+        new_output_list = []
+        p(inp_list, "111inp_list")
+        #### Step 1: collect all EMOIMG in neibourghood in one token
+        for token_container in inp_list:
+            #p(token_container, "token_container", c="r")
+            if token_container[1] in pattern:
+                if prev_pos:
+                    p((prev_pos, token_container), c="m")
+                    if prev_pos == token_container[1]:
+                        new_text_elem = u"{}{}".format(collected_elem[0], token_container[0])
+                        collected_elem = (new_text_elem, collected_elem[1])
+                        #continue
+                    else:
+                        new_output_list.append(collected_elem)
+                        prev_pos = token_container[1]
+                        collected_elem = token_container
+                        #continue
+                else:
+                    prev_pos = token_container[1]
+                    collected_elem = token_container
+                    #continue
+            else:
+                if prev_pos:
+                    new_output_list.append(collected_elem)
+                    new_output_list.append(token_container)
+                    collected_elem = ()
+                    prev_pos = ""
+
+                else:
+                    new_output_list.append(token_container) 
+        p(inp_list, "222inp_list")
+        return inp_list
+
+
+
     def _normalize_emojis(self,inp_list):
         #p(inp_list,"inp_list")
+        pattern = ['EMOIMG',"emoticon",]
         prev = ""
         collected_elem = ()
         new_output_list = []
+
         for token_container in inp_list:
-            if token_container[1] in ["emoticon",'EMOIMG', "EMOASC"]:
+            #p(token_container, "token_container", c="r")
+            if token_container[1] in pattern:
                 if prev:
+                    #p((prev, token_container), c="m")
                     if prev == token_container[0]:
                         new_text_elem = u"{}{}".format(collected_elem[0], token_container[0])
                         collected_elem = (new_text_elem, collected_elem[1])
@@ -1271,6 +1478,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             new_output_list.append(collected_elem)
             collected_elem = ()
             prev = ""
+        #p(new_output_list, "new_output_list",c="r")
         return new_output_list
 
 
@@ -1278,6 +1486,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         new_output = []
         token_index = -1
         ignore_next_step = False
+        e = ("_","-")
         #tok1 = None
         #tok2 = None
         try:
@@ -1298,6 +1507,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             elif i > 0:
                 last_elem = new_output[-1]
                 #if last_elem[1] == 
+                #p((last_elem[1], tok[1]))
                 if last_elem[1] == "emoticon" and tok[1] == 'regular':
                     if last_elem[0][-1] == tok[0][0]:
                         new_output[-1] = (last_elem[0]+tok[0], last_elem[1])
@@ -1310,6 +1520,13 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                     elif last_elem[0][-1] == "-" and tok[0][0] in ["(", ")"]:
                         #new_output.append((tok1[0]+tok2[0], "emoticon"))
                         new_output[-1] = (last_elem[0]+tok[0], "emoticon")
+                    else:
+                        new_output.append(tok)
+                elif last_elem[1] == "mention" and tok[1] == 'regular':
+                    #print last_elem[0][-1],tok[0][0]
+                    if tok[0][0] in e:
+                        new_output[-1] = (last_elem[0]+tok[0], last_elem[1])
+                        #new_output[-1] = (last_elem[0]+tok[0], "FUCK")
                     else:
                         new_output.append(tok)
                 else:
@@ -1339,23 +1556,6 @@ class Corpus(BaseContent,BaseDB,CorpusData):
     ###########################Preprocessing###############
     def _preprocessing(self, inp_str, thread_name="Thread0", log_ignored=True, row=False):
         #self.logger.debug("Preprocessing: '{}'-Thread do preprocessing.".format( thread_name ))
-        
-        # if self._decoding_to_unicode:
-        #     if isinstance(inp_str, str):
-        #         try:
-        #             output = inp_str.decode("utf-8")
-        #         except Exception as e:
-        #             self.logger.error("EncodingError: It wasn't possible to decode byte string to unicode string. Please ensure, that given sting was encoded into unicode! GivenStr: '{}'.".format(repr(inp_str)))
-        #             #self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
-        #             self._terminated = True
-        #             return None
-        #     else:
-        #         output = inp_str
-        # else:
-        #     output = inp_str
-
-        # inp_str = "fghjk😀"
-        # p(type(inp_str), "inp_str")
 
         ### convert to unicode, if needed!!!=) 
         ## it is important, fo right works of further preprocessing steps 
@@ -1427,19 +1627,21 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         if self._tokenizer == "somajo":
             output = self._error_correction_after_somajo_tokenization(output)
             #p((len(output),output), "error_corrected")
-
-
-        #############Step 3 ########################
-        # Step 3: Categorization (if wasn't done before)
-        if self._tokenizer != "somajo":
+        else:
+            #############Step 3 ########################
+            # Step 3: Categorization (if wasn't done before)
+            #if self._tokenizer != "somajo":
             output = categorize_token_list(output)
+            #p(categorize_token_list, "categorize_token_list")
+
 
 
         #############Step 4 ########################
         # Step 4: Categorization (if wasn't done before)
-        if self._diff_emoticons and self._tokenizer == "somajo": 
-            output = recognize_emoticons_types(output)
-            #p(output, "recognize_emoticons_types")
+        #if  self._tokenizer == "somajo":  #self._diff_emoticons and
+        
+        output = recognize_emoticons_types(output)
+        #p(output, "recognize_emoticons_types")
 
         #sys.exit()
 
@@ -1447,7 +1649,9 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         # Step 5: normalization - Part0
         #### Normalisation Emojis
         if self._emojis_normalization:
+            #output = self._re_recognize_complex_clustered_emojis(output)
             output = self._normalize_emojis(output)
+            #p(output, "emojis_normalization")
 
 
 
@@ -1471,6 +1675,26 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         #p(output, "sent_splitted")
 
 
+
+
+        #############Step 8 ########################
+        # Step 8: Tagging
+        #output, cutted_ = 
+        #p(output, "output")
+        if self._pos_tagger: #u'EMOASC', 'EMOIMG'
+            non_regular_tokens = self._backup_non_regular_tokens(output)
+            #p(non_regular_tokens, "non_regular_tokens")
+            output = [self.tag_pos([token[0] for token in sent ], thread_name=thread_name) for sent in output]
+            if not output[0]:
+                return "terminated"
+            output = self._rebuild_non_regular_tokens(non_regular_tokens, output)
+            #p(output, "tagged")
+        #if was_found:
+        #    self.logger.critical(("pos",output))
+        #############Step  ########################
+        # Step : WDS
+
+
         #############Step 7 ########################
         # Step 7: normalization - Part1
             #> Stemming or Lemmatization (https://www.kdnuggets.com/2017/12/general-approach-preprocessing-text-data.html)
@@ -1481,26 +1705,6 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         #    self.logger.critical(("cleaned",output))
         #p(output, "cleaned")
 
-
-
-
-
-        #############Step 8 ########################
-        # Step 8: Tagging
-        #output, cutted_ = 
-        #p(output, "output")
-        if self._pos_tagger: #u'EMOASC', 'EMOIMG'
-            non_regular_tokens = self._backup_non_regular_tokens(output)
-            #p(non_regular_tokens, "non_regular_tokens")
-            output = [self.tag_pos([token[0] for token in sent], thread_name=thread_name) for sent in output]
-            if not output[0]:
-                return "terminated"
-            output = self._rebuild_non_regular_tokens(non_regular_tokens, output)
-            #p(output, "tagged")
-        #if was_found:
-        #    self.logger.critical(("pos",output))
-        #############Step  ########################
-        # Step : WDS
 
 
 
@@ -1529,7 +1733,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             #p(" ".join([token[0] for token in sent]), c="m")
             #p(sent)
             if self._sentiment_analyzer:
-                polarity = self.get_sentiment(" ".join([token[0] for token in sent]))
+                polarity = self.get_sentiment(" ".join([token[0] for token in sent if token[0]]))
                 #p(polarity, "polarity", c="r")
             else:
                 polarity = (None, None)
@@ -1678,6 +1882,62 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             #sys.exit()
             return False
         
+
+
+
+
+
+
+    # ###########Word Stemmer###########
+
+
+    # def stemm(self,inp_str, thread_name="Thread0"):
+    #     try:
+    #         self.logger.low_debug("'{}'-Stemmer: Stemmer was called from '{}'-Thread.".format(self._tokenizer, thread_name))
+    #         if self._stemmer == "pystemmer":
+    #             return self._stemm_with_pystemmer(inp_str, thread_name=thread_name)
+    #         else:
+    #             self.logger.error("StemmError: selected stemmer '{}' is not supported.".format(self._stemmer), exc_info=self._logger_traceback)
+    #             return False
+    #     except KeyboardInterrupt:
+    #         self.logger.critical("StemmerError:  in '{}'-Thread get an  KeyboardInterruption.".format(thread_name))
+    #         self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
+    #         self._terminated = True
+    #         #self.terminate_all("KeyboardInterrupt")
+    #         return False
+    #     except Exception, e:
+    #         self.logger.error("StemmerError:  in '{}'-Thread. See Exception '{}'.".format(thread_name,e))
+    #         self.terminate = True
+    #         return False
+    #         #sys.exit()
+    #         #return [("",""),("","")]
+
+
+    # def _set_stemmer(self, thread_name="Thread0"):
+    #     self.logger.low_debug("INIT-Stemmer: Start the initialization of '{}'-Stemmer for '{}'-Thread.".format(self._stemmer,thread_name))
+    #     if self._stemmer == "pystemmer":
+    #         try:
+    #             tokenizer_obj = Stemmer.Stemmer(from_ISO639_2[self._language])
+    #         except Exception as e:
+    #             self.logger.error("Stemmer for '{}'-Thread wasn't initialized.".format(thread_name), exc_info=self._logger_traceback)
+    #             return False
+
+    #     else:
+    #         self.logger.error("INIT-StemmerError '{}'-stemmer is not supported. ".format(self._stemmer), exc_info=self._logger_traceback)
+    #         return False
+    #     self.preprocessors[thread_name]["stemmer"] = stemmer_obj
+    #     self.logger.debug("INIT-Stemmer: '{}'-Stemmer for '{}'-Thread was initialized.".format(self._stemmer,thread_name))
+    #     return True
+
+
+    # def _stemm_with_pystemmer(self,word, thread_name="Thread0"):
+    #     #p(self.preprocessors)
+    #     #self.logger.exception(self.preprocessors)
+    #     #self.logger.exception(self.preprocessors[thread_name]["stemmer"])
+        
+    #     return self.preprocessors[thread_name]["stemmer"].stemWord(word)
+
+
 
 
 
