@@ -14,7 +14,7 @@ setup(name='zas-rep-tools',
       "langid",  "lxml", "logutils", "pyhashxx", "colored_traceback", "colorama",
       "unicodecsv","psutil","execnet","validate_email","console-menu","python-twitter", "twitter",
       "enlighten", "emoji", "textblob","textblob_de", "textblob_fr", "kitchen", "uniseg",
-      "pysqlcipher", ],
+      "pysqlcipher", "pystemmer"],
       zip_safe=False,
       test_suite='nose.collector', # test by installationls
       tests_require=['nose'], #test by installation
