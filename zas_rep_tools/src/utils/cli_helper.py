@@ -24,6 +24,7 @@ import enlighten
 
 
 #from zas_rep_tools.src.classes.corpus import Corpus
+from zas_rep_tools.src.classes.dbhandler import DBHandler
 from zas_rep_tools.src.utils.debugger import p
 from zas_rep_tools.src.utils.helpers import set_class_mode
 from zas_rep_tools.src.utils.zaslogger import ZASLogger
@@ -82,10 +83,15 @@ def strtobool(obj):
     except:
         return obj
 
-def get_corp_dbname(main_folders):
-    
+def get_corp_fname(main_folders):
     files = os.listdir(main_folders["corp"])
-    files = [fname for fname in files if ".db" in fname]
+    files = [fname for fname in files if ".db" in fname and ".db-journal" not in fname]
+    return files
+
+
+def get_stats_fname(main_folders):
+    files = os.listdir(main_folders["stats"])
+    files = [fname for fname in files if ".db" in fname and ".db-journal" not in fname]
     return files
 
 def _get_status_bars_manager():
@@ -105,7 +111,7 @@ def _get_new_status_bar( total, desc, unit, counter_format=False, status_bars_ma
     return counter
 
 
-def validate_corp_dbname(files=False):
+def validate_corp(main_folders,files=False,):
     files = files  if isinstance(files, (list, tuple)) else get_corp_dbname()
     validated = []
     possibly_encrypted = []
@@ -125,6 +131,30 @@ def validate_corp_dbname(files=False):
         else:
             possibly_encrypted.append(fname)
     return validated,possibly_encrypted,wrong,opened_db
+
+
+
+def validate_stats(main_folders,files=False):
+    files = files  if isinstance(files, (list, tuple)) else get_corp_dbname()
+    validated = []
+    possibly_encrypted = []
+    wrong = []
+    handl = DBHandler(mode="blind")
+    opened_db = []
+    for fname in files:
+        status = handl._validation_DBfile(os.path.join(main_folders["stats"],fname))
+        if status["status"]:
+            h = DBHandler(mode="blind")
+            h.connect(os.path.join(main_folders["stats"],fname))
+            if h.typ() == "stats":
+                validated.append(fname)
+                opened_db.append(h)
+            else:
+                wrong.append(fname)
+        else:
+            possibly_encrypted.append(fname)
+    return validated,possibly_encrypted,wrong,opened_db
+
 
 
 

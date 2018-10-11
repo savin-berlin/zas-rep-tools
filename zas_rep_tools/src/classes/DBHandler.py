@@ -85,18 +85,47 @@ class DBHandler(BaseContent, BaseDB):
 
     supported_db_typs = ["stats", "corpus"]
     path_to_json1 = os.path.join(path_to_zas_rep_tools, "src/extensions/json1/json1")
+        
+
+    default_optimizer_flags = "lj"
+
+    mapped_states = {
+                "synchronous":{
+                            "0":"off",
+                            "1":"normal",
+                            "2":"full",
+                            "3":"extra",
+                            },
+                "temp_store":{
+                            "0":"default",
+                            "1":"file",
+                            "2":"memory"
+                            }
+                }
+    non_mapped_states= {
+                "journal_mode":["delete" , "truncate" , "persist" , "memory" , "wal" , "off"],
+                "locking_mode": ["normal" , "exclusive"],
+                }
+
+
+
     def __init__(self, **kwargs):
         super(type(self), self).__init__(**kwargs)
 
         global sqlite
+        #p(self._optimizer, "11self._optimizer")
         if self._thread_safe:
             import zas_rep_tools.src.classes.sql.MultiThreadMultiCursor as sqlite
             self._check_same_thread = False
-            self._optimizer = "l"
+            #DBHandler.default_optimizer_flags 
+            if not self._optimizer:
+                self._optimizer = DBHandler.default_optimizer_flags 
+            #self._optimizer = "l"
         else:
             from pysqlcipher import dbapi2 as sqlite
             self._check_same_thread = True
 
+        #p(self._optimizer, "22self._optimizer")
 
         self._arguments_for_connection = self._get_arguments_for_conn()
         self.locker = threading.Lock()
@@ -207,11 +236,11 @@ class DBHandler(BaseContent, BaseDB):
     def init(self, typ, prjFolder, DBname, language, visibility,
             platform_name=False,  encryption_key=False, fileName=False,
             source=False, license=False, template_name=False, version=False,
-            additional_columns_with_types_for_documents=False, corpus_id=False,
+            cols_and_types_in_doc=False, corpus_id=False,
             stats_id=False, retrival_template_automat = True, thread_name="Thread0", db_frozen=False,
             context_lenght=None):
 
-        additional_columns_with_types_for_documents = copy.deepcopy(additional_columns_with_types_for_documents)
+        cols_and_types_in_doc = copy.deepcopy(cols_and_types_in_doc)
         supported_typs = DBHandler.supported_db_typs
         typ = typ.lower()
         if typ == "corpus":
@@ -219,7 +248,7 @@ class DBHandler(BaseContent, BaseDB):
                 self.logger.error("'Platform_name' wasn't given. 'Corpus' initialization need 'platform_name'.", exc_info=self._logger_traceback)
                 return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
 
-            status = self.init_corpus(prjFolder, DBname, language,  visibility, platform_name, encryption_key=encryption_key,fileName=fileName, source=source, license=license, template_name=template_name, version=version, corpus_id=corpus_id, additional_columns_with_types_for_documents=additional_columns_with_types_for_documents, retrival_template_automat=retrival_template_automat, thread_name=thread_name)
+            status = self.init_corpus(prjFolder, DBname, language,  visibility, platform_name, encryption_key=encryption_key,fileName=fileName, source=source, license=license, template_name=template_name, version=version, corpus_id=corpus_id, cols_and_types_in_doc=cols_and_types_in_doc, retrival_template_automat=retrival_template_automat, thread_name=thread_name)
             
             if not status["status"]:
                 return status
@@ -248,22 +277,24 @@ class DBHandler(BaseContent, BaseDB):
     def init_corpus(self, prjFolder, DBname, language,  visibility, platform_name,
                     encryption_key=False,fileName=False, source=False, license=False,
                     template_name=False, version=False,  thread_name="Thread0",
-                    additional_columns_with_types_for_documents=False, corpus_id=False, retrival_template_automat = True):
+                    cols_and_types_in_doc=False, corpus_id=False, retrival_template_automat = True):
         ### Preprocessing: Create File_Name
-        additional_columns_with_types_for_documents =copy.deepcopy(additional_columns_with_types_for_documents)
-        if retrival_template_automat:
-            if not template_name:
-                if platform_name in DBHandler.templates:
-                    template_name = platform_name
-                    self.logger.debug("For given '{}'-Platform  was found an '{}'-Template. (since 'retrival_template_automat'-Option set to  True, found Template will be automatically used for Corpus Initialization. If you don't want it than set this Option to False)".format(platform_name, template_name))
+        #p(template_name, "-3template_name")
+        cols_and_types_in_doc =copy.deepcopy(cols_and_types_in_doc)
+        # if retrival_template_automat:
+        #     if not template_name:
+        #         if platform_name in DBHandler.templates:
+        #             template_name = platform_name
+        #             self.logger.debug("For given '{}'-Platform  was found an '{}'-Template. (since 'retrival_template_automat'-Option set to  True, found Template will be automatically used for Corpus Initialization. If you don't want it than set this Option to False)".format(platform_name, template_name))
         
         self._encryption_key = encryption_key
         source="NULL" if not source else source
         license = "NULL" if not license else license
         version = "NULL" if not "NULL" else version
+        #p(template_name, "-2template_name")
         template_name = "NULL" if not template_name else template_name
         typ= "corpus"
-
+        #p(template_name, "-1template_name")
         
         if not corpus_id:
             corpus_id= db_helper.create_id(DBname,language, typ, visibility)
@@ -291,6 +322,8 @@ class DBHandler(BaseContent, BaseDB):
             self._db = sqlite.connect(path_to_db,  **self._arguments_for_connection)
             #p(self._arguments_for_connection,"self._arguments_for_connection")
             self._init_threads_cursors_obj()
+            
+
             if self._optimizer:
                 self._optimize(thread_name=thread_name)
             #self._threads_cursors[thread_name] = self._db.cursor()
@@ -329,8 +362,8 @@ class DBHandler(BaseContent, BaseDB):
                 os.remove(path_to_db)
 
                 return status
-            #p(template_name)
-            status = self._init_default_tables("corpus", template=template_name, additional_columns_with_types=additional_columns_with_types_for_documents)
+            #p(template_name, "000template_name")
+            status = self._init_default_tables("corpus", template=template_name, cols_and_types_in_doc=cols_and_types_in_doc)
             if not status["status"] :
                 self.logger.error("CorpusInitialisatioError: Corpus wasn't initialized because  default Tables wasn't initialized. ", exc_info=self._logger_traceback)
                 self._close()
@@ -342,7 +375,8 @@ class DBHandler(BaseContent, BaseDB):
             self._update_temp_indexesList_in_instance(thread_name=thread_name)
             #self._update_database_pragma_list(thread_name=thread_name)
             self._update_pragma_table_info(thread_name=thread_name)
-
+            #p(self.col("documents"))
+            #sys.exit()
             self.logger.info("Corpus-DB ({}) was initialized and saved on the disk: '{}'. ".format(fileName, path_to_db))
             #self.logger.info("Corpus-DB ({}) was connected.".format(fileName))
             self._mainDB_was_initialized = True
@@ -577,6 +611,7 @@ class DBHandler(BaseContent, BaseDB):
             #self._update_database_pragma_list(thread_name=thread_name)
             self._update_pragma_table_info(thread_name=thread_name)
             self._update_temp_attributsList_in_instance(thread_name=thread_name)
+            self._update_temp_indexesList_in_instance(thread_name=thread_name)
             self.not_initialized_dbs.append("main")
         except sqlite.DatabaseError, e:
             print_exc_plus() if self._ext_tb else ""
@@ -984,7 +1019,7 @@ class DBHandler(BaseContent, BaseDB):
             s = self._execute(query, values=values, dbname=dbname, thread_name=thread_name, new_cursor=True)
             #p(s, c="r")
             if not  s["status"]:
-                return s
+                return False
             else: 
                 cur = s["out_obj"]
             #p(cur, "cur")
@@ -1061,6 +1096,7 @@ class DBHandler(BaseContent, BaseDB):
 
             cursor = self._db.cursor() if new_cursor else cursor
             #p(type(cursor))
+            #p(query,"query")
             if many:
                 if values:
                     cursor.executemany(query, values)
@@ -1130,7 +1166,7 @@ class DBHandler(BaseContent, BaseDB):
                             error_name=exception.__class__.__name__, exception=repr(exception))
 
         except sqlite.InterfaceError as  exception:
-            p((query, values))
+            #p((query, values))
             track_id = self._error_track_id.incr()
             l_query = query if self._log_content else "!!LogContentDisable!!"
             l_values =  values if self._log_content else "!!LogContentDisable!!"
@@ -1252,7 +1288,7 @@ class DBHandler(BaseContent, BaseDB):
             return s
 
         if dbname in self.dbnames:
-            self.logger.low_debug("Table names was returned (dbname: '{}')".format(dbname))
+            #self.logger.low_debug("Table names was returned (dbname: '{}')".format(dbname))
 
             if len(self._tables_dict)>0:
                 return self._tables_dict[dbname]
@@ -1271,7 +1307,7 @@ class DBHandler(BaseContent, BaseDB):
             return s
 
         if dbname in self.dbnames:
-            self.logger.low_debug("Indexes names was returned (dbname: '{}')".format(dbname))
+            #self.logger.low_debug("Indexes names was returned (dbname: '{}')".format(dbname))
 
             if len(self._indexes_dict)>0:
                 return self._indexes_dict[dbname]
@@ -1363,7 +1399,7 @@ class DBHandler(BaseContent, BaseDB):
             self.logger.error("'{}'-Table not exist in the '{}'-DB.".format(tableName, dbname))
             return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
 
-        self.logger.low_debug("Columns for Table '{}'  was returned (dbName:'{}')".format(tableName,dbname))
+        #self.logger.low_debug("Columns for Table '{}'  was returned (dbName:'{}')".format(tableName,dbname))
         return [column[1] for column in self._pragma_table_info[dbname][tableName]]
 
 
@@ -1430,9 +1466,9 @@ class DBHandler(BaseContent, BaseDB):
 ##########################DB--Getters######################
 
 
-    def getall(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True):
+    def getall(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True, distinct=False):
         
-        s = self._intern_getter(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv)
+        s = self._intern_getter(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv, distinct=distinct)
         #p(s["out_obj"])
         if s["status"]:
             return s["out_obj"].fetchall()
@@ -1440,9 +1476,9 @@ class DBHandler(BaseContent, BaseDB):
             self.logger.error("GetterError: Nor Cursor Element was passed from intern getter.")
             return []
             
-    def getone(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True):
+    def getone(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True, distinct=False):
         #p(dbname, "dbname")
-        s = self._intern_getter(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv)
+        s = self._intern_getter(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv, distinct=distinct)
         #p(s["out_obj"])
         if s["status"]:
             return s["out_obj"].fetchone()
@@ -1452,14 +1488,14 @@ class DBHandler(BaseContent, BaseDB):
             
 
 
-    def lazyget(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", size_to_fetch=1000, output="list", limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True, just_check_existence=False,):
-        self.logger.low_debug("LazyGet was invoked.")
+    def lazyget(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", size_to_fetch=1000, output="list", limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True, just_check_existence=False, distinct=False):
+        #self.logger.low_debug("LazyGet was invoked.")
         if output == "list":
-            for row in  self.getlistlazy(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv, just_check_existence=just_check_existence):
+            for row in  self.getlistlazy(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv, just_check_existence=just_check_existence, distinct=distinct):
                 yield row
 
         elif output == "dict":
-            for getted_dict in  self.getdictlazy( tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv,just_check_existence=just_check_existence):
+            for getted_dict in  self.getdictlazy( tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv,just_check_existence=just_check_existence, distinct=distinct):
                 yield getted_dict
 
         else:
@@ -1470,8 +1506,8 @@ class DBHandler(BaseContent, BaseDB):
 
 
 
-    def getdictlazy(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", size_to_fetch=1000, limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True,just_check_existence=False):
-        self.logger.low_debug("GetDictLazy was invoked.")
+    def getdictlazy(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", size_to_fetch=1000, limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True,just_check_existence=False, distinct=False):
+        #self.logger.low_debug("GetDictLazy was invoked.")
         list_with_keys = []
         if columns:
             if isinstance(columns, (unicode, str)):
@@ -1488,7 +1524,7 @@ class DBHandler(BaseContent, BaseDB):
             list_with_keys += select
 
         #p(list(self.getlistlazy( tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset)))
-        generator = self.getlistlazy(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv,just_check_existence=just_check_existence)
+        generator = self.getlistlazy(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where, size_to_fetch=size_to_fetch,limit=limit, offset=offset, thread_name=thread_name, case_sensitiv=case_sensitiv,just_check_existence=just_check_existence, distinct=distinct)
         if just_check_existence:
             if next(generator):
                 yield True
@@ -1501,9 +1537,9 @@ class DBHandler(BaseContent, BaseDB):
 
 
 
-    def getlistlazy(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", size_to_fetch=1000, limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True,just_check_existence=False):
-        self.logger.low_debug("GetListLazy was invoked.")
-        cursor = self._intern_getter(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where,limit=limit, offset=offset, thread_name=thread_name,case_sensitiv=case_sensitiv)
+    def getlistlazy(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", size_to_fetch=1000, limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True,just_check_existence=False, distinct=False):
+        #self.logger.low_debug("GetListLazy was invoked.")
+        cursor = self._intern_getter(tableName, columns=columns, select=select,  dbname=dbname, where=where, connector_where=connector_where,limit=limit, offset=offset, thread_name=thread_name,case_sensitiv=case_sensitiv, distinct=distinct)
         try:
             if cursor["status"]:
                 #try:
@@ -1520,15 +1556,12 @@ class DBHandler(BaseContent, BaseDB):
                     while True:
                         #p(cursor, "cursor")
                         results = cursor["out_obj"].fetchmany(size_to_fetch)
-                        results = list(results)
                         #p(results, "results")
+                        results = list(results)
                         if not results:
                             break
                         for row in results:
-                            #p(row,"row")
                             yield row
-                #except:
-
 
             else:
                 self.logger.error("GetterError: Nor Cursor Element was passed from intern getter.")
@@ -1541,11 +1574,13 @@ class DBHandler(BaseContent, BaseDB):
 
  
 
-    def _intern_getter(self, tableName, columns=False, select=False,  dbname="main", where=False, connector_where="AND", limit=-1, offset=-1, thread_name="Thread0", case_sensitiv=True):
+    def _intern_getter(self, tableName, columns=False, select=False,  dbname="main", where=False,
+                        connector_where="AND", limit=-1, offset=-1, thread_name="Thread0",
+                        case_sensitiv=True, distinct=False):
         # return cursor object
         #p((columns, select, where))
         #p(dbname, "2dbname")
-        self.logger.low_debug("InternGetter was invoked.")
+        #self.logger.low_debug("InternGetter was invoked.")
         s =  self._check_db_should_exist()
         if not s["status"]:
             return s
@@ -1603,11 +1638,12 @@ class DBHandler(BaseContent, BaseDB):
             self.logger.error("Given dbName ('{}') is not exist in the current DB-Structure".format(dbname), exc_info=self._logger_traceback)
             return Status(status=None, track_id=self._error_track_id.incr(), func_name=function_name(-2))
 
+        distinct_tag = "DISTINCT" if distinct else ""
 
         if where:
-            query = u'SELECT {} FROM  {}.{} \nWHERE {} LIMIT {} OFFSET {}'.format(select_conditions, dbname, tableName, where_cond_as_str, limit, offset)
+            query = u'SELECT {} {} FROM  {}.{} \nWHERE {} LIMIT {} OFFSET {}'.format(distinct_tag,select_conditions, dbname, tableName, where_cond_as_str, limit, offset)
         else:
-            query = u'SELECT {} FROM  {}.{} LIMIT {} OFFSET {}'.format(select_conditions, dbname, tableName, limit, offset)
+            query = u'SELECT {} {} FROM  {}.{} LIMIT {} OFFSET {}'.format(distinct_tag, select_conditions, dbname, tableName, limit, offset)
 
         if not case_sensitiv:
             query = query + " COLLATE NOCASE"
@@ -1616,6 +1652,7 @@ class DBHandler(BaseContent, BaseDB):
 
 
         #p(query, c="m")
+        #sys.exit()
         try:
             #cursor = self._db.cursor()
             self._threads_cursors[thread_name].execute(query)
@@ -1712,10 +1749,9 @@ class DBHandler(BaseContent, BaseDB):
             new_val_list  = []
             ### Many Values
             for item in inp_obj.values():
-
                 new_val_list.append([]+item)
 
-            length = [len(item) for item in new_val_list ]
+            length = [len(item) for item in new_val_list]
             if len(set(length)) >1:
                 track_id = self._error_track_id.incr()
                 msg = "DictTOCashError: Given Dict Values has inconsistent length! This insertion was ignored! |ErrorTrackID:'{}'|".format(track_id)
@@ -1985,6 +2021,8 @@ class DBHandler(BaseContent, BaseDB):
 ##########################DB-Setters##################
 
     def lazyinsert(self, table_name, inp_obj,  dbname="main", thread_name="Thread0", dict_to_list=False):
+        #p(self._use_cash, "self._use_cash")
+        # p((self._lazy_writer_number_inserts_after_last_commit, self._lazyness_border))
         try:
             #p((table_name, inp_obj))
             s =  self._check_db_should_exist()
@@ -2016,7 +2054,7 @@ class DBHandler(BaseContent, BaseDB):
                 self.error_insertion_counter.incr()
                 return Status(status=False, track_id=track_id,
                             desc="Not Supported type of lazy_writer.",
-                            inp_obj= inp_dict, func_name=function_name(-2),
+                            inp_obj= inp_obj, func_name=function_name(-2),
                             level="error", action="ignored",)
 
 
@@ -2027,12 +2065,13 @@ class DBHandler(BaseContent, BaseDB):
 
             with self.locker:
                 if int(self._lazy_writer_number_inserts_after_last_commit) >=  self._lazyness_border:
+                    #p("DBHANDLER: CASH WILL BE INSERTED!!!!")
                     temp_counter_insertion_after_last_commit = int(self._lazy_writer_number_inserts_after_last_commit)
                     self._lazy_writer_all_inserts_counter.incr(temp_counter_insertion_after_last_commit)
                     self._lazy_writer_number_inserts_after_last_commit.clear()
                     self._commits_with_lazy_writer.incr()
                     self._who_will_proceed_commit[thread_name] = int(self._commits_with_lazy_writer)
-                    
+                    #p("DBHANDLER:CASH WAS  INSERTED!!!!")
 
             if thread_name in self._who_will_proceed_commit:
                 temp_commit_number = self._who_will_proceed_commit[thread_name]
@@ -2066,14 +2105,6 @@ class DBHandler(BaseContent, BaseDB):
 
 
 
-
-        #inp_obj = [inp_obj[col]  for col in self.col(table_name, dbname=dbname) ]
-
-
-
-
-
-
     def insertdict(self,table_name, inp_dict, dbname="main", thread_name="Thread0"):
         if not isinstance(inp_dict, dict):
             track_id = self._error_track_id.incr()
@@ -2085,7 +2116,7 @@ class DBHandler(BaseContent, BaseDB):
                         level="error", action="ignored")
 
         try:
-            if self._backup_bevore_first_insert:
+            if self._make_backup:
                 if dbname in self.not_initialized_dbs:
                     self._backup(dbname)
 
@@ -2093,15 +2124,15 @@ class DBHandler(BaseContent, BaseDB):
             type_mask = [type(value) for value in inp_dict.values()]
             if len(set(type_mask)) == 1:
                 if isinstance(random_value, (list,tuple)):
-                    self.logger.low_debug("InsertDict: Many rows was found in the given dict. ")
+                    #self.logger.low_debug("InsertDict: Many rows was found in the given dict. ")
                     return  self._insertdict_with_many_rows(table_name, inp_dict, dbname=dbname, thread_name=thread_name)
 
                 else:
-                    self.logger.low_debug("InsertDict: One unique row was found in the given dict. ")
+                    #self.logger.low_debug("InsertDict: One unique row was found in the given dict. ")
                     return  self._insertdict_with_one_row(table_name, inp_dict, dbname=dbname, thread_name=thread_name)
 
             else:
-                self.logger.low_debug("InsertDict: One unique row was found in the given dict. ")
+                #self.logger.low_debug("InsertDict: One unique row was found in the given dict. ")
                 return self._insertdict_with_one_row(table_name, inp_dict, dbname=dbname, thread_name=thread_name)
         
             #p(self._log_content,"self._log_content")
@@ -2136,7 +2167,7 @@ class DBHandler(BaseContent, BaseDB):
                         level="error", action="ignored")
 
         try:
-            if self._backup_bevore_first_insert:
+            if self._make_backup:
                 if dbname in self.not_initialized_dbs:
                     self._backup(dbname)
 
@@ -2144,13 +2175,13 @@ class DBHandler(BaseContent, BaseDB):
             type_mask = [type(value) for value in inp_list]
             if len(set(type_mask)) == 1:
                 if isinstance(random_value, (list,tuple)):
-                    self.logger.low_debug("InsertList: Many rows was found in the given list. ")
+                    # self.logger.low_debug("InsertList: Many rows was found in the given list. ")
                     return self._insertlist_with_many_rows(table_name, inp_list, dbname=dbname, thread_name=thread_name)
                 else:
-                    self.logger.low_debug("InsertList: One unique row was found in the given list. ")
+                    # self.logger.low_debug("InsertList: One unique row was found in the given list. ")
                     return self._insertlist_with_one_row(table_name, inp_list, dbname=dbname, thread_name=thread_name)
             else:
-                self.logger.low_debug("InsertList: One unique row was found in the given list. ")
+                # self.logger.low_debug("InsertList: One unique row was found in the given list. ")
                 return self._insertlist_with_one_row(table_name, inp_list, dbname=dbname, thread_name=thread_name)
 
 
@@ -2223,7 +2254,7 @@ class DBHandler(BaseContent, BaseDB):
                 self.all_inserts_counter.incr(n=num)
                 self.number_of_new_inserts_after_last_commit.incr(num)
             
-            self.logger.low_debug("Insertion:  Many rows was inserted into '{}.{}'-Table. ".format(table_name, dbname))
+            # self.logger.low_debug("Insertion:  Many rows was inserted into '{}.{}'-Table. ".format(table_name, dbname))
             #p(status["out_obj"].rowcount)
             if outsorted:
                 track_id = self._error_track_id.incr()
@@ -2291,7 +2322,7 @@ class DBHandler(BaseContent, BaseDB):
                 l_values =  inp_dict if self._log_content else "!!LogContentDisable!!"
                 self.logger.outsorted_corpus("'{}'-rows was outsorted/ignored while insertion process. (probably that was redundant rows.) |ErrorTrackID:'{}'|  InpQuery: '{}'.  InpValues: '{}'. ".format(outsorted,track_id,  l_query, l_values))
 
-            self.logger.low_debug("Insertion: One row was inserted into '{}.{}'-Table. ".format(table_name, dbname))
+            # self.logger.low_debug("Insertion: One row was inserted into '{}.{}'-Table. ".format(table_name, dbname))
             #p(status["out_obj"].rowcount)
             return Status(status=True, out_obj=num, outsort=outsorted)
 
@@ -2352,7 +2383,7 @@ class DBHandler(BaseContent, BaseDB):
                 l_values =  values_as_list if self._log_content else "!!LogContentDisable!!"
                 self.logger.outsorted_corpus("'{}'-rows was outsorted/ignored while insertion process. (probably that was redundant rows.) |ErrorTrackID:'{}'|  InpQuery: '{}'.  InpValues: '{}'. ".format(outsorted,track_id,  l_query, l_values))
 
-            self.logger.low_debug("Insertion: Many row was inserted into '{}.{}'-Table. ".format(table_name, dbname))
+            # self.logger.low_debug("Insertion: Many row was inserted into '{}.{}'-Table. ".format(table_name, dbname))
             #p(status["out_obj"].rowcount)
             return Status(status=True, out_obj=num, outsort=outsorted)
 
@@ -2415,7 +2446,7 @@ class DBHandler(BaseContent, BaseDB):
                 l_values =  values_as_list if self._log_content else "!!LogContentDisable!!"
                 self.logger.outsorted_corpus("'{}'-rows was outsorted/ignored while insertion process. (probably that was redundant rows.) |ErrorTrackID:'{}'|  InpQuery: '{}'.  InpValues: '{}'. ".format(outsorted,track_id,  l_query, l_values))
 
-            self.logger.low_debug("Insertion: One row was inserted into '{}.{}'-Table. ".format(table_name, dbname))
+            # self.logger.low_debug("Insertion: One row was inserted into '{}.{}'-Table. ".format(table_name, dbname))
             #p(status["out_obj"].rowcount)
             return Status(status=True, out_obj=num, outsort=outsorted)
 
@@ -2661,6 +2692,9 @@ class DBHandler(BaseContent, BaseDB):
         s =  self._check_db_should_exist()
         if not s["status"]:
             return s
+
+        if self._use_cash:
+            self._write_cashed_insertion_to_disc()
 
         temp_number_of_new_insertion_after_last_commit = int(self.number_of_new_inserts_after_last_commit)
         self._db.commit()
@@ -2977,7 +3011,7 @@ class DBHandler(BaseContent, BaseDB):
 
     def _check_if_given_columns_exist(self, tableName,columns, dbname="main"):
         #p((tableName,columns))
-        self.logger.low_debug("Check_if_given_columns_exist was invoke.")
+        # self.logger.low_debug("Check_if_given_columns_exist was invoke.")
         columns_from_db = self.col(tableName,dbname=dbname)
         for column in columns:
             if column not in  columns_from_db:
@@ -2988,7 +3022,7 @@ class DBHandler(BaseContent, BaseDB):
                                     desc=msg,
                                     func_name=function_name(-3))
         
-        self.logger.low_debug("All Given Columns ({}) exist in the '{}'-table.".format(columns,tableName,))
+        # self.logger.low_debug("All Given Columns ({}) exist in the '{}'-table.".format(columns,tableName,))
         return Status(status=True)
 
     def _check_if_table_exist(self,tableName, dbname="main"):
@@ -3369,19 +3403,22 @@ class DBHandler(BaseContent, BaseDB):
 
 
 
-    def _init_default_tables(self,typ, template=False, additional_columns_with_types=False):
+    def _init_default_tables(self,typ, template=False, cols_and_types_in_doc=False):
+        #p(template, "template")
         if template and template!="NULL":
             if template in DBHandler.templates:
-                if additional_columns_with_types:
-                    additional_columns_with_types += DBHandler.templates[template]
+                if cols_and_types_in_doc:
+                    cols_and_types_in_doc += DBHandler.templates[template]
                 else:
-                    additional_columns_with_types = DBHandler.templates[template]
+                    cols_and_types_in_doc = DBHandler.templates[template]
             else:
                 self.logger.error("Given Template ('{}') is not exist".format(template), exc_info=self._logger_traceback)
                 return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
-        #p(additional_columns_with_types)
+        #p(cols_and_types_in_doc)
         if typ == "corpus":
-            status= self._init_default_table("corpus", "documents", db_helper.default_tables["corpus"]["documents"]["basic"], additional_collumns_with_types=additional_columns_with_types, constraints=db_helper.default_constraints["corpus"]["documents"])
+            #p(db_helper.default_tables["corpus"]["documents"]["basic"])
+            #p(cols_and_types_in_doc)
+            status= self._init_default_table("corpus", "documents", db_helper.default_tables["corpus"]["documents"]["basic"], addit_cols_and_types_in_doc=cols_and_types_in_doc, constraints=db_helper.default_constraints["corpus"]["documents"])
             if not status["status"]:
                 return status
         
@@ -3400,7 +3437,7 @@ class DBHandler(BaseContent, BaseDB):
 
 
 
-    def _init_default_table(self, typ, tableName , default_collumns_with_types, additional_collumns_with_types=False, constraints=False):
+    def _init_default_table(self, typ, tableName , default_collumns_with_types, addit_cols_and_types_in_doc=False, constraints=False):
         if typ.lower()=="corpus":
             if not self._db_should_be_a_corpus()["status"]:
                 return self._db_should_be_a_corpus()
@@ -3411,8 +3448,8 @@ class DBHandler(BaseContent, BaseDB):
             self.logger.error("Not supported typ ('{}') of DB. Please use one of the following DB-Types: '{}'. ".format(typ, DBHandler.supported_db_typs), exc_info=self._logger_traceback)
             return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
 
-        if additional_collumns_with_types:
-            columns_and_types = default_collumns_with_types + additional_collumns_with_types
+        if addit_cols_and_types_in_doc:
+            columns_and_types = default_collumns_with_types + addit_cols_and_types_in_doc
         else:
             columns_and_types = default_collumns_with_types
         constraints_in_str = db_helper.constraints_list_to_str(constraints)
@@ -3820,27 +3857,9 @@ class DBHandler(BaseContent, BaseDB):
 
 
 
-
-
     def _optimize(self, thread_name="Thread0", dbname="main"):
         pragma_pattern = "PRAGMA {}.{{}}".format(dbname)
-        mapped_states = {
-                    "synchronous":{
-                                "0":"off",
-                                "1":"normal",
-                                "2":"full",
-                                "3":"extra",
-                                },
-                    "temp_store":{
-                                "0":"default",
-                                "1":"file",
-                                "2":"memory"
-                                }
-                    }
-        non_mapped_states= {
-                    "journal_mode":["delete" , "truncate" , "persist" , "memory" , "wal" , "off"],
-                    "locking_mode": ["normal" , "exclusive"],
-                    }
+
  #"pclsjt"
         optimizer_names= {
                         "p":"page_size",
@@ -3864,6 +3883,9 @@ class DBHandler(BaseContent, BaseDB):
         if not s["status"]:
             return s
 
+        #"c"
+        #p((self._optimizer))
+        #self._optimizer = "jlstc"
         extracted_optimizer_flags = []
         if self._optimizer:
             if self._optimizer != True:
@@ -3873,6 +3895,8 @@ class DBHandler(BaseContent, BaseDB):
         if len(extracted_optimizer_flags)==0:
             extracted_optimizer_flags = optimizer_names.keys()
 
+        t= type(self._optimizer)
+        #p((self._optimizer, t,extracted_optimizer_flags))
         executed_statements = []
         cur = self._db.cursor()
         for flag in  extracted_optimizer_flags:
@@ -3888,10 +3912,10 @@ class DBHandler(BaseContent, BaseDB):
                 #p((query,state))
                 executed_statements.append("Query: '{}'; Answer: '{}'. ".format(query,state))
 
-                if current_optimizer_name in mapped_states:
+                if current_optimizer_name in DBHandler.mapped_states:
                     #pass
-                    mapped_states_k_by_v= mapped_states[current_optimizer_name]
-                    mapped_states_v_by_k = {v: k for k, v in mapped_states[current_optimizer_name].iteritems()}
+                    mapped_states_k_by_v= DBHandler.mapped_states[current_optimizer_name]
+                    mapped_states_v_by_k = {v: k for k, v in DBHandler.mapped_states[current_optimizer_name].iteritems()}
                     current_optimizer_setting = str(current_optimizer_setting).lower()
                     if current_optimizer_setting in mapped_states_k_by_v: 
                         if current_optimizer_setting != state:
@@ -3902,12 +3926,12 @@ class DBHandler(BaseContent, BaseDB):
                     else:
                         self.logger.error("OptimizerError: Wrong Argument! '{}'-Argument can not be set by '{}'. Use one of the following options: '{}'.  ".format(current_optimizer_name, current_optimizer_setting, mapped_states_k_by_v.values()))
 
-                elif current_optimizer_name in non_mapped_states:
-                    if current_optimizer_setting in non_mapped_states[current_optimizer_name]:
+                elif current_optimizer_name in DBHandler.non_mapped_states:
+                    if current_optimizer_setting in DBHandler.non_mapped_states[current_optimizer_name]:
                         if state != current_optimizer_setting:
                             self.logger.warning("OptimizerWarning: '{}' wasn't changed. (option_to_set:'{}'; getted_option_from_db:'{}')".format(current_optimizer_name,current_optimizer_setting,state))
                     else:
-                        self.logger.error("OptimizerError: Wrong Argument! '{}'-Argument can not be set by '{}'. Use one of the following options: '{}'.  ".format(current_optimizer_name, current_optimizer_setting, non_mapped_states[current_optimizer_name]))
+                        self.logger.error("OptimizerError: Wrong Argument! '{}'-Argument can not be set by '{}'. Use one of the following options: '{}'.  ".format(current_optimizer_name, current_optimizer_setting, DBHandler.non_mapped_states[current_optimizer_name]))
 
 
             else:

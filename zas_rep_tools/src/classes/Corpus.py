@@ -34,7 +34,7 @@ from raven import Client
 import execnet
 from nltk.tokenize import TweetTokenizer
 import enlighten
-
+# db_helper
 
 from  zas_rep_tools.src.extensions.tweet_nlp.ark_tweet_nlp.CMUTweetTagger import check_script_is_present, runtagger_parse
 from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, LenGen, path_to_zas_rep_tools, is_emoji, text_has_emoji, char_is_punkt, text_has_punkt, text_is_punkt, text_is_emoji, categorize_token_list, recognize_emoticons_types,removetags, remove_html_codded_chars, get_number_of_streams_adjust_cpu, Rle, instance_info, MyThread, SharedCounterExtern, SharedCounterIntern, Status,function_name,statusesTstring,rle,from_ISO639_2, to_ISO639_2
@@ -43,6 +43,7 @@ from zas_rep_tools.src.classes.dbhandler import DBHandler
 from zas_rep_tools.src.classes.reader import Reader
 from zas_rep_tools.src.utils.zaslogger import ZASLogger
 from zas_rep_tools.src.utils.debugger import p
+import zas_rep_tools.src.utils.db_helper as db_helper
 from zas_rep_tools.src.utils.error_tracking import initialisation
 from zas_rep_tools.src.classes.basecontent import BaseContent, BaseDB
 from zas_rep_tools.src.utils.corpus_helpers import CorpusData
@@ -61,7 +62,7 @@ else:
 
 class Corpus(BaseContent,BaseDB,CorpusData):
     def __init__(self,  use_test_pos_tagger=False, tok_split_camel_case=True, end_file_marker = -1, 
-                use_end_file_marker = False, status_bar= True,**kwargs):
+                use_end_file_marker = False, status_bar= True, heal_me_if_possible=False,**kwargs):
         super(type(self), self).__init__(**kwargs)
         
         #Input: Encapsulation:
@@ -71,6 +72,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         self._tok_split_camel_case = tok_split_camel_case
         self._raise_exception_if_error_insertion = True if "test" in self._mode  else False
         self._use_test_pos_tagger = use_test_pos_tagger
+        self._heal_me_if_possible = heal_me_if_possible
         #self._diff_emoticons = diff_emoticons
 
 
@@ -78,6 +80,10 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         self.corpdb = False
         self.offshoot = defaultdict(list)
         self.runcount = 0
+        self.locker = threading.Lock()
+        self._emo_sym = set(["-", ':', '=','(',')', ";"])
+        self.em_start = set([":","-",";","="])
+        self.em_end =  set(["(",")"])
 
 
         self.logger.low_debug('Intern InstanceAttributes was initialized')
@@ -157,15 +163,20 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
     def init(self, prjFolder, DBname, language,  visibility, platform_name,
                     encryption_key=False,fileName=False, source=False, license=False,
-                    template_name=False, version=False, additional_columns_with_types_for_documents=False, corpus_id=False,
+                    template_name=False, version=False, cols_and_types_in_doc=False, corpus_id=False,
                     tokenizer=True,pos_tagger=False,sentiment_analyzer=False,
                     sent_splitter=False,preprocession=True, lang_classification=False,del_url=False,
                     del_punkt=False,del_num=False,del_mention=False,del_hashtag=False,del_html=False,case_sensitiv=False,
                     emojis_normalization=True,text_field_name="text",id_field_name="id"):
 
+
         if self.corpdb:
             self.logger.error("CorpusInitError: An active Corpus Instance was found. Please close already initialized/opened Corpus, before new initialization.", exc_info=self._logger_traceback)
             return False
+
+        #p((text_field_name,id_field_name))
+        #p((locals()))
+        #sys.exit()
 
         # Validate Input variables
         valid_answer = list(self._valid_input(language, preprocession, tokenizer, sent_splitter, pos_tagger, sentiment_analyzer))
@@ -191,7 +202,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         was_initialized =  self.corpdb.init("corpus", prjFolder, DBname, language, visibility,
             platform_name=platform_name,encryption_key=encryption_key, fileName=fileName,
             source=source, license=license, template_name=template_name, version=version,
-            additional_columns_with_types_for_documents=additional_columns_with_types_for_documents,
+            cols_and_types_in_doc=cols_and_types_in_doc,
             corpus_id=corpus_id)
         #p(was_initialized, "was_initialized")
         if not was_initialized:
@@ -204,6 +215,9 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                         del_punkt,del_num,del_mention,del_hashtag,del_html,case_sensitiv,
                         emojis_normalization,text_field_name,id_field_name))
         self.set_all_intern_attributes_from_db()
+        self.corpdb.update_attr("locked", False)
+        #p((tokenizer, pos_tagger, sentiment_analyzer, lang_classification, sent_splitter))
+        #p((type(tokenizer), type(pos_tagger), type(sentiment_analyzer), type(lang_classification), type(sent_splitter)))
         if self._save_settings:
             self.logger.settings("InitCorpusDBAttributes: {}".format( instance_info(self.corpdb.get_all_attr(), attr_to_len=False, attr_to_flag=False, as_str=True)))
         if self.corpdb.exist():
@@ -226,7 +240,6 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
 
     def open(self, path_to_corp_db, encryption_key=False):
-
         if self.corpdb:
             self.logger.error("CorpusOpenerError: An active Corpus Instance was found. Please close already initialized/opened Corpus, before new initialization.", exc_info=self._logger_traceback)
             return False
@@ -255,7 +268,8 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         self._template_name = info_dict["template_name"]
         self._sentiment_analyzer = info_dict["sentiment_analyzer"]
         self._preprocession = info_dict["preprocession"]
-
+        self._text_field_name = info_dict["text_field_name"]
+        self._id_field_name = info_dict["id_field_name"]
         self._id = info_dict["id"]
         self._pos_tagger = info_dict["pos_tagger"]
         self._del_hashtag = info_dict["del_hashtag"]
@@ -277,7 +291,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         self._del_num = info_dict["del_num"]
         self._del_mention = info_dict["del_mention"]
         self._emojis_normalization = info_dict["emojis_normalization"]
-
+        
 
 
     def _init_attributesfor_dbhandler(self):
@@ -303,9 +317,19 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                         "optimizer_journal_mode":self._optimizer_journal_mode,
                         "optimizer_temp_store":self._optimizer_temp_store,
                         "use_cash":self._use_cash,
+                        "replace_double_items":True,
                         "stop_process_if_possible":self._stop_process_if_possible,
+                        "make_backup": self._make_backup,
+                        "lazyness_border": self._lazyness_border,
+                        "replace_double_items": self._replace_double_items, 
+                        "save_settings": self._save_settings, 
+                        "save_status": self._save_status,
+                        "log_content": self._log_content,
+                        "clear_logger": self._clear_logger,
                         }
         return init_attributes_db_handler
+
+
 
 
     def info(self):
@@ -353,6 +377,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         self.counters_attrs = defaultdict(lambda:defaultdict(dict))
         self.status_bars_manager =  self._get_status_bars_manager()
         #self._cleaned_token = (None, u":DEL:")
+        self._colnames_in_doc_wasnt_checked = False
         self._tags_to_delete = self._compute_tags_to_delete()
         self._cleaned_tags = {
                                 "number":":number:",
@@ -382,7 +407,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
 
 
-    def _initialisation_of_insertion_process(self, inp_data, tablename="documents",text_field_name="text",  thread_name="Thread0",  log_ignored=True, dict_to_list=False):
+    def _initialisation_of_insertion_process(self, inp_data, tablename="documents", thread_name="Thread0",  log_ignored=True, dict_to_list=False):
             if self._status_bar:
                 if self._threads_num>1:
                     if self._status_bar:
@@ -439,7 +464,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         #p((sent_num, token_num,doc_num))
         #p(list(self.docs()))
         if self._preprocession:
-            for text_elem in self.docs(columns="text"):
+            for text_elem in self.docs(columns=self._text_field_name):
                 #p((type(text_elem),repr(text_elem)))
                 text_elem = json.loads(text_elem[0])
                 #p(text_elem)
@@ -464,8 +489,20 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             status_bar_total_summary.refresh()
             self.status_bars_manager.stop()
 
+    def _is_colnames_in_doctable(self, cols_to_check, debug=False):
+        cols_in_doc_table = self.corpdb.col("documents")
+        for colname in  cols_to_check:
+            if colname not in  cols_in_doc_table:
+                if debug:
+                    self.logger.debug("'{}'-Colname wasn't found in the DocumentTable. ".format(colname, cols_in_doc_table))
+                else:
+                    self.logger.error("'{}'-Colname wasn't found in the DocumentTable. ".format(colname, cols_in_doc_table))
+                return False
+        #self.logger.error("ALLES SUPPI")
+        return True
 
-    def _insert(self, inp_data, tablename="documents",text_field_name="text",  thread_name="Thread0",  log_ignored=True, dict_to_list=False):
+
+    def _insert(self, inp_data, tablename="documents",  thread_name="Thread0",  log_ignored=True, dict_to_list=False):
         try:  
             self._check_termination(thread_name=thread_name) 
             time.sleep(2) # 
@@ -473,19 +510,133 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             ############################################################
             ####################INITIALISATION####################
             ############################################################
-            status_bar_insertion_in_the_current_thread = self._initialisation_of_insertion_process( inp_data, tablename=tablename,text_field_name=text_field_name,  thread_name=thread_name,  log_ignored=log_ignored, dict_to_list=dict_to_list)
+            status_bar_insertion_in_the_current_thread = self._initialisation_of_insertion_process( inp_data, tablename=tablename,  thread_name=thread_name,  log_ignored=log_ignored, dict_to_list=dict_to_list)
             if self._status_bar:
                 if not  status_bar_insertion_in_the_current_thread: return False
-
+                #
             ############################################################
             #################### MAIN INSERTION PROCESS ####################
             ############################################################
+            
+            to_update = True
+            self._colnames_in_doc_wasnt_checked = True
             for row_as_dict in inp_data:
+                #self._check_termination(thread_name=thread_name) 
+                #p(row_as_dict.keys(), "row_as_dict.keys")
+                #p(row_as_dict, "row_as_dict")
+                #sys.exit()
+                if self._colnames_in_doc_wasnt_checked:
+                    if row_as_dict:
+                        with self.locker:
+                            if self._colnames_in_doc_wasnt_checked:
+                                #p("----1111")
+                                if self._terminated:
+                                    self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
+                                    return False
+                                return_error = False
+                                #p("0000")
+
+                                #invalid_symbols_in_colnames = "{}[]:,;-()°^<>="
+                                is_invalid = False
+                                for colname in row_as_dict.keys():
+                                    try:
+                                        colname = colname.decode("utf-8")
+                                    except:
+                                        pass
+                                    for invalid_symbol in Corpus.invalid_symbols_in_colnames:
+                                        #p((colname, invalid_symbol, ))
+                                        #p((type(colname),type(invalid_symbol)))
+                                        if invalid_symbol in colname:
+                                            if invalid_symbol == " ":
+                                                invalid_symbol = "WHITE_SPACE"
+                                            self.logger.error("InvalidColNamesError:  '{}'-ColumnName contain minimum one invalid Symbol, and that is:  '{}'. ".format(colname, invalid_symbol))
+                                            is_invalid = True
+                                            #self._terminated = True
+
+                                if is_invalid:
+                                    self.logger.error("In the input Data (ColNames) was found minimum one invalid symbol. Please clean Data from the invalid symbols and start this process one more time.  Please consult logs for more Information.\n   Please ensure that all ColNames in you input Data don't contain following symbols: '{}'.".format(Corpus.invalid_symbols_in_colnames))
+                                    self._terminated = True
+                                    self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
+                                    return False
+
+                                if not self._is_colnames_in_doctable(row_as_dict.keys(), debug=self._heal_me_if_possible):
+                                    #p("1111")
+                                    if self.corpdb.rownum("documents") == 0:
+                                        #p("22222")
+                                        if self._heal_me_if_possible:
+                                            #p("22222´´´´´´´")
+                                            cursor_name = thread_name+"_temp"
+                                            old_cols_in_doc = self.corpdb.col("documents")
+                                            drop_status = self.corpdb.drop_table("documents", dbname="main", thread_name=cursor_name)
+                                            if not drop_status["status"]:
+                                                self.logger.error("HealingError: Tables 'Documents' wasn't deleted. ")
+                                                self._terminated = True
+                                                self._colnames_in_doc_wasnt_checked = False
+                                                self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
+                                                return False
+                                            
+                                            temp_cols_and_types_in_doc = [(colname, "TEXT") for colname in row_as_dict.keys()]
+                                            init_table_status= self.corpdb._init_default_table("corpus", "documents", temp_cols_and_types_in_doc, constraints=db_helper.default_constraints["corpus"]["documents"])
+                                            if not init_table_status["status"]:
+                                                self.logger.error("HealingError: Reinitialisation of the ColNames is failed:\n  Status_Information:\n    ColNamesFromDocTablesBevoreHealing='{}';\n    DefaultColNames='{}';\n    ColnamesWhichWasFoundInCurrentDocItem='{}'.".format(old_cols_in_doc, db_helper.default_tables["corpus"]["documents"]["basic"].keys(),  row_as_dict.keys()))
+                                                self._terminated = True
+                                                self._colnames_in_doc_wasnt_checked = False
+                                                self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
+                                                return False
+
+                                            self.corpdb._update_temp_indexesList_in_instance(thread_name=cursor_name)
+                                            #self._update_database_pragma_list(thread_name=thread_name)
+                                            self.corpdb._update_pragma_table_info(thread_name=cursor_name)
+                                        else:
+                                            #p("2222______")
+                                            #return_error = False
+                                            if self._log_content:
+                                                cols_in_elem = row_as_dict.keys()
+                                                cols_in_doc = self.corpdb.col("documents")
+                                                diff = set(cols_in_elem).symmetric_difference(set(cols_in_doc))
+                                            else:
+                                                cols_in_elem = ":HIDDEN:"
+                                                cols_in_doc = ":HIDDEN:"
+                                                diff = ":HIDDEN:"
+                                            self.logger.error("InputColNamesDifference: Current DocItem contain also not initialized colnames.\n     Info_about_the_current_State:\n    ColsFromTheCurrentDocItem: '{}';\n    InitilizedColsInTheDocumentsTable: '{}';\n    ColsDifferenz: '{}'\n  Solution:\n   1) Use 'template_name'-Option in Corpus to use preinitialised colnames (ex:{});\n   2) Use 'cols_and_types_in_doc'-Option and predefine your own colnames and types (example for API: [('gender', 'TEXT'), ('age','INTEGER')]; example for command_line_interface: 'gender:TEXT,age:INTEGER')  ;\n   3) Set 'heal_me_if_possible'-Option to give the DB permission to repair some broken data if it is possible. But be carefully with that option because, it could create unexpected errors.\n".format(cols_in_elem, cols_in_doc, diff,DBHandler.templates.keys() ))
+                                            self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
+                                            self._terminated = True
+                                            self._colnames_in_doc_wasnt_checked = False
+                                            return False
+
+                                        self._colnames_in_doc_wasnt_checked = False
+
+                                    else:
+                                        #p("3333")
+                                        #return_error = False
+                                        if self._log_content:
+                                            cols_in_elem = row_as_dict.keys()
+                                            cols_in_doc = self.corpdb.col("documents")
+                                            diff = set(cols_in_elem).symmetric_difference(set(cols_in_doc))
+                                        else:
+                                            cols_in_elem = ":HIDDEN:"
+                                            cols_in_doc = ":HIDDEN:"
+                                            diff = ":HIDDEN:"
+                                        if self._heal_me_if_possible:
+                                            self.logger.error("InputColNamesDifference: Current DocItem contain also not initialized colnames. And it wasn't possible to repair it.\n  Info_about_the_current_State:\n    ColsFromTheCurrentDocItem: '{}';\n    InitilizedColsInTheDocumentsTable: '{}';\n    ColsDifferenz: '{}' \n  Solution:\n   1) Use 'template_name'-Option in Corpus to use preinitialised colnames (ex:{});\n   2) Use 'cols_and_types_in_doc'-Option and predefine your own colnames and types (example for API: [('gender', 'TEXT'), ('age','INTEGER')]; example for command_line_interface: 'gender:TEXT,age:INTEGER')  ;".format(cols_in_elem, cols_in_doc, diff,DBHandler.templates.keys() ))
+                                        else:
+                                            self.logger.error("InputColNamesDifference: Current DocItem contain also not initialized colnames.\n   Info_about_the_current_State:\n    ColsFromTheCurrentDocItem: '{}';\n    InitilizedColsInTheDocumentsTable: '{}';\n    ColsDifferenz: '{}' \n  Solution:\n   1) Use 'template_name'-Option in Corpus to use preinitialised colnames (ex:{});\n   2) Use 'cols_and_types_in_doc'-Option and predefine your own colnames and types (example for API: [('gender', 'TEXT'), ('age','INTEGER')]; example for command_line_interface: 'gender:TEXT,age:INTEGER')  ;\n   3) Set 'heal_me_if_possible'-Option to give the DB permission to repair some broken data if it is possible. But be carefully with that option because, it could create unexpected errors.".format(cols_in_elem, cols_in_doc, diff,DBHandler.templates.keys() ))
+                                            
+                                        self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
+                                        self._terminated = True
+                                        self._colnames_in_doc_wasnt_checked = False
+                                        return False
+                    self._colnames_in_doc_wasnt_checked = False
+
+
+
                 #p(row_as_dict ,"rw_as_dict ")
                 #self.offshoot[self.runcount].append(row_as_dict)
                 self._check_termination(thread_name=thread_name) 
+                #p(status_bar_insertion_in_the_current_thread, "status_bar_insertion_in_the_current_thread")
                 if row_as_dict == self._end_file_marker:
                     #f.write("{}\n".format(row_as_dict))
+
                     if self._status_bar:
                         if self._use_end_file_marker:
                             status_bar_insertion_in_the_current_thread.update(incr=1)
@@ -498,7 +649,18 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                             status_bar_insertion_in_the_current_thread.update(incr=1)
                             if self._threads_num>1:
                                 self.main_status_bar_of_insertions.update(incr=1)
-                
+                        else:
+                            if to_update:
+                                to_update = False
+                                counter = status_bar_insertion_in_the_current_thread.count
+                                status_bar_insertion_in_the_current_thread.count = counter + 1
+                                #p(status_bar_insertion_in_the_current_thread.count, "1status_bar_insertion_in_the_current_thread.count")
+                                status_bar_insertion_in_the_current_thread.refresh()
+                                status_bar_insertion_in_the_current_thread.count == counter
+                                #p(status_bar_insertion_in_the_current_thread.count, "2status_bar_insertion_in_the_current_thread.count")
+                                status_bar_insertion_in_the_current_thread.refresh()
+
+                #p(status_bar_insertion_in_the_current_thread, "status_bar_insertion_in_the_current_thread")
                 # for empty insertions
                 if not row_as_dict:
                     #f.write("{}\n".format(row_as_dict))
@@ -511,7 +673,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                 if self._preprocession:
                     text_preprocessed = False
                     try:
-                        preproc = self._preprocessing(row_as_dict[text_field_name],thread_name=thread_name, log_ignored=log_ignored, row=row_as_dict)
+                        preproc = self._preprocessing(row_as_dict[self._text_field_name],thread_name=thread_name, log_ignored=log_ignored, row=row_as_dict)
                         if preproc:
                             if preproc == "terminated":
                                 self.logger.critical("{} got an  Termination Command!! and was terminated.".format(thread_name))
@@ -539,14 +701,14 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
 
                     if text_preprocessed:
-                        row_as_dict[text_field_name] = text_preprocessed
+                        row_as_dict[self._text_field_name] = text_preprocessed
                     else:
-                        self._check_termination(thread_name=thread_name) 
+                        #self._check_termination(thread_name=thread_name) 
                         #self.logger.warning("Text in the current DictRow (id='{}') wasn't preprocessed. This Row was ignored.".format(row_as_dict["id"]))
                         self.outsorted_insertion_status_general[thread_name] +=1
                         continue
                 #else:
-                #    row_as_dict[text_field_name] = (row_as_dict[text_field_name], None)
+                #    row_as_dict[self._text_field_name] = (row_as_dict[self._text_field_name], None)
 
 
                 ############################################################
@@ -560,7 +722,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                 if insertion_status["status"]: 
                     self.inserted_insertion_status_general[thread_name] += insertion_status["out_obj"]
                     self.outsorted_insertion_status_general[thread_name] += insertion_status["outsort"]
-                    self.logger.low_debug("Row was inserted into DB.")
+                    #self.logger.low_debug("Row was inserted into DB.")
                 elif insertion_status["action"] == "outsorted":
                     self.outsorted_insertion_status_general[thread_name] +=1
                 elif insertion_status["action"] == "ThreadsCrash":
@@ -624,10 +786,16 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             return False
 
 
-    def insert(self, inp_data, tablename="documents",text_field_name="text",  thread_name="Thread0",  allow_big_number_of_streams=False, number_of_allow_streams=8, log_ignored=True, dict_to_list=False, create_def_indexes=True):
+    def insert(self, inp_data, tablename="documents", thread_name="Thread0",  allow_big_number_of_streams=False, number_of_allow_streams=8, log_ignored=True, dict_to_list=False, create_def_indexes=True):
         try:
             if not self._check_db_should_exist():
                 return False
+
+            if self.corpdb.get_attr("locked"):
+                            self.logger.error("Current DB ('{}') is still be locked. Possibly it in ht now fr in-useom other process or la thest computation process is failed.".format(self.corpdb.fname()))
+                            return False
+            self.corpdb.update_attr("locked", True)
+
             self._init_insertions_variables()
             self._start_time_of_the_last_insertion = time.time()
             self.runcount += 1
@@ -644,6 +812,9 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             #self.status_bars_manager =  self._get_status_bars_manager()
             #Manager.term
             #self.status_bars_manager.term print(t.bold_red_on_bright_green('It hurts my eyes!'))
+            
+            
+
             if self._status_bar:
                 print "\n"
                 if self._in_memory:
@@ -682,7 +853,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                     return False
 
                 thread_name = "Thread{}".format(i)
-                processThread = MyThread(target=self._insert, args=(gen, tablename, text_field_name,  thread_name, log_ignored, dict_to_list), name=thread_name)
+                processThread = MyThread(target=self._insert, args=(gen, tablename,  thread_name, log_ignored, dict_to_list), name=thread_name)
                 processThread.setDaemon(True)
                 processThread.start()
                 self.active_threads.append(processThread)
@@ -733,6 +904,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             rownum = self.corpdb.rownum("documents")
             if rownum >0:
                 self.logger.info("Current CorpusDB has '{}' rows in the Documents Table.".format(rownum))
+                self.corpdb.update_attr("locked", False)
             else:
                 self.logger.error("InsertionProcessFailed: No one Document was added into CorpDB.")
                 return False
@@ -753,6 +925,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                 return False
             else:
                 self.logger.info("Insertion process end successful!!!")
+                self.corpdb._commit()
                 return True
             
 
@@ -819,6 +992,10 @@ class Corpus(BaseContent,BaseDB,CorpusData):
     def docs(self, columns=False, select=False,  where=False, connector_where="AND", output="list", size_to_fetch=1000, limit=-1, offset=-1, stream_number=1, adjust_to_cpu=True, min_files_pro_stream=1000):
         row_number = self.corpdb.rownum("documents")
         #p((row_number))
+        if self.corpdb.get_attr("locked"):
+                self.logger.error("Current DB is still be locked. Possibly it is right now in-use from other process or the last insertion-process is failed.")
+                return False
+
         wish_stream_number = stream_number
         if stream_number <1:
             stream_number = 1000000
@@ -967,11 +1144,12 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             if self._preprocession:
                 ### Step 1: Init Status Bar 
                 if not self._terminated:
-                    p_list = [self._sent_splitter, self._pos_tagger, self._lang_classification, self._tokenizer] #,self._stemmer
-                    preprocessors_number = sum([True for p in p_list if p ])
+                    p_list = [self._sent_splitter, self._pos_tagger, self._lang_classification, self._tokenizer, self._sentiment_analyzer] #,self._stemmer
+                    #p(p_list, "p_list")
+                    preprocessors_number = sum([True for pp in p_list if pp ])
                     if self._status_bar:
                         status_bar_preprocessors_init = self._get_new_status_bar(preprocessors_number, "{}:PreprocessorsInit".format(thread_name), "unit")
-
+                    #p(p_list, "p_list")
                 ### Step 2. 
                 if not self._terminated: 
                     if not self._set_tokenizer(split_camel_case=self._tok_split_camel_case, language=self._language, thread_name=thread_name):
@@ -999,6 +1177,11 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                             status_bar_preprocessors_init.refresh()
                             #status_bar_preprocessors_init.update(incr=1)
 
+                if self._sentiment_analyzer:
+                    if self._status_bar:
+                        status_bar_preprocessors_init.update(incr=1)
+                        status_bar_preprocessors_init.refresh()
+
                 if not self._terminated: 
                     if self._pos_tagger:
                         if not self._set_pos_tagger(thread_name=thread_name):
@@ -1018,11 +1201,13 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                             #self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
                             return Status(status=False, desc="SetRLEFailed")
 
+                
 
                 if not self._terminated: 
                     self.logger.debug("PreprocessorsInit: All Preprocessors for '{}'-Thread was initialized.".format(thread_name))
                     return Status(status=True, desc=preprocessors_number)
 
+                
 
                 if self._terminated:
                     self.logger.critical("{} was terminated!!!".format(thread_name))
@@ -1405,13 +1590,13 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         prev_pos = ""
         collected_elem = ()
         new_output_list = []
-        p(inp_list, "111inp_list")
+        #p(inp_list, "111inp_list")
         #### Step 1: collect all EMOIMG in neibourghood in one token
         for token_container in inp_list:
             #p(token_container, "token_container", c="r")
             if token_container[1] in pattern:
                 if prev_pos:
-                    p((prev_pos, token_container), c="m")
+                    #p((prev_pos, token_container), c="m")
                     if prev_pos == token_container[1]:
                         new_text_elem = u"{}{}".format(collected_elem[0], token_container[0])
                         collected_elem = (new_text_elem, collected_elem[1])
@@ -1434,7 +1619,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
                 else:
                     new_output_list.append(token_container) 
-        p(inp_list, "222inp_list")
+        #p(inp_list, "222inp_list")
         return inp_list
 
 
@@ -1487,8 +1672,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         token_index = -1
         ignore_next_step = False
         e = ("_","-")
-        #tok1 = None
-        #tok2 = None
+
         try:
             output[1]
         except:
@@ -1497,15 +1681,16 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
         ### ReCategorize Symbols
         output = [(token_cont[0], u"symbol") if text_is_punkt(token_cont[0]) and token_cont[1]!= "symbol" else token_cont  for token_cont in output ]
-        #p(output,"22output")
-
+        #p(output,"22output",c="m")
+        
         for i,tok in zip(xrange(len(output)),output):
-
             if i == 0:
                 new_output.append(tok)
 
             elif i > 0:
+                
                 last_elem = new_output[-1]
+                #p((last_elem,tok))
                 #if last_elem[1] == 
                 #p((last_elem[1], tok[1]))
                 if last_elem[1] == "emoticon" and tok[1] == 'regular':
@@ -1513,13 +1698,17 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                         new_output[-1] = (last_elem[0]+tok[0], last_elem[1])
                     else:
                         new_output.append(tok)
-                elif last_elem[1] == "symbol" and tok[1] == 'symbol':
+                elif last_elem[1] in ("symbol", "regular", 'EMOASC','emoticon') and tok[1] == 'symbol':
                     if last_elem[0][-1] == tok[0][0]:
                         new_output[-1] = (last_elem[0]+tok[0], last_elem[1])
                         #new_output[-1] = (last_elem[0]+tok[0], "FUCK")
-                    elif last_elem[0][-1] == "-" and tok[0][0] in ["(", ")"]:
-                        #new_output.append((tok1[0]+tok2[0], "emoticon"))
-                        new_output[-1] = (last_elem[0]+tok[0], "emoticon")
+                    elif last_elem[0][-1] in self._emo_sym and tok[0][0] in self._emo_sym:
+                        #p((tok, last_elem))
+                        if (last_elem[0][0] in self.em_start and last_elem[0][-1]in self.em_end) or (last_elem[0][-1] in self.em_start and last_elem[0][0]in self.em_end):
+                            new_output.append(tok)
+                        else:
+                            new_output[-1] = (last_elem[0]+tok[0], "EMOASC")
+
                     else:
                         new_output.append(tok)
                 elif last_elem[1] == "mention" and tok[1] == 'regular':
@@ -1543,7 +1732,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                             if last_item[1] == "symbol" and bevore_the_last_item[1] == "symbol":
                                 poped = new_output.pop()
                                 new_output[-1] = (last_item[0]+poped[0], poped[1])
-                        #p(new_output, "22new_output", c="r")
+        #p(new_output, "22new_output", c="r")
 
         return new_output
 
@@ -1614,6 +1803,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         # Step 2.1: Tokenization &  (https://www.kdnuggets.com/2017/12/general-approach-preprocessing-text-data.html)
         #p(inp_str, "inp_str")
         output = self.tokenize(output, thread_name=thread_name)
+        output = [(token[0].replace("'", '"'), token[1]) if "'" in token[0] else token for token in output ]
         #if not output:
         #    return "terminated"
         #if was_found:
@@ -1781,7 +1971,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
     def tokenize(self,inp_str, thread_name="Thread0"):
         try:
         
-            self.logger.low_debug("'{}'-Tokenizer: Tokenizer was called from '{}'-Thread.".format(self._tokenizer, thread_name))
+            #self.logger.low_debug("'{}'-Tokenizer: Tokenizer was called from '{}'-Thread.".format(self._tokenizer, thread_name))
             
             if self._tokenizer == "somajo":
                 return self._tokenize_with_somajo(inp_str, thread_name=thread_name)
@@ -1946,7 +2136,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
     def split_sentences(self,inp_list, thread_name="Thread0"):
         try:
         
-            self.logger.low_debug("'{}'-SentSplitter: SentSplitter was called from '{}'-Thread.".format(self._sent_splitter, thread_name))
+            #self.logger.low_debug("'{}'-SentSplitter: SentSplitter was called from '{}'-Thread.".format(self._sent_splitter, thread_name))
             if self._sent_splitter == "somajo":
                 return self._split_sentences_with_somajo(inp_list,thread_name=thread_name)
         except KeyboardInterrupt:
@@ -1976,7 +2166,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         return True
 
     def _split_sentences_with_somajo(self,inp_list, thread_name="Thread0"):
-        self.logger.low_debug("SoMaJo-SentSpliter: Start splitting into sentences.")
+        #self.logger.low_debug("SoMaJo-SentSpliter: Start splitting into sentences.")
         self.preprocessors[thread_name]["sent_splitter"].send(inp_list)
         return self.preprocessors[thread_name]["sent_splitter"].receive()
 
@@ -2032,7 +2222,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
     def tag_pos(self,inp_list, thread_name="Thread0"):
         try:
         
-            self.logger.low_debug("'{}'-POSTagger: POS-tagger was called from '{}'-Thread.".format(self._sent_splitter, thread_name))
+            #self.logger.low_debug("'{}'-POSTagger: POS-tagger was called from '{}'-Thread.".format(self._sent_splitter, thread_name))
             if self._pos_tagger == "someweta":
                 return self._tag_pos_with_someweta(inp_list, thread_name=thread_name)
             elif self._pos_tagger == "tweetnlp":
@@ -2150,7 +2340,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
     def get_sentiment(self,inp_str, thread_name="Thread0"):
     
-        self.logger.low_debug("'{}'-SentimentAnalyzer: was called from '{}'-Thread.".format(self._sent_splitter, thread_name))
+        #self.logger.low_debug("'{}'-SentimentAnalyzer: was called from '{}'-Thread.".format(self._sent_splitter, thread_name))
         if self._sentiment_analyzer == "textblob":
             return self._get_sentiment_with_textblob(inp_str, thread_name=thread_name)
         # elif self._pos_tagger == "tweetnlp":

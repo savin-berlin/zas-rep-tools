@@ -135,7 +135,7 @@ class BaseDB(object):
                 optimizer_synchronous="OFF",
                 optimizer_journal_mode="MEMORY",
                 optimizer_temp_store="MEMORY",
-                backup_bevore_first_insert=True,
+                #backup_bevore_first_insert=True,
                 **kwargs):
 
 
@@ -143,7 +143,7 @@ class BaseDB(object):
         self._rewrite = rewrite
         self._stop_if_db_already_exist = stop_if_db_already_exist
         self._make_backup = make_backup
-        self._backup_bevore_first_insert = backup_bevore_first_insert
+        #self._backup_bevore_first_insert = backup_bevore_first_insert
         self._lazyness_border = lazyness_border
         self._optimizer = optimizer
         self._in_memory = in_memory

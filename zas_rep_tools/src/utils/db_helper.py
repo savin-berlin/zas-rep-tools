@@ -233,6 +233,7 @@ attributs_names_corpus = [
                             ("doc_num", "INTEGER"),
                             ("text_field_name", "TEXT"),
                             ("id_field_name", "TEXT"),
+                            ("locked", "INTEGER"),
                         ]
 
 
@@ -262,19 +263,19 @@ default_index_for_corpus_documents = [
 ### Documnets_Table (special)
 
 extended_columns_and_types_for_corpus_documents_twitter = [
-                                ('t_created_at','TEXT NOT NULL'),
+                                ('t_created_at','TEXT'),
                                 ('t_language','TEXT'),
                                 ('t_used_client','TEXT'),
-                                ('u_created_at','TEXT NOT NULL'),
+                                ('u_created_at','TEXT'),
                                 ('u_description','TEXT'),
                                 ('u_favourites','INTEGER'),
                                 ('u_followers','INTEGER'),
                                 ('u_friends','TEXT'),
                                 ('u_id','INTEGER NOT NULL'),
                                 ('u_lang','TEXT'),
-                                ('u_given_name','TEXT NOT NULL'),
+                                ('u_given_name','TEXT'),
                                 ('u_username','TEXT NOT NULL'),
-                                ('u_verified','TEXT NOT NULL'),
+                                ('u_verified','TEXT'),
                                 ('u_location','TEXT'),
                                 ('is_extended','INTEGER'),
                                 ('is_retweet','INTEGER'),
@@ -328,10 +329,14 @@ attributs_names_stats = [
                             ("ignore_num", "INTEGER"),
                             ("force_cleaning", "INTEGER"),
                             ("case_sensitiv", "INTEGER"),
-                            ("text_field_name", "TEXT"),
-                            ("id_field_name", "TEXT"),
+                            #("text_field_name", "TEXT"),
+                            #("id_field_name", "TEXT"),
                             ("full_repetativ_syntagma", "INTEGER"),
                             ("min_scope_for_indexes", "INTEGER"),
+                            ("locked", "INTEGER"),
+                            ("pos_tagger", "TEXT"),
+                            ("sentiment_analyzer", "TEXT"),
+                            ("baseline_delimiter", "TEXT"),
                             
                                                   
                         ]
@@ -742,26 +747,6 @@ def columns_and_types_in_tuples_to_str(attributs_names):
 
 
 
-def where_condition_to_str(inputobj,  connector="AND"):
-    outputstr = ""
-
-    i=0
-    if isinstance(inputobj, list):
-        for item in inputobj:
-            i+=1
-            if i < len(inputobj):
-                outputstr += " {} {}".format(item, connector)
-            else:
-                outputstr += " {} ".format(item)
-
-    elif isinstance(inputobj, str):
-        outputstr += " {}".format(inputobj)
-
-    else:
-        return False
-
-
-    return outputstr
 
 
 
@@ -984,29 +969,38 @@ def values_to_list(values, mode):
 #     return values_as_list
 
 
+# def where_condition_to_str(inputobj,  connector="AND"):
+#     outputstr = ""
+
+#     i=0
+#     if isinstance(inputobj, list):
+#         for item in inputobj:
+#             i+=1
+#             if i < len(inputobj):
+#                 outputstr += " {} {}".format(item, connector)
+#             else:
+#                 outputstr += " {} ".format(item)
+
+#     elif isinstance(inputobj, str):
+#         outputstr += " {}".format(inputobj)
+
+#     else:
+#         return False
+
+
+#     return outputstr
 
 
 
 def where_condition_to_str(inputobj,  connector="AND"):
-    outputstr = ""
+    #outputstr = ""
 
-    i=0
-    if isinstance(inputobj, list):
-        for item in inputobj:
-            i+=1
-            if i < len(inputobj):
-                outputstr += u" {} {}".format(item, connector)
-            else:
-                outputstr += u" {} ".format(item)
-
-    elif isinstance(inputobj, str):
-        outputstr += u" {}".format(inputobj)
-
-    else:
-        return False
-
-
-    return outputstr
+    try:
+        inputobj.decode
+        return u" {}".format(inputobj)
+    except:
+        #connector = u" {} ".format(connector)
+        return  " {} ".format(connector).join(inputobj)
 
 
 def get_file_name(prjFolder,first_id ,DBname, language,visibility, typ,  fileName=False, platform_name=False, second_id=False,encrypted=False, rewrite=False, stop_if_db_already_exist=False):

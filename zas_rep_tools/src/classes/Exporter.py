@@ -123,7 +123,11 @@ class Exporter(BaseContent):
         #p((len(self._inpdata), self._inpdata))
         #p("NEW\n\n", "NEW", c="r")
         #if 
+
+        #p((path_to_export_dir , fname, fieldnames,  rows_limit_in_file))
+        #p(self._inpdata)
         for row in self._inpdata:
+            #p("333")
             if not row:
                 continue
             #p(row, "row")
@@ -331,8 +335,9 @@ class Exporter(BaseContent):
             self.logger.error("NewFileGetterError: Given file_format '{}' is not supported. Please use one of the following file formats: '{}'. ".format(file_extention,Exporter.supported_file_formats ), exc_info=self._logger_traceback)
             sys.exit()
 
-        pattern = re.compile("^(.+)_\d+\..+")
+        pattern = re.compile("^(.+)_\d{,4}\..+")
         matched_fname_current = pattern.findall(fname)
+        #p(matched_fname_current, "matched_fname_current")
         matched_fname_current = matched_fname_current[0] if matched_fname_current else fname
         count_of_existing_files = self._numbers_of_alredy_created_files[path_to_dir][file_extention][matched_fname_current]
         new_fname_without_extention = fname+ "_{}".format(count_of_existing_files)
@@ -354,7 +359,7 @@ class Exporter(BaseContent):
                 for exist_fname in  exist_fnames_in_dir:
                     matched_fname_from_listdir = pattern.findall(exist_fname)
                     matched_fname_from_listdir = matched_fname_from_listdir[0] if matched_fname_from_listdir else exist_fname
-
+                    #if fname != "export":
                     if matched_fname_current == matched_fname_from_listdir:
                         if self._rewrite:
                             exist_fnames_in_dir = os.listdir(path_to_dir)

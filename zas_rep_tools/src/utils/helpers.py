@@ -43,6 +43,7 @@ from multiprocessing import Process, RawValue
 import traceback
 #from collections import 
 import platform
+import unicodecsv
 
 
 
@@ -1724,7 +1725,7 @@ def make_zipfile(output_filename, source_dir):
 def get_number_of_streams_adjust_cpu( min_files_pro_stream, row_number, stream_number, cpu_percent_to_get=50):
     if row_number <= 0: 
         return None
-
+    #p(( min_files_pro_stream, row_number, stream_number, cpu_percent_to_get))
     if min_files_pro_stream <= 0:
         min_files_pro_stream = 1
 

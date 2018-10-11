@@ -204,6 +204,41 @@ class ConfigerData(object):
                 }
 
 
+        self._counted_reps = {
+                                "en": {
+                                            u'#shetlife': {'baseline': 3, 'redu': [1, 2]},
+                                             u'-(': {'baseline': 1, 'repl': (1, 1)},
+                                             u'-)': {'baseline': 1, 'repl': (1, 1)},
+                                             u'.': {'baseline': 7, 'repl': (1, 1)},
+                                             u'1': {'baseline': 2, 'repl': (2, 2)},
+                                             u':-(': {'baseline': 2, 'repl': (2, 2)},
+                                             u'=)': {'baseline': 1, 'repl': (1, 1)},
+                                             u'?': {'repl': (1, 1), 'baseline': 2},
+                                             u'bad': {'baseline': 6, 'redu': (1, 5), 'repl': (4, 7)},
+                                             u'big': {'baseline': 5, 'redu': (2, 5), 'repl': (2, 2)},
+                                             u'but': {'baseline': 13, 'redu': (4, 10), 'repl': (11, 16)},
+                                             u'explanation': {'baseline': 1, 'repl': (1, 1)},
+                                             u'glad': {'baseline': 1, 'repl': (1, 1)},
+                                             u'model': {'baseline': 2, 'repl': (1, 2)},
+                                             u'pity': {'baseline': 4, 'redu': (1, 4), 'repl': (2, 4)},
+                                             u'realy': {'baseline': 4, 'redu': (1, 3), 'repl': (2, 4)},
+                                             u'right': {'baseline': 1, 'repl': (1, 1)},
+                                             u'se': {'baseline': 1, 'repl': (1, 1)},
+                                             u'tiny': {'baseline': 10, 'redu': (2, 9), 'repl': (1, 1)},
+                                             u'very': {'baseline': 3, 'redu': (1, 3), 'repl': (2, 4)},
+                                             u'you': {'baseline': 8, 'redu': (2, 4), 'repl': (7, 9)},
+                                             u'\U0001f308': {'baseline': 3, 'repl': (3, 3)},
+                                             u'\U0001f600': {'baseline': 5, 'repl': (4, 4)},
+                                             u'\U0001f62b': {'baseline': 3, 'repl': (3, 3)}
+                                      },
+                            }
+
+        self.right_rep_num = {
+                                "en": {
+                                        "repls":sum([data["repl"][1] for word, data in self._counted_reps["en"].items() if "repl" in data ]),
+                                        "redus":sum([data["redu"][0] for word, data in self._counted_reps["en"].items() if "redu" in data ]),
+                                        },   
+                             }
 
 
     def _row_text_elements(self, lang="all"):

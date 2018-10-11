@@ -17,6 +17,9 @@
 #import Stemmer
 
 class CorpusData(object):
+    
+    invalid_symbols_in_colnames = list(u"{}[]:,;-()<>=#@?^°")+[u" "]
+
     info = {
             "tagger":{
                         "tweetnlp":{

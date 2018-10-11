@@ -105,6 +105,7 @@ class MultiCursor(BasicCursor,threading.Thread):
     def execute(self,sql,*args, **kwargs):
         #print self, "67"
         #self.cursor = self.connection.cursor()
+        #p(locals())
         with self.lock_connection:
             self._check_cursor_existenz()
             self.cursor.execute(sql,*args, **kwargs)

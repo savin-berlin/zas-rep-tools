@@ -35,9 +35,11 @@ def create_test_data():
     global is_test_data_exist
     if not is_test_data_exist:
         #"silent"
-        test_data_creator = TestsConfiger(mode="silent")
+        #test_data_creator = TestsConfiger(mode="prod-")
+        test_data_creator = TestsConfiger(mode="error")
+        #test_data_creator = TestsConfiger(mode="silent")
         #test_data_creator = TestsConfiger(mode="dev", rewrite=False)
-        test_data_creator.create_test_data(rewrite=False,use_original_classes=True, corp_status_bar=True, corp_log_ignored=True, corp_lang_classification=True)
+        test_data_creator.create_test_data(rewrite=False,use_original_classes=True, status_bar=True, corp_log_ignored=True, corp_lang_classification=True)
         del test_data_creator
         clear_logger()
         is_test_data_exist = True

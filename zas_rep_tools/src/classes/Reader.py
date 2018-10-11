@@ -65,14 +65,17 @@ csv.field_size_limit(sys.maxsize)
 class Reader(BaseContent):
     #supported_encodings_types = ["utf-8"]
     supported_encodings_types = set(aliases.values())
+    supported_encodings_types.add("utf-8")
     supported_file_types = ["txt", "json", "xml", "csv"]
+    supported_file_types_to_export = ["sqlite", "json", "xml", "csv"]
 
     regex_templates = {
                 "blogger":r"(?P<id>[\d]*)\.(?P<gender>[\w]*)\.(?P<age>\d*)\.(?P<working_area>.*)\.(?P<star_constellation>[\w]*)",
                 }
 
     reader_supported_formatter = {
-                                "json":["twitter"],
+                                "json":["TwitterStreamAPI".lower()],
+                                "csv":["Sifter".lower()],
                                 }
 
                             
@@ -95,7 +98,7 @@ class Reader(BaseContent):
         #self._columns_source = columns_source
         self._regex_template =regex_template  if regex_template else "blogger"
         self._regex_for_fname = regex_for_fname 
-        self._formatter_name = formatter_name
+        self._formatter_name = formatter_name.lower() if formatter_name else formatter_name
         self._text_field_name = text_field_name
         self._id_field_name = id_field_name
         self._ignore_retweets = ignore_retweets
@@ -129,6 +132,12 @@ class Reader(BaseContent):
         ## Validation 
         if not self._validate_given_file_format():
             sys.exit()
+
+        if self._end_file_marker == -10:
+            self.logger.error("Illegal value of the 'end_file_marker'. Please use another one.")
+            #return False
+            sys.exit()
+
 
         if not self._validation_given_path():
             sys.exit()
@@ -182,7 +191,7 @@ class Reader(BaseContent):
 
 ###########################+++++++++############################
     
-    def _generator_helper(self, inp_obj, colnames=False, encoding="utf-8", csvdelimiter=',' ):
+    def _generator_helper(self, inp_obj, colnames=False, encoding="utf-8", csvdelimiter=',',f_name=False ):
         #try:
         
         #output.write('{"id":123456}')
@@ -194,18 +203,30 @@ class Reader(BaseContent):
 
         elif self._file_format == "json":
             for row in self._readJSON(inp_obj, encoding=encoding, colnames=colnames,):
+                if row == -10:
+                    yield -10
+                    self.logger.error("ReaderError: Probably Invalid InputData. Please check logs for more information.")
+                    return
                 yield row
             if self._send_end_file_marker:
                 yield self._end_file_marker
 
         elif self._file_format == "xml":
             for row in self._readXML(inp_obj, encoding=encoding, colnames=colnames):
+                if row == -10:
+                    yield -10
+                    self.logger.error("ReaderError: Probably Invalid InputData. Please check logs for more information.")
+                    return 
                 yield row
             if self._send_end_file_marker:
                 yield self._end_file_marker
 
         elif self._file_format == "csv":
-            for row in self._readCSV(inp_obj, encoding=encoding, colnames=colnames, delimiter=csvdelimiter):
+            for row in self._readCSV(inp_obj, encoding=encoding, colnames=colnames, delimiter=csvdelimiter,f_name=f_name):
+                if row == -10:
+                    self.logger.error("ReaderError: Probably Invalid InputData. Please check logs for more information.")
+                    yield -10
+                    return 
                 yield row
             if self._send_end_file_marker:
                 yield self._end_file_marker
@@ -224,6 +245,9 @@ class Reader(BaseContent):
         if input_path_list:
             for path_to_file in input_path_list:
                 for row in self._generator_helper(path_to_file, colnames=colnames, encoding=encoding, csvdelimiter=csvdelimiter):
+                    if row == -10:
+                        yield {}
+                        return 
                     yield row
 
         if self._read_from_zip:
@@ -232,7 +256,10 @@ class Reader(BaseContent):
                     archive = zipfile.ZipFile(path_to_zip, 'r')
                     for path_to_file in list_with_path_to_files:
                         f = archive.open(path_to_file)
-                        for row in self._generator_helper(f, colnames=colnames, encoding=encoding, csvdelimiter=csvdelimiter):
+                        for row in self._generator_helper(f, colnames=colnames, encoding=encoding, csvdelimiter=csvdelimiter, f_name=f.name):
+                            if row == -10:
+                                yield {}
+                                return 
                             yield row
 
         self._stream_done += 1
@@ -480,7 +507,7 @@ class Reader(BaseContent):
 
     def _readTXT(self, inp_object,encoding="utf-8", columns_extract_from_fname=True, colnames=False,  string_was_given=False):
         try:
-            if isinstance(inp_object, str):
+            if isinstance(inp_object, (unicode,str)):
                 if not  os.path.isfile(inp_object):
                     self.logger.error("TXTFileNotExistError: Following File wasn't found: '{}'. ".format(inp_object), exc_info=self._logger_traceback)
                     return False
@@ -520,9 +547,9 @@ class Reader(BaseContent):
             #return
 
 
-    def _readCSV(self, inp_object,encoding="utf_8", delimiter=',', colnames=False,  string_was_given=False):
+    def _readCSV(self, inp_object,encoding="utf_8", delimiter=',', colnames=False,  string_was_given=False,f_name=False):
         try:
-            if isinstance(inp_object, str):
+            if isinstance(inp_object, (unicode,str)):
                 if not  os.path.isfile(inp_object):
                     self.logger.error("CSVFileNotExistError: Following File wasn't found: '{}'. ".format(inp_object), exc_info=self._logger_traceback)
                     yield False
@@ -530,35 +557,183 @@ class Reader(BaseContent):
                 else:
                     f = open(inp_object, "r")
                     as_file_handler = False
+                    f_name = f_name if f_name else f.name
             else:
                 f = inp_object
+                try:
+                    f_name = f_name if f_name else f.name 
+                except:
+                    f_name = None
                 as_file_handler = True
 
+            delimiter = str(delimiter)
             readCSV = unicodecsv.DictReader(f, delimiter=delimiter, encoding=encoding)
-            headers = readCSV.fieldnames
 
-            for row in readCSV:
-                if row:
-                    if (self._text_field_name not in row) or (self._id_field_name not in row):
-                        self.logger.outsorted_reader("CSVReader: Given CSV '{}' has wrong structure. Not one text or id element was found.".format(f.name))
-                        yield {}
+            if self._formatter_name == "sifter":
+                #readCSV.fieldnames = [col.lower() for col in readCSV.fieldnames]
+                #p(readCSV.fieldnames, "readCSV.fieldnames")
+                fieldnames = readCSV.fieldnames if readCSV.fieldnames else readCSV.unicode_fieldnames
+                cleaned = [col.lower().replace("[m]", " ").strip().strip(":").strip("_") for col in fieldnames]
+                readCSV.unicode_fieldnames = cleaned
+
+            #readCSV.renew_fieldnames()
+                    #sys.exit()
+
+            #p(dict(readCSV), "readCSV")
+
+            to_check = True
+            for row_dict in readCSV:
+                if self._formatter_name:
+                    if self._formatter_name in Reader.reader_supported_formatter["csv"]:
+                        #readCSV.fieldnames = [col.lower() for col in readCSV.fieldnames]
+                        #p(readCSV.fieldnames, "readCSV.fieldnames")
+                        #fieldnames = readCSV.fieldnames if readCSV.fieldnames else readCSV.unicode_fieldnames
+                        #cleaned = [col.lower().replace("[m]", " ").strip().strip(":").strip("_") for col in fieldnames]
+                        #readCSV.unicode_fieldnames = cleaned
+                        row_dict = self._csv_sifter_formatter(row_dict,f_name=f_name)
+                        if row_dict == -10:
+                            yield -10
+                            return 
+                    else:
+                        self.logger.critical("CSVReaderError: Given '{}'-FormatterName is invalid for CSVFiles. Please choice one of the following: '{}'. Execution of the Program was stopped. (fname: '{}')".format(self._formatter_name, Reader.reader_supported_formatter["csv"], f_name))
+                        yield -10
+                        return
+
+                try:
+                    if to_check:
+                        to_check = False
+                        if None in  row_dict.keys():
+                            #raise Exception
+                            self.logger.error("CSVReaderError: The structure of the given File is invalid. Probably wrong 'csvdelimiter'  was given. Please try other one. (given csvdelimiter: '{}') (fname: '{}')  ".format(delimiter,f_name))
+                            yield -10
+                            return
+                        if len(row_dict) <=2 or row_dict.keys()<=2:
+                            self.logger.critical("CSVReaderError: Probably the structure of the given File is wrong or File contain just few items.  Probably wrong 'csvdelimiter'  was given. Please check the correctness of the given CSV File and give right csvdelimiter. (given csvdelimiter: '{}') (fname: '{}')  ".format(delimiter, f_name))
+                        
+                except AttributeError as e:
+                    self.logger.error("Returned Row is not an Dict. Probably Wrongs Structure of the current CSVFileName: '{}'".format(f_name), exc_info=self._logger_traceback)
+                    yield -10 
+                    return 
+
+
+
+
+
+                #p(row_dict, "row_dict")
+
+
+                if row_dict:
+                    if (self._text_field_name not in row_dict) or (self._id_field_name not in row_dict):
+                        if not self._log_content:
+                            keys = ":HidedContent:"
+                        else:
+                            keys = row_dict.keys()
+                        #p(self._formatter_name, "self._formatter_name")
+                        if self._formatter_name:
+                            self.logger.error("CSVReader: Given CSV '{}' has wrong structure. Text or Id element wasn't found.\n Reasons:\n  1) Probably wrong 'text_field_name' and 'id_field_name' was given. (text_field_name: '{}'; id_field_name: '{}'); If this tags are wrong please use options and set right tags name.\n\n  Following columns was found: '{}'.".format(f.name,self._text_field_name,self._id_field_name, keys ))
+                        else:
+                            self.logger.error("CSVReader: Given CSV '{}' has wrong structure. Text or Id element wasn't found.\n Reasons:\n  1) Probably wrong 'text_field_name' and 'id_field_name' was given. (text_field_name: '{}'; id_field_name: '{}'); If this tags are wrong please use options and set right tags name.\n 2) 'formatter_name'-Option wasn't given. If this CSV has contain Tweets, which comes  from Sifter/TextDiscovery-Services than please set 'sifter' to  'formatter_name'-Option. \n\n  Following columns was found: '{}'.".format(f.name,self._text_field_name,self._id_field_name, keys ))
+                            
+                        #self.logger.error()
+                        yield -10
                         return 
 
                 if colnames:
-                    yield self._get_data_from_dic_for_given_keys(colnames, row)
+                    yield self._get_data_from_dic_for_given_keys(colnames, row_dict)
                 else:
-                    yield row
+                    yield row_dict
 
         except Exception, e:
             print_exc_plus() if self._ext_tb else ""
-            self.logger.error("CSVReaderError: Following Exception was throw: '{}'.  For following File: '{}'.".format(e, f.name), exc_info=self._logger_traceback)
+            self.logger.error("CSVReaderError: Following Exception was throw: '{}'.  For following File: '{}'.".format(e, f_name), exc_info=self._logger_traceback)
             yield False
             return
 
 
+
+    def _csv_sifter_formatter(self, dict_row,f_name=False):
+        #self.logger.info(repr(dict_row))
+        try:
+            ### Step 1:  Variables Initialization
+            is_extended = None
+            is_retweet = None
+            is_answer = None
+            t_id = dict_row["twitter_id"]
+            t_created_at = dict_row["posted_time"]
+            t_language = dict_row["language"]
+            t_used_client = dict_row["source"]
+            t_text = dict_row["text"]
+            u_created_at = None
+            u_description = dict_row["user_bio_summary"]
+            u_favourites = dict_row["favorites_count"]
+            u_followers = dict_row["followers_count"]
+            u_friends = dict_row["friends_count"]
+            u_id = dict_row["user_id"].split(":")[-1]
+            u_lang = dict_row["actor_languages"]
+            u_given_name = dict_row["real_name"]
+            u_username = dict_row["username"]
+            u_verified = dict_row["user_is_verified"]
+            u_location = dict_row["user_location"]
+
+            try:
+                t_id = int(t_id)
+                u_id = int(u_id)
+            except:
+                self.logger.error("CSVIDConverter: It wasn't possible to convert IDs into integer. Probably illegal CSV Structure.")
+                return -10
+
+
+            ### Initialization fron new Tweet-Dict
+            new_structure = {}            
+            ## main paarameters
+            new_structure[self._id_field_name] = t_id
+            new_structure["t_created_at"] = t_created_at if t_created_at else None
+            new_structure["t_language"] = t_language
+            new_structure["t_used_client"] = t_used_client 
+            new_structure[self._text_field_name] = t_text
+            new_structure["u_created_at"] = u_created_at
+            new_structure["u_description"] = u_description if u_description else None
+            new_structure["u_favourites"] = u_favourites
+            new_structure["u_followers"] = u_followers
+            new_structure["u_friends"] = u_friends
+            new_structure["u_id"] = u_id
+            new_structure["u_lang"] = u_lang 
+            new_structure["u_given_name"] = u_given_name
+            new_structure["u_username"] = u_username
+            new_structure["u_verified"] = u_verified 
+            new_structure["u_location"] = u_location if u_location else None
+
+            # additional parameters
+            new_structure["is_extended"] = is_extended
+            new_structure["is_retweet"] = is_retweet
+            new_structure["is_answer"] = is_answer
+
+            return new_structure
+        except KeyError as e:
+            if not self._log_content:
+                #data = data
+                dict_row = ":HidedContent:"
+            self.logger.error("CSVReaderKeyError: Current CsvFile was ignored '{}', probably because it is not valid/original SifterCSVFile. Or the wrong delimiter was given. See Exception: '{}'.\n  ContentOfTheCsvElement: '{}' ".format(f_name, repr(e), dict_row), exc_info=self._logger_traceback)
+            #p(dict_row.items(), "dict_row")
+            #sys.exit()
+            return -10
+        except Exception as e:
+            #p(dict_row.items(), "dict_row")
+            
+            if not self._log_content:
+                dict_row = ":HidedContent:"
+            self.logger.error_insertion("CSVReaderError: For current File '{}' following Exception was throw: '{}'.  DataContent: '{}' ".format(f_name, repr(e), dict_row), exc_info=self._logger_traceback)
+            #p(dict_row.items(), "dict_row")
+            #sys.exit()
+            return -10
+
+
+
+
+
     def _readXML(self, inp_object,encoding="utf_8", colnames=False, string_was_given=False):
         try:
-            if isinstance(inp_object, str):
+            if isinstance(inp_object, (unicode,str)):
                 if not  os.path.isfile(inp_object):
                     self.logger.error("XMLFileNotExistError: Following File wasn't found: '{}'. ".format(inp_object), exc_info=self._logger_traceback)
                     yield False
@@ -589,7 +764,7 @@ class Reader(BaseContent):
                 if row_dict:
                     if (self._text_field_name not in  row_dict) or self._id_field_name not in row_dict:
                         self.logger.outsorted_reader("XMLReader: Given XML '{}' has wrong structure. Not one text or id element was found.".format(f.name))
-                        yield {}
+                        yield -10
                         return 
 
                 if colnames:
@@ -605,23 +780,37 @@ class Reader(BaseContent):
             return
 
 
-    def _json_tweets_preprocessing(self, data):
-        if isinstance(data, dict):
-            data = [data]
-        output_json_list = []
-        if isinstance(data, (list, tuple)):
-            for json in data:
-                output_json_list.append(self._clean_json_tweet(json))
-            return output_json_list
-        else:
-            self.logger.critical("JsonTweetsPreparationError: Given '{}'-JSON-Type is from not right type.".format(type(data)))
+    def _json_tweets_preprocessing(self, data,f_name=False):
+        try:
+            if isinstance(data, dict):
+                data = [data]
+            output_json_list = []
+            if isinstance(data, (list, tuple)):
+                for json in data:
+                    #p(json.keys())
+                    output_json_list.append(self._clean_json_tweet(json))
+                return output_json_list
+            else:
+                self.logger.critical("JsonTweetsPreparationError: Given '{}'-JSON-Type is from not right type.".format(type(data)))
+                return {}
+                #return 
+        except KeyError as e:
+            if not self._log_content:
+                #data = data
+                json = ":HidedContent:"
+            self.logger.outsorted_reader("JSONReaderKeyError: Current JsonFile was ignored '{}', probably because it is not valid/original TwitterJSONFile. See Exception: '{}'.  ContentOfTheJsonElement: '{}' ".format(f_name, repr(e), json), exc_info=self._logger_traceback)
             return {}
-            #return 
-
+        except Exception as e:
+            if self._log_content:
+                data = data
+            else:
+                data = ":HidedContent:"
+            self.logger.error_insertion("JSONReaderError: For current File '{}' following Exception was throw: '{}'.  DataContent: '{}' ".format(f_name, repr(e), data), exc_info=self._logger_traceback)
+            return {}
 
     def _clean_json_tweet(self, json_tweet):
         #self.logger.info(repr(json_tweet))
-        #p(json_tweet)
+        
         #sys.exit()
 
         ### Step 1:  Variables Initialization
@@ -662,7 +851,7 @@ class Reader(BaseContent):
             is_retweet = True
             if self._ignore_retweets:
                 self.retweet_counter.incr()
-                self.logger.outsorted_reader("RetweenIgnoring: Retweet with ID:'{}' was ignored. ".format(json_tweet["id"]))
+                self.logger.outsorted_reader("RetweetIgnoring: Retweet with ID:'{}' was ignored. ".format(json_tweet["id"]))
                 #self.logger.warning("RetweenIgnoring: Current RETweet with ID='{}' was ignored. (for allowing retweets please use 'ignore_retweets' option.)".format(json_tweet["id"]))
                 return {}
 
@@ -699,6 +888,11 @@ class Reader(BaseContent):
         new_structure["is_answer"] = is_answer
 
         return new_structure
+        # except Exception, e:
+        #     p(json_tweet.keys())
+        #     self.logger.error(str(repr(e)), exc_info=self._logger_traceback)
+        #     sys.exit()
+        #     #p(json_tweet)
 
 
 
@@ -706,6 +900,7 @@ class Reader(BaseContent):
     def _readJSON(self, inp_object, encoding="utf_8", colnames=False, str_to_reread=False ):
         try: 
             #p(inp_object, "inp_object")
+            #p(raw_str, "raw_str")
             if not  str_to_reread:
                 if isinstance(inp_object, (str,unicode)):
                     if not  os.path.isfile(inp_object):
@@ -717,44 +912,49 @@ class Reader(BaseContent):
                         f = open(inp_object, "r")
                         as_file_handler = False
                         raw_str = f.read()
+                        f_name = f.name
                 else:
                     f = inp_object
                     raw_str = f.read()
                     as_file_handler = True
+                    f_name = str(f)
             else:
                 raw_str = str_to_reread
-                
-            data = json.loads(raw_str)
-            if len(data) == 0:
+                f_name = None
+            #inp_object + {}
+            #del data
+            temp_json_data = json.loads(raw_str)
+            if len(temp_json_data) == 0:
                 self.logger.outsorted_reader("JSONReader: Given JSON '{}' is empty.".format(f.name))
                 yield {}
                 return 
 
             if self._formatter_name:
-                if self._formatter_name.lower() in Reader.reader_supported_formatter["json"]:
+                if self._formatter_name in Reader.reader_supported_formatter["json"]:
                     try:
-                        data = self._json_tweets_preprocessing(data)
+                        temp_json_data = self._json_tweets_preprocessing(temp_json_data,f_name=f_name)
 
-                        if len(data) == 0:
+                        if len(temp_json_data) == 0:
                             self.logger.debug("TweetsPreprocessing out-sorted current file: '{}' .".format(f.name))
                             yield {}
                             return 
                     except Exception, e:
-                        self.logger.error("JSONReader: Exception encountered during cleaning Twitter-JSON. This File was ignoren. Exception: '{}'.".format(e))
+                        self.logger.error("JSONReader: Exception encountered during cleaning Twitter-JSON. This File was ignoren. Exception: '{}'.".format(repr(e)))
                         yield {}
                         return 
                 else:
-                    self.logger.critical("JSONReaderError: Given '{}'-FormatterName is not supported. Please choice one of the following: '{}'. Execution of the Program was stopped- ".format(self._formatter_name, Reader.reader_supported_formatter))
-                    sys.exit()
+                    self.logger.critical("JSONReaderError: Given '{}'-FormatterName is not supported for JSONFormat. Please choice one of the following: '{}'. Execution of the Program was stopped- ".format(self._formatter_name, Reader.reader_supported_formatter["json"]))
+                    yield -10
+                    return
 
-            if isinstance(data, dict):
-                data = [data]
+            if isinstance(temp_json_data, dict):
+                temp_json_data = [temp_json_data]
 
-            for row_dict in data:
+            for row_dict in temp_json_data:
                 if row_dict:
                     if (self._text_field_name not in  row_dict) or self._id_field_name not in row_dict:
                         self.logger.outsorted_reader("JSONReader: Given JSON '{}' has wrong structure. Not one text or id element was found.".format(f.name))
-                        yield {}
+                        yield -10
                         return 
 
                 if colnames: 
@@ -796,6 +996,7 @@ class Reader(BaseContent):
 
         except Exception, e:
             #p(f,"f")
+
             try:
                 if isinstance(f, (unicode, str)):
                     fname = f

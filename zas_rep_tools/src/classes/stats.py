@@ -32,7 +32,7 @@ import Stemmer
 
 
 
-from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, path_to_zas_rep_tools, Rle, categorize_token_list, get_categories, instance_info, SharedCounterExtern, SharedCounterIntern, Status,function_name,statusesTstring, ngrams,nextLowest, get_number_of_streams_adjust_cpu,LenGen,DefaultOrderedDict, from_ISO639_2, to_ISO639_2
+from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, path_to_zas_rep_tools, Rle, categorize_token_list, get_categories, instance_info, SharedCounterExtern, SharedCounterIntern, Status,function_name,statusesTstring, ngrams,nextLowest, get_number_of_streams_adjust_cpu,LenGen,DefaultOrderedDict, from_ISO639_2, to_ISO639_2,MyThread
 from zas_rep_tools.src.classes.dbhandler import DBHandler
 from zas_rep_tools.src.classes.reader import Reader
 from zas_rep_tools.src.classes.corpus import Corpus
@@ -63,6 +63,7 @@ class Stats(BaseContent,BaseDB):
                 "baseline":"baseline",
                 }
 
+
     supported_rep_type = set(("repl", "redu"))
     supported_phanomena_to_export = supported_rep_type.union(set(("baseline",)))
     supported_syntagma_type= set(("lexem", "pos"))
@@ -90,6 +91,7 @@ class Stats(BaseContent,BaseDB):
             }
 
 
+    _non_pos_tags = set(["EMOIMG", "EMOASC", "number", "symbol", "hashtag", "mention","regular"])
     header_order_to_export = ("baseline", "document", "word", "repl", "redu", "context")
 
     def __init__(self, status_bar=True,log_ignored=True,**kwargs):
@@ -103,7 +105,7 @@ class Stats(BaseContent,BaseDB):
         self._status_bar = status_bar
         self._log_ignored= log_ignored
         #self._preprocession = preprocession
-
+        self.locker = threading.Lock()
 
 
         #InstanceAttributes: Initialization
@@ -113,8 +115,9 @@ class Stats(BaseContent,BaseDB):
         self.corpdb_defaultname = "corpus"
         self.attached_corpdb_name = False
         self._doc_id_tag =  db_helper.doc_id_tag
-        
-        #self._init_insertion_variables()
+        #self._baseline_delimiter = baseline_delimiter
+
+        #self._init_compution_variables()
 
         self.preprocessors = defaultdict(dict)
         self._init_preprocessors(thread_name="Thread0")
@@ -154,8 +157,7 @@ class Stats(BaseContent,BaseDB):
 ####################################################################################
 ####################################################################################
 
-    def _init_insertion_variables(self):
-
+    def _init_compution_variables(self):
         self.threads_error_bucket = Queue.Queue()
         self.threads_status_bucket = Queue.Queue()
         self.threads_success_exit = []
@@ -178,6 +180,15 @@ class Stats(BaseContent,BaseDB):
         #self._avaliable_scope = self._context_lenght+1
         self.force_cleaning_flags = set()
         self.ignored_pos = set(["URL", "U"])
+        self.baseline_insrt_process = False
+
+        self._text_field_name = "text"
+        self._id_field_name =  "id"
+
+        self.temporized_repl = defaultdict(list)
+        self.temporized_redu = defaultdict(list)
+        self._repls_cols = self.statsdb.col("replications")
+        self._redus_cols = self.statsdb.col("reduplications")
         
         self._cleaned_tags = {
                                 "number":":number:",
@@ -240,8 +251,8 @@ class Stats(BaseContent,BaseDB):
 
     def additional_attr(self, repl_up,ignore_hashtag,ignore_url,
                         ignore_mention,ignore_punkt,ignore_num,force_cleaning,
-                        case_sensitiv,text_field_name,id_field_name,full_repetativ_syntagma,
-                        min_scope_for_indexes):
+                        case_sensitiv,full_repetativ_syntagma,
+                        min_scope_for_indexes,baseline_delimiter):
         additional_attributes = {
                 "repl_up":repl_up,
                 #"log_ignored":log_ignored,
@@ -253,10 +264,9 @@ class Stats(BaseContent,BaseDB):
                 "force_cleaning":force_cleaning ,
                 "case_sensitiv":case_sensitiv,
                 "full_repetativ_syntagma":full_repetativ_syntagma,
-                "text_field_name":text_field_name,
-                "id_field_name":id_field_name,
                 "full_repetativ_syntagma": full_repetativ_syntagma,
-                "min_scope_for_indexes":min_scope_for_indexes
+                "min_scope_for_indexes":min_scope_for_indexes,
+                "baseline_delimiter":baseline_delimiter,
                 }
         return additional_attributes
 
@@ -268,9 +278,8 @@ class Stats(BaseContent,BaseDB):
     def init(self, prjFolder, DBname, language,  visibility, corpus_id=None, 
                     encryption_key=False,fileName=False,  version=False, stats_id=False,
                     context_lenght=5, full_repetativ_syntagma=False, min_scope_for_indexes=2,
-                    repl_up=3, ignore_hashtag=False, force_cleaning=False,
-                    case_sensitiv=False, text_field_name="text", id_field_name="id",
-                    ignore_url=False,  ignore_mention=False, ignore_punkt=False, ignore_num=False):
+                    repl_up=3, ignore_hashtag=False, force_cleaning=False,baseline_delimiter="|+|",
+                    case_sensitiv=False,ignore_url=False,  ignore_mention=False, ignore_punkt=False, ignore_num=False):
 
         if self.statsdb:
             self.logger.error("StatsInitError: An active Stats Instance was found. Please close already initialized/opened Stats, before new initialization.", exc_info=self._logger_traceback)
@@ -293,11 +302,12 @@ class Stats(BaseContent,BaseDB):
             self.add_context_columns( context_lenght)
             additional_attributes = self.additional_attr(repl_up,ignore_hashtag,ignore_url,
                         ignore_mention,ignore_punkt,ignore_num,force_cleaning,
-                        case_sensitiv,text_field_name,id_field_name,full_repetativ_syntagma,min_scope_for_indexes)
+                        case_sensitiv,full_repetativ_syntagma,min_scope_for_indexes,baseline_delimiter)
             self.statsdb.update_attrs(additional_attributes)
+            self.statsdb.update_attr("locked", False) 
             self.set_all_intern_attributes_from_db()
             self.logger.settings("InitStatsDBAttributes: {}".format( instance_info(self.statsdb.get_all_attr(), attr_to_len=False, attr_to_flag=False, as_str=True)))
-            self.logger.info("StatsInit: '{}'-Stats was successful initialized.".format(DBname))
+            self.logger.debug("StatsInit: '{}'-Stats was successful initialized.".format(DBname))
             self._init_column_index_variables()
             self.baseline_ngramm_lenght =  1 +self._context_lenght
             return True
@@ -334,7 +344,7 @@ class Stats(BaseContent,BaseDB):
                 self.logger.error("Current DB is not an StatsDB.")
                 self._close()
                 return False
-            self.logger.info("StatsOpener: '{}'-Stats was successful opened.".format(os.path.basename(path_to_stats_db)))
+            self.logger.debug("StatsOpener: '{}'-Stats was successful opened.".format(os.path.basename(path_to_stats_db)))
             self.set_all_intern_attributes_from_db()
             self.logger.settings("OpenedStatsDBAttributes: {}".format( instance_info(self.statsdb.get_all_attr(), attr_to_len=False, attr_to_flag=False, as_str=True)))
             self._init_column_index_variables()
@@ -371,9 +381,14 @@ class Stats(BaseContent,BaseDB):
         self._force_cleaning  =  info_dict["force_cleaning"]
         self._case_sensitiv =  info_dict["case_sensitiv"]
         self._full_repetativ_syntagma = info_dict["full_repetativ_syntagma"]
-        self._text_field_name = info_dict["text_field_name"]
-        self._id_field_name =  info_dict["id_field_name"]
+        # self._text_field_name = info_dict["text_field_name"]
+        # self._id_field_name =  info_dict["id_field_name"]
         self._min_scope_for_indexes = info_dict["min_scope_for_indexes"]
+        self._pos_tagger = info_dict["pos_tagger"]
+        self._sentiment_analyzer = info_dict["sentiment_analyzer"]
+        self._baseline_delimiter = info_dict["baseline_delimiter"]
+        #self._id_field_name = None
+        #self._text_field_name = None
 
 
     def _get_col_index(self, col_name, table_name):
@@ -408,8 +423,16 @@ class Stats(BaseContent,BaseDB):
                         "use_cash":self._use_cash,
                         "replace_double_items":True,
                         "stop_process_if_possible":self._stop_process_if_possible,
+                        "make_backup": self._make_backup,
+                        "lazyness_border": self._lazyness_border,
+                        "save_settings": self._save_settings, 
+                        "save_status": self._save_status,
+                        "log_content": self._log_content,
+                        "clear_logger": self._clear_logger,
+                        #_replace_double_items
                         }
         return init_attributes_db_handler
+
 
 
     
@@ -510,44 +533,76 @@ class Stats(BaseContent,BaseDB):
 
 
 
-    def get_streams_from_corpus(self,inp_corp,stream_number,datatyp="dict"):
+    # def get_streams_from_corpus(self,inp_corp,stream_number,datatyp="dict"):
+    #     row_num = inp_corp.corpdb.rownum("documents")
+    #     rows_pro_stream = row_num/stream_number
+    #     streams = []
+    #     num_of_getted_items = 0
+    #     for i in range(stream_number):
+    #         thread_name = "Thread{}".format(i)
+    #         if i < (stream_number-1): # for gens in between 
+    #             gen = inp_corp.corpdb.lazyget("documents",limit=rows_pro_stream, offset=num_of_getted_items,thread_name=thread_name, output=datatyp)
+    #             num_of_getted_items += rows_pro_stream
+    #             streams.append((thread_name,LenGen(gen, rows_pro_stream)))
+    #         else: # for the last generator
+    #             gen = inp_corp.corpdb.lazyget("documents",limit=-1, offset=num_of_getted_items,thread_name=thread_name, output=datatyp)
+    #             streams.append((thread_name,LenGen(gen, row_num-num_of_getted_items)))
+    #     return streams
+
+
+    def get_streams_from_corpus(self,inp_corp,stream_number,datatyp="dict", size_to_fetch=1000):
         row_num = inp_corp.corpdb.rownum("documents")
         rows_pro_stream = row_num/stream_number
         streams = []
         num_of_getted_items = 0
+        #p((self._id_field_name, self._text_field_name))
+        def intern_gen(limit, offset):
+            #p((limit, offset))
+            query = u'SELECT {}, {}  FROM  main.documents  LIMIT {} OFFSET {};'.format(self._id_field_name, self._text_field_name,limit,  offset) 
+            cur = inp_corp.corpdb._threads_cursors[thread_name].execute(query)
+            while True:
+                res = list(cur.fetchmany(size_to_fetch))
+                if not res:
+                    break
+                for row in  res:
+                    #yield {self._id_field_name:row[0], self._text_field_name:row[1]}
+                    yield row
+        #p(num_of_getted_items,"num_of_getted_items")
         for i in range(stream_number):
             thread_name = "Thread{}".format(i)
-            if i < (stream_number-1): # for gens in between 
-                gen = inp_corp.corpdb.lazyget("documents",limit=rows_pro_stream, offset=num_of_getted_items,thread_name=thread_name, output=datatyp)
+            if i < (stream_number-1): # for gens in between     
+                #gen = inp_corp.corpdb.lazyget("documents",limit=rows_pro_stream, offset=num_of_getted_items,thread_name=thread_name, output=datatyp)
+                #gen = inp_corp.corpdb.lazyget("documents",limit=rows_pro_stream, offset=num_of_getted_items,thread_name=thread_name, output=datatyp)
+                
+                
+                #p((rows_pro_stream, num_of_getted_items))
+                streams.append((thread_name,LenGen(intern_gen(rows_pro_stream, num_of_getted_items), rows_pro_stream)))
                 num_of_getted_items += rows_pro_stream
-                streams.append((thread_name,LenGen(gen, rows_pro_stream)))
+                #print num_of_getted_items, rows_pro_stream
             else: # for the last generator
-                gen = inp_corp.corpdb.lazyget("documents",limit=-1, offset=num_of_getted_items,thread_name=thread_name, output=datatyp)
-                streams.append((thread_name,LenGen(gen, row_num-num_of_getted_items)))
+                #gen = inp_corp.corpdb.lazyget("documents",limit=-1, offset=num_of_getted_items,thread_name=thread_name, output=datatyp)
+                #p((-1, num_of_getted_items))
+                streams.append((thread_name,LenGen(intern_gen(-1, num_of_getted_items), row_num-num_of_getted_items)))
+                num_of_getted_items += rows_pro_stream
+        
         return streams
 
 
+# query = u'SELECT {}, {}  FROM  main.documents  LIMIT {} OFFSET {};'.format(self._id_field_name, self._text_field_name,rows_pro_stream, num_of_getted_items) 
+
+#                     while True:
+#                         #p(cursor, "cursor")
+#                         results = cursor["out_obj"].fetchmany(size_to_fetch)
+#                         #p(results, "results")
+#                         results = list(results)
+#                         #p(results, "results")
+#                         if not results:
+#                             break
+#                         for row in results:
+#                             #p(row,"row")
+#                             yield row
 
 
-
-
-
-    ###########################Getters#######################
-
-    # def get_data(self, inp_syntagma,baseline=True, repl=True, redu=True):
-    #     if baseline:
-    #         self.get_baseline(inp_syntagma)
-
-    #     if repl:
-    #         self.get_repl(inp_syntagma)
- 
-    #     if redu:
-    #         self.get_redu(inp_syntagma)
-
-
-    # supported_phanomena_to_export = ["repl", "redu", "baseline"]
-    # supported_syntagma_type= ["lexem", "pos"]
-    # supported_sentiment = ["negativ","positiv","neutral"]
 
 
 
@@ -947,7 +1002,10 @@ class Stats(BaseContent,BaseDB):
         for table_part in  Stats.header_order_to_export:
             if table_part == "document":
                 #p(header[table_part], "header[table_part]")
-                temp_list = list(header[table_part][0])
+                try:
+                    temp_list = list(header[table_part][0])
+                except:
+                    temp_list = []
                 wrapped_tag = wrapped_tag_pattern.format(table_part)
                 ordered_header += ["{}{}".format(wrapped_tag,col) for col in temp_list ]
                 if additional_doc_cols:
@@ -957,23 +1015,32 @@ class Stats(BaseContent,BaseDB):
                         ordered_header += ["{}{}".format(wrapped_tag,col) for col in temp_list ]
                 #p(ordered_header, "ordered_header")
             else:
-                for col in header[table_part]:
-                    wrapped_tag = wrapped_tag_pattern.format(table_part)
-                    ordered_header.append("{}{}".format(wrapped_tag,col))
+                if  header[table_part]:
+                    for col in header[table_part]:
+                        #p(col, "col " )
+                        wrapped_tag = wrapped_tag_pattern.format(table_part)
+                        ordered_header.append("{}{}".format(wrapped_tag,col))
         return ordered_header
 
 
+    #Stats._non_pos_tags = set(["EMOIMG", "EMOASC", "number", "symbol", "hashtag", "mention","regular"])
+
     def export(self,path_to_export_dir, syntagma="*", repl=False, redu=False,
-                baseline=False, syntagma_type="lexem", sentiment=False,
+                baseline=True, syntagma_type="lexem", sentiment=False,
                 fname=False, export_file_type="csv", rows_limit_in_file=1000000,
                 encryption_key_corp=False, output_table_type="exhausted",
                 additional_doc_cols=False, encryption_key_for_exported_db=False,
                 path_to_corpdb=False, max_scope=False, stemmed_search=False,rewrite=False,
                 context_len_left=True, context_len_right=True, separator_syn=" || ",
                 word_examples_sum_table=True,ignore_num=False,ignore_symbol=False,):
-        
+        #p(locals())
+        #p((path_to_export_dir,syntagma,repl,redu,syntagma_type,max_scope))
         export_file_type =  export_file_type.lower()
         fname =fname if fname else "export_{}".format(time.time())
+        if self.statsdb.get_attr("locked"):
+                self.logger.error("Current DB is still be locked. Possibly it is right now in-use from other process or the last computation-process is failed.")
+                return False
+
         if export_file_type not in Exporter.supported_file_formats:
             self.logger.error("ExportError: '{}'-FileType is not supported. Please use one of the following file type: '{}'.".format(export_file_type, Exporter.supported_file_formats))
             return False
@@ -982,9 +1049,37 @@ class Stats(BaseContent,BaseDB):
             self.logger.error("Given Type for the outputTable ('{}') is not supported. Please select one of the following types: '{}'. ".format(output_table_type, Stats.output_tables_types))
             return False
 
-        if repl and redu and baseline: 
-            self.logger.critical("It is not possible to get repls and redus parallel. Please select one option at the same moment.")
-            return False
+        if sentiment:
+            if not self._sentiment_analyzer:
+                self.logger.error("GetterError: Sentiment wasn't computed for current CorpusDB thats why it is not possible to export Data with sentiment.")
+                return False
+
+        if syntagma_type == "pos":
+            if not self._pos_tagger:
+                if syntagma != "*":
+                    try:
+                        syntagma[0].decode
+                        for word in syntagma:
+                            if word not in Stats._non_pos_tags:
+                                self.logger.error(u"POSGetterError: Additional POS-Tag was found in Syntagma. ('{}')  Current CorpusDB contain just default meta tags. ('{}') If you want to search in additional POS, than recompute CorpusDB with POS-Tagger.".format(word,Stats._non_pos_tags))
+                                return False
+                    except:
+                        try:
+                            syntagma[0][0].decode
+                            for syn  in syntagma:
+                                for word in syn:
+                                    if word not in Stats._non_pos_tags:
+                                        self.logger.error(u"POSGetterError: Additional POS-Tag was found in Syntagma. ('{}')  Current CorpusDB contain just default meta tags. ('{}') If you want to search in additional POS, than recompute CorpusDB with POS-Tagger.".format(word,Stats._non_pos_tags))
+                                        return False
+                        except:
+                            self.logger.error("SyntagmaError: Given Syntagma has incorrect structure.")
+                            return False
+
+
+
+        #if repl and redu and baseline: 
+        #    self.logger.critical("It is not possible to get repls and redus parallel. Please select one option at the same moment.")
+        #    return False
 
         flags = self._get_exporter_flags(repl=repl, redu=redu, baseline=baseline)
         if len(flags) == 0:
@@ -993,7 +1088,7 @@ class Stats(BaseContent,BaseDB):
 
         if path_to_corpdb:
             if not self.attach_corpdb(path_to_corpdb):
-                self.logger.error("Given CorpDB '{}' either not exist or not suitable with the current StatsDB.".format(path_to_corpdb))
+                self.logger.debug("Given CorpDB '{}' either not exist or not suitable with the current StatsDB.".format(path_to_corpdb))
                 return False
         if not path_to_corpdb and additional_doc_cols:
             self.logger.error("Additional Columns from CorpusDB was given, but the path to CorpDB wasn't given. Please give also the path to CorpDB.")
@@ -1009,6 +1104,8 @@ class Stats(BaseContent,BaseDB):
             reptype_sum_table = False
 
 
+        # p(locals())
+        #p(max_scope, "max_scope")
         header = self._get_header( repl=repl, redu=redu, baseline=True, output_table_type=output_table_type,  max_scope=max_scope, additional_doc_cols=additional_doc_cols, context_len_left=context_len_left, context_len_right=context_len_right,word_examples_sum_table=word_examples_sum_table)
         if not header:
             return False
@@ -1018,9 +1115,7 @@ class Stats(BaseContent,BaseDB):
                                                 output_table_type=output_table_type,max_scope=max_scope,
                                                 ignore_num=ignore_num,ignore_symbol=ignore_symbol,
                                                 word_examples_sum_table=word_examples_sum_table,stemmed_search=stemmed_search)
-        #p(rows_generator, "rows_generator")
-        #for item in rows_generator:
-        #    print item 
+
         if not rows_generator:
             self.logger.error("RowGenerator is failed.")
             return False
@@ -1030,7 +1125,9 @@ class Stats(BaseContent,BaseDB):
             ordered_header = self.order_header(header, additional_doc_cols,export_file_type)
         #p(ordered_header, "ordered_header")
         def intern_gen():
+            # p("111")
             for row in  rows_generator:
+                # p("222")
                 if row:
                     yield {k:v for k,v in  zip(ordered_header,row)}
 
@@ -1047,6 +1144,9 @@ class Stats(BaseContent,BaseDB):
         elif export_file_type == "json":
             exporter.tojson(path_to_export_dir, fname, rows_limit_in_file=rows_limit_in_file,)
 
+        else:
+            self.logger.error("'{}'-FileType is not supported..".format(export_file_type))
+            return False
 
 
     def _get_values_from_doc(self, doc_id, cols_to_get):
@@ -1069,6 +1169,55 @@ class Stats(BaseContent,BaseDB):
             yield False
             return 
 
+        # p((inp_syntagma, max_scope),c="r")
+        #p(locals())
+        def redu_constr(single_redu):
+                temp_row = []
+                for table_part in  Stats.header_order_to_export:
+                    if table_part == "baseline":
+                        temp_row += current_ordered_baseline_row
+                        #p(temp_row, "temp_row")
+
+                    elif table_part == "document":
+                        #p(header["document"])
+                        temp_row += [single_redu[ix_redu[col_name]] for col_name in header["document"][0]]
+                        doc_id = single_redu[ix_doc_id_redu]
+                        col_from_corp = header["document"][1]
+                        #p(col_from_corp, "col_from_corp", c="g")
+                        if col_from_corp:
+                            values_from_corp = self._get_values_from_doc(doc_id, col_from_corp)
+                            #p(values_from_corp, "values_from_corp")
+                            if values_from_corp:
+                                temp_row += list(values_from_corp)
+                            else:
+                                self.logger.error("No values from Corpus was returned")
+                                yield False
+                                return 
+
+                    elif table_part == "word":
+                        temp_row += [None if col_name == 'rle_word' else single_redu[ix_redu[col_name]] for col_name in header["word"]]
+
+                    elif table_part == "repl":
+                        temp_row += [None for col_name in header["repl"]]
+
+                    elif table_part == "redu":
+                        temp_row += [single_redu[ix_redu[col_name]] for col_name in header["redu"]]
+                        #extracted_redus.append(single_redu[ix_redu_id])
+
+                    elif table_part == "context":
+                        temp_row += [single_redu[ix_redu[col_name]] for col_name in header["context"]]
+
+                #exported_rows_count += 1
+                #p(temp_row, "2121temp_row",c="m")
+                #exported_rows_count += 1
+                yield temp_row
+                return
+
+
+
+
+
+        # p("!99999")
         if output_table_type == "sum":
             if reptype_sum_table not in ("repl", "redu"):
                 self.logger.error("Wrong RepType ('{}') was selected.".format(reptype_sum_table))
@@ -1131,6 +1280,7 @@ class Stats(BaseContent,BaseDB):
                 self.status_bars_manager.stop()
 
         else:
+            # p("!88888")
             if not header:
                 self.logger.error("Header is empty. Please give non-empty header.")
                 yield False
@@ -1146,11 +1296,13 @@ class Stats(BaseContent,BaseDB):
             #p((header, repl, redu, baseline))
             #Stats.header_order_to_export
 
+            # p("!7777")
 
             data =  self.get_data(inp_syntagma=inp_syntagma,repl=repl, redu=redu, baseline=baseline, syntagma_type=syntagma_type, 
-                                sentiment=sentiment,thread_name=thread_name, max_scope=max_scope, stemmed_search=stemmed_search,
+                                sentiment=sentiment,thread_name=thread_name, max_scope=max_scope, stemmed_search=stemmed_search,send_empty_marker=True,
                                 minimum_columns=False,order_output_by_syntagma_order=False, return_full_tuple=False,delete_duplicates=True,
                                 get_columns_repl=False,get_columns_redu=False,get_columns_baseline=False,if_type_pos_return_lexem_syn=True)
+            # p((inp_syntagma, repl, redu,baseline, syntagma_type, sentiment, thread_name,max_scope, stemmed_search,), c="r")
             if not data:
                 self.logger.error("Current Generator wasn't initialized. Because No Data was found in the current StatsDB for current settings. Please try to change the settings.")
                 yield False
@@ -1165,9 +1317,11 @@ class Stats(BaseContent,BaseDB):
 
                 status_bar_start = self._get_new_status_bar(None, self.status_bars_manager.term.center("Exporter (exhausted)") , "", counter_format=self.status_bars_manager.term.bold_white_on_green("{fill}{desc}{fill}"))
                 status_bar_start.refresh()
-                status_bar_current = self._get_new_status_bar(len(data), "Processed:", "syntagma")
-
-
+                status_bar_current_all = self._get_new_status_bar(self.statsdb.rownum("baseline"), "All:", "syntagma")
+                status_bar_current_right = self._get_new_status_bar(len(data), "Qualified:", "syntagma")
+                status_bar_current_all.refresh()
+                status_bar_current_right.refresh()
+            # p("!666")
             ix_baseline = self.col_index_orig["baseline"]
             ix_repl = self.col_index_orig["repl"]
             ix_redu = self.col_index_orig["redu"]
@@ -1175,14 +1329,29 @@ class Stats(BaseContent,BaseDB):
             ix_redu_in_redufree = ix_redu["index_in_redufree"]
             ix_doc_id_repl = ix_repl["doc_id"]
             ix_doc_id_redu = ix_redu["doc_id"]
+            ix_redu_id = ix_redu["id"]
             i = 0
             exported_rows_count = 0
-            for item in data:
+            # p("!555")
+            # p(data, "data")
+            count = 0
+            for i, item in enumerate(data):
+                if item == None:
+                    count += 1
+                # p((i,count))
+                #p((i, item))
+                # p(item, "item")
+                if not item:
+                    if self._status_bar:
+                        status_bar_current_all.update(incr=1)
+                    continue
                 i += 1
+                # p("!444")
                 if self._status_bar:
-                    status_bar_current.update(incr=1)
+                    status_bar_current_all.update(incr=1)
+                    status_bar_current_right.update(incr=1)
                 #if inp_syntagma == ["klitze, kleine"]:
-                #    p(item, "item")
+                #   p(item, "item")
                 #p(item , "item")
                 #temp_rows = []
                 #### Prepare Baseline
@@ -1209,7 +1378,7 @@ class Stats(BaseContent,BaseDB):
                     if col_name == "syntagma":
                         current_ordered_baseline_row.append(separator_syn.join(vals_bas[ix_baseline[col_name]]))
                     elif col_name == "stemmed":
-                        current_ordered_baseline_row.append(separator_syn.join(vals_bas[ix_baseline[col_name]].split("++")))
+                        current_ordered_baseline_row.append(separator_syn.join(vals_bas[ix_baseline[col_name]].split(self._baseline_delimiter)))
                     else:
                         current_ordered_baseline_row.append(vals_bas[ix_baseline[col_name]])
 
@@ -1217,64 +1386,16 @@ class Stats(BaseContent,BaseDB):
                 ### Prepare Other Data
                 
                 if repl:
+                    
                     #temp_row = []
                     vals_repl =  item["repl"]
                     if not vals_repl:
-                        #self.logger.error("'repl'-Element is empty. Just redus will be tried to be extracted (syntagma: '{}')".format(item["syntagma"]))
-                        #p(vals_bas, "vals_bas")
-                        #yield False
                         if redu:
                             vals_redu =  item["redu"]
-                            #p((vals_bas,vals_redu,current_ordered_baseline_row), "vals_redu+baseline", c="r")
-                            #if vals_redu:
                             if vals_redu: # if just redus was found, but not repls for current syntagma, than extract just redus
-                                #vals_redu_dict = defaultdict(lambda:defaultdict(None))
-                                # for singl_redu in vals_redu:
-                                #     #p(singl_redu,"singl_redu")
-                                #     vals_redu_dict[singl_redu[ix_doc_id_redu]][singl_redu[ix_redu_in_redufree]] = singl_redu
-
                                 for single_redu in vals_redu:
-                                    temp_row = []
-                                    for table_part in  Stats.header_order_to_export:
-                                        if table_part == "baseline":
-                                            temp_row += current_ordered_baseline_row
-                                            #p(temp_row, "temp_row")
-
-                                        elif table_part == "document":
-                                            #p(header["document"])
-                                            temp_row += [single_redu[ix_redu[col_name]] for col_name in header["document"][0]]
-                                            doc_id = single_redu[ix_doc_id_redu]
-                                            col_from_corp = header["document"][1]
-                                            #p(col_from_corp, "col_from_corp", c="g")
-                                            if col_from_corp:
-                                                values_from_corp = self._get_values_from_doc(doc_id, col_from_corp)
-                                                #p(values_from_corp, "values_from_corp")
-                                                if values_from_corp:
-                                                    temp_row += list(values_from_corp)
-                                                else:
-                                                    self.logger.error("No values from Corpus was returned")
-                                                    yield False
-                                                    return 
-
-                                        elif table_part == "word":
-                                            temp_row += [None if col_name == 'rle_word' else single_redu[ix_redu[col_name]] for col_name in header["word"]]
-
-                                        elif table_part == "repl":
-                                            temp_row += [None for col_name in header["repl"]]
-
-                                        elif table_part == "redu":
-                                            temp_row += [single_redu[ix_redu[col_name]] for col_name in header["redu"]]
-
-                                        elif table_part == "context":
-                                            temp_row += [single_redu[ix_redu[col_name]] for col_name in header["context"]]
-
-                                    #exported_rows_count += 1
-                                    #p(temp_row, "2121temp_row",c="m")
                                     exported_rows_count += 1
-                                    yield temp_row
-
-
-
+                                    yield tuple(redu_constr(single_redu))[0]
                         
                         #vals_redu_dict = {singl_redu[ix_doc_id_redu]:{} for singl_redu in vals_redu}
 
@@ -1283,12 +1404,17 @@ class Stats(BaseContent,BaseDB):
                     if redu:
                         vals_redu =  item["redu"]
                         vals_redu_dict = defaultdict(lambda:defaultdict(None))
+                        redu_ids = defaultdict(dict)
                         for singl_redu in vals_redu:
-                            #p(singl_redu,"singl_redu")
-                            vals_redu_dict[singl_redu[ix_doc_id_redu]][singl_redu[ix_redu_in_redufree]] = singl_redu
+                            redu_doc_id = singl_redu[ix_doc_id_redu]
+                            redu_index = singl_redu[ix_redu_in_redufree]
+
+                            redu_ids[singl_redu[ix_redu_id]] = (singl_redu[ix_doc_id_redu], singl_redu[ix_redu_in_redufree])
+                            vals_redu_dict[redu_doc_id][redu_index] = singl_redu
                         #vals_redu_dict = {singl_redu[ix_doc_id_redu]:{} for singl_redu in vals_redu}
 
                     #temp_data = []
+                    extracted_redus= set()
                     for single_repl in vals_repl:
                         temp_row = []
                         #p(single_repl, "single_repl", c="r")
@@ -1338,8 +1464,30 @@ class Stats(BaseContent,BaseDB):
                                             yield False
                                             return  
 
+
                                         repl_doc_id = single_repl[ix_doc_id_repl]
+                                        #p((single_repl))
+                                        #p(vals_redu_dict[repl_doc_id].keys(), "111redu_ixs")
+                                        try:
+                                            redu_for_current_repl = vals_redu_dict[repl_doc_id][in_redu]
+                                        except KeyError:
+                                            current_syntagma = vals_bas[ix_baseline["syntagma"]]
+                                            #!!!!!!!p((in_redu,single_repl, vals_redu,current_syntagma))
+                                            vals_redu = self._get_data_for_one_syntagma(current_syntagma,redu=True, repl=False, baseline=False,get_also_non_full_repetativ_result=True)["redu"]
+                                            #p(vals_redu, "22vals_redu")
+                                            vals_redu_dict = defaultdict(lambda:defaultdict(None))
+                                            for singl_redu in vals_redu:
+                                                vals_redu_dict[singl_redu[ix_doc_id_redu]][singl_redu[ix_redu_in_redufree]] = singl_redu 
+
+                                            if not  vals_redu: 
+                                                self.logger.error("ImplementationError: No redus was extracted for '{}'-syntagma. ".format(current_syntagma))  
+                                                yield False
+                                                return 
+
+                                        #p((single_repl))
+                                        #p(vals_redu_dict[repl_doc_id].keys(), "222redu_ixs")
                                         redu_for_current_repl = vals_redu_dict[repl_doc_id][in_redu]
+
 
                                         if not redu_for_current_repl: # if wasn't found - than re-exctract with other flag
                                             self.logger.error("DB-Inconsistence or ImplementationError: For Current Repl ('{}') in Redu ('{}') wasn't found any redu in the StatsDB.".format(single_repl, in_redu))   
@@ -1347,7 +1495,7 @@ class Stats(BaseContent,BaseDB):
                                             return  
 
                                         temp_row += [redu_for_current_repl[ix_redu[col_name]] for col_name in header["redu"]]
-
+                                        extracted_redus.add(redu_for_current_repl[ix_redu_id])
 
                                     else:
                                         temp_row += [None for col_name in header["redu"]]
@@ -1359,7 +1507,15 @@ class Stats(BaseContent,BaseDB):
                         exported_rows_count += 1
                         #p(temp_row, "temp_row")
                         yield temp_row
-                    
+
+                    ## for redus, which still be not extracted
+                    if redu:
+                        for r_id, data in  redu_ids.items():
+                            if r_id not in extracted_redus:
+                                redu_to_extract = vals_redu_dict[data[0]][data[1]]
+                                exported_rows_count += 1
+                                #p(tuple(redu_constr(redu_to_extract))[0], c="r")
+                                yield tuple(redu_constr(redu_to_extract))[0]
             
 
                 elif not repl and redu:
@@ -1410,13 +1566,19 @@ class Stats(BaseContent,BaseDB):
                     return
 
 
-
             if self._status_bar:
                 #i += 1
                 #print status_bar_current.total, i
-                if status_bar_current.total != i:
-                   status_bar_current.total = i
-                status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("Exported: Syntagmas:'{}'; Rows: '{}'; ".format(status_bar_current.count,exported_rows_count) ), "",  counter_format=self.status_bars_manager.term.bold_white_on_green('{fill}{desc}{fill}\n'))
+                if status_bar_current_right.total != i:
+                   status_bar_current_right.total = i
+                   status_bar_current_right.refresh()
+
+                #p((status_bar_current_all.total, status_bar_current_all.count))
+                if status_bar_current_all.total != status_bar_current_all.count:
+                    status_bar_current_all.total = status_bar_current_all.count
+                    status_bar_current_all.refresh()
+
+                status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("Exported: Syntagmas:'{}'; Rows: '{}'; ".format(status_bar_current_right.count,exported_rows_count) ), "",  counter_format=self.status_bars_manager.term.bold_white_on_green('{fill}{desc}{fill}\n'))
                 status_bar_total_summary.refresh()
                 self.status_bars_manager.stop()
             #p(i, "i")
@@ -1598,8 +1760,10 @@ class Stats(BaseContent,BaseDB):
             get_columns_redu = (db_helper.tag_normalized_word,"redu_length",  "pos")
             collected_redus_from_corp = defaultdict(lambda: defaultdict(lambda:0))
             i = 0
+            #p((syntagma_to_search,max_scope, sentiment, syntagma_type, stemmed_search))
             for item in self.get_data(syntagma_to_search, redu=True, repl=False, baseline=False, get_columns_redu=get_columns_redu, max_scope=max_scope,
                                         sentiment=sentiment,syntagma_type=syntagma_type,stemmed_search=stemmed_search):
+                #p(item,"item")
                 i += 1
                 if self._status_bar:
                     status_bar_current.update(incr=1)
@@ -1627,6 +1791,7 @@ class Stats(BaseContent,BaseDB):
 
 
     def _get_row_num_in_baseline_with_rep(self, redu=False, repl=False, max_scope=False):
+        #p((redu, repl, max_scope))
         if repl or redu:
             rep_w_list = []
             if repl: 
@@ -1656,19 +1821,30 @@ class Stats(BaseContent,BaseDB):
 
 
     def get_data(self,inp_syntagma="*",repl=False, redu=False, baseline=False, syntagma_type="lexem", 
-                sentiment=False,thread_name="Thread0", max_scope=False, stemmed_search=False,
+                sentiment=False,thread_name="Thread0", max_scope=False, stemmed_search=False,send_empty_marker=False,
                 minimum_columns=False,order_output_by_syntagma_order=False, return_full_tuple=False,delete_duplicates=True,
                 get_columns_repl=False,get_columns_redu=False,get_columns_baseline=False,
                 if_type_pos_return_lexem_syn=False):
 
         #p(inp_syntagma, "0inp_syntagma")
+        # p((inp_syntagma,repl,redu,baseline))
+        # p("..9999")
+        #p(locals())
         if inp_syntagma == "*":
+            # p("..888")
             return self._get_data(inp_syntagma=inp_syntagma,repl=repl, redu=redu, baseline=baseline, syntagma_type=syntagma_type, 
                 sentiment=sentiment,thread_name=thread_name, max_scope=max_scope, stemmed_search=stemmed_search,
-                minimum_columns=minimum_columns,order_output_by_syntagma_order=order_output_by_syntagma_order,
+                minimum_columns=minimum_columns,order_output_by_syntagma_order=order_output_by_syntagma_order,send_empty_marker=send_empty_marker, 
                 return_full_tuple=return_full_tuple,delete_duplicates=delete_duplicates, if_type_pos_return_lexem_syn=if_type_pos_return_lexem_syn,
                 get_columns_repl=get_columns_repl,get_columns_redu=get_columns_redu,get_columns_baseline=get_columns_baseline)
         else:
+            if thread_name not in self.preprocessors:
+                if not self._init_preprocessors(thread_name=thread_name):
+                    self.logger.error("Error during Preprocessors initialization. Thread '{}' was stopped.".format(thread_name), exc_info=self._logger_traceback)
+                    self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":"Error during Preprocessors initialization"})
+                    self._terminated = True
+                    return False
+            # p("..7777")
             try:
                 inp_syntagma[0].decode # if iterator with just one syntagma
                 extract_type = 1
@@ -1683,12 +1859,13 @@ class Stats(BaseContent,BaseDB):
                     self.logger.error(" Exception was throw: '{}'.".format( repr(e)))
                     return False
 
-
+        # p("..666")
         if extract_type == 1:
+            # p("..555")
             #p(inp_syntagma, "999999inp_syntagma")
             gen =  self._get_data(inp_syntagma=inp_syntagma,repl=repl, redu=redu, baseline=baseline, syntagma_type=syntagma_type, 
                 sentiment=sentiment,thread_name=thread_name, max_scope=max_scope, stemmed_search=stemmed_search,
-                minimum_columns=minimum_columns,order_output_by_syntagma_order=order_output_by_syntagma_order,
+                minimum_columns=minimum_columns,order_output_by_syntagma_order=order_output_by_syntagma_order,send_empty_marker=send_empty_marker,
                 return_full_tuple=return_full_tuple,delete_duplicates=delete_duplicates,if_type_pos_return_lexem_syn=if_type_pos_return_lexem_syn,
                 get_columns_repl=get_columns_repl,get_columns_redu=get_columns_redu,get_columns_baseline=get_columns_baseline)
             #p(len(gen), "num") 
@@ -1698,12 +1875,13 @@ class Stats(BaseContent,BaseDB):
                 return False
             return gen
         else:
+            # p("..444")
             generators = []
             #p(inp_syntagma, "1999999inp_syntagma")
             #p(inp_syntagma, "2inp_syntagma")
             for inp_syn in inp_syntagma:
                 gen = self._get_data(inp_syntagma=inp_syn,repl=repl, redu=redu, baseline=baseline, syntagma_type=syntagma_type, 
-                sentiment=sentiment,thread_name=thread_name, max_scope=max_scope, stemmed_search=stemmed_search,
+                sentiment=sentiment,thread_name=thread_name, max_scope=max_scope, stemmed_search=stemmed_search,send_empty_marker=send_empty_marker,
                 minimum_columns=minimum_columns,order_output_by_syntagma_order=order_output_by_syntagma_order,
                 return_full_tuple=return_full_tuple,delete_duplicates=delete_duplicates, if_type_pos_return_lexem_syn=if_type_pos_return_lexem_syn,
                 get_columns_repl=get_columns_repl,get_columns_redu=get_columns_redu,get_columns_baseline=get_columns_baseline)
@@ -1713,10 +1891,11 @@ class Stats(BaseContent,BaseDB):
                 generators.append(gen)
 
             #p(generators, "generators")
-            
+            # p("..333")
             num = sum([len(gen) for gen in generators])
             #p(num, "num")
             def intern_gen():
+                # p("..222")
                 for gen in generators:
                     if not gen:
                         yield False
@@ -1729,7 +1908,7 @@ class Stats(BaseContent,BaseDB):
 
     def _lexem_syn_extractor_from_pos(self, inp_syntagma, inpdata, repl=False, redu=False, baseline=False,
                                     sentiment=False, minimum_columns=False,order_output_by_syntagma_order=False, 
-                                    return_full_tuple=False,delete_duplicates=True,
+                                    return_full_tuple=False,delete_duplicates=True,#send_empty_marker=False,
                                     get_columns_repl=False,get_columns_redu=False,get_columns_baseline=False):
         max_scope=False
         stemmed_search=False
@@ -1755,7 +1934,7 @@ class Stats(BaseContent,BaseDB):
                 lexem_syn = b[0]
                 #p(lexem_syn, "1111lexem_syn", c="r")
                 data = self._get_data_for_one_syntagma(lexem_syn, repl=repl, redu=redu, baseline=baseline, syntagma_type="lexem", additional_pos_where=inp_syntagma, 
-                                            sentiment=sentiment, max_scope=False,just_check_existence=False,
+                                            sentiment=sentiment, max_scope=False,
                                             for_optimization=False, stemmed_search=False, get_also_non_full_repetativ_result=False,
                                             order_output_by_syntagma_order=order_output_by_syntagma_order, return_full_tuple=return_full_tuple,
                                             minimum_columns=minimum_columns, delete_duplicates=delete_duplicates,)
@@ -1773,12 +1952,12 @@ class Stats(BaseContent,BaseDB):
 
 
     def _get_data(self,inp_syntagma="*",repl=False, redu=False, baseline=False, syntagma_type="lexem", 
-                sentiment=False,thread_name="Thread0", max_scope=False, stemmed_search=False,
+                sentiment=False,thread_name="Thread0", max_scope=False, stemmed_search=False, send_empty_marker=False,
                 minimum_columns=False,order_output_by_syntagma_order=False, return_full_tuple=False,delete_duplicates=True,
                 get_columns_repl=False,get_columns_redu=False,get_columns_baseline=False,if_type_pos_return_lexem_syn=False):
 
         #print "111"
-
+        # p("---9999")
         #p(inp_syntagma, "11inp_syntagma")
         if not self._check_stats_db_should_exist():
             return False 
@@ -1804,27 +1983,36 @@ class Stats(BaseContent,BaseDB):
                  
             indexes_to_get_repl,indexes_to_get_redu,indexes_to_get_baseline = self._convert_cols_to_indexes(get_columns_repl,get_columns_redu,get_columns_baseline,indexes)
         #print "2222"
-
+        # p("---888")
         if not repl and not redu and not baseline:
             self.logger.error("No Phenomena to export was selected. Please choice phenomena to export from the following list: '{}'. ".format(Stats.supported_phanomena_to_export))
             return False
 
+        # p("---777")
         if inp_syntagma == "*":
+            # p("---6666")
             #print "333"
             #p(inp_syntagma,"0000inp_syntagma")
             
             num = self._get_row_num_in_baseline_with_rep(redu=redu, repl=repl, max_scope=max_scope)
             #p(num, "num")
             def intern_gen_all():
+                # p("---555")
                 for baseline_container in self._baseline("*",max_scope=max_scope):
                     #inp_syntagma =  self._preprocess_syntagma(inp_syntagma,thread_name=thread_name, syntagma_type=syntagma_type)
-
+                    # p(max_scope, "max_scope")
+                    # p(("---4444", baseline_container))
                     data =  self._get_data_for_one_syntagma(baseline_container[0],repl=repl, redu=redu, baseline=False,
                             syntagma_type=syntagma_type, sentiment=sentiment,thread_name=thread_name, stemmed_search=False,
                             max_scope=max_scope, order_output_by_syntagma_order=order_output_by_syntagma_order, 
                             return_full_tuple=return_full_tuple,delete_duplicates=delete_duplicates,
                             minimum_columns=minimum_columns,indexes=indexes)
                     
+                    # p(("--333", data))
+                    #if data:
+                    #    sys.exit()
+
+
 
                     if data:
                         if baseline:
@@ -1836,14 +2024,18 @@ class Stats(BaseContent,BaseDB):
                         if data is False:
                             yield False
                             return
+                        
+                        if send_empty_marker:
+                            yield None
                         continue
-
+                    
 
             return LenGen(intern_gen_all(), num)
 
-
+        #self._empty_marker = None
 
         else:
+            # p("---222")
             #print "444"
             inp_syntagma =  self._preprocess_syntagma(inp_syntagma,thread_name=thread_name, syntagma_type=syntagma_type, stemmed_search=stemmed_search)
             if not inp_syntagma:
@@ -1853,11 +2045,11 @@ class Stats(BaseContent,BaseDB):
             if stemmed_search:
                 #print "555"
                     #p(temp_syntagma, "temp_syntagma")
-                where_num = "stemmed='{}'".format("++".join(inp_syntagma) )
+                where_num = "stemmed='{}'".format(self._baseline_delimiter.join(inp_syntagma) )
                 num = self.statsdb.rownum("baseline", where=where_num)
                 def intern_gen_2():
                     scope = len(inp_syntagma)
-                    where = self._get_where_statement(inp_syntagma,scope=scope,thread_name=thread_name, with_context=False,syntagma_type="lexem", sentiment=sentiment, stemmed_search=True)#, splitted_syntagma=splitted_syntagma)
+                    where = tuple(self._get_where_statement(inp_syntagma,scope=scope,thread_name=thread_name, with_context=False,syntagma_type="lexem", sentiment=sentiment, stemmed_search=True))#, splitted_syntagma=splitted_syntagma)
                     if not where:
                         yield False
                         return 
@@ -1875,6 +2067,9 @@ class Stats(BaseContent,BaseDB):
                                 data = self._extract_certain_columns(data, indexes_to_get_repl,indexes_to_get_redu,indexes_to_get_baseline)
                             #p(data, "data")
                             yield data
+                        else:
+                            if send_empty_marker:
+                                yield None
                         #else:
                         #    yield {}
                 if if_type_pos_return_lexem_syn and syntagma_type=="pos":
@@ -1901,6 +2096,9 @@ class Stats(BaseContent,BaseDB):
                             data = self._extract_certain_columns(data, indexes_to_get_repl,indexes_to_get_redu,indexes_to_get_baseline)
                         #p(data, "data")
                         yield data   
+                    else:
+                        if send_empty_marker:
+                            yield None
            
 
                 if if_type_pos_return_lexem_syn and syntagma_type=="pos":
@@ -1918,12 +2116,13 @@ class Stats(BaseContent,BaseDB):
 
     def _get_data_for_one_syntagma(self,inp_syntagma_splitted, inp_syntagma_unsplitted=False,
                             repl=False, redu=False, baseline=False, syntagma_type="lexem", additional_pos_where=False, 
-                            sentiment=False,thread_name="Thread0", max_scope=False,just_check_existence=False,
+                            sentiment=False,thread_name="Thread0", max_scope=False,
                             for_optimization=False, stemmed_search=False, get_also_non_full_repetativ_result=False,
                             #get_columns_repl=False, get_columns_redu=False,get_columns_baseline=False,
                             order_output_by_syntagma_order=False, return_full_tuple=False, output_type="list",
                             minimum_columns=False, delete_duplicates=True, indexes=False, ):#,splitted_syntagma=True):
         #p((inp_syntagma_splitted, repl, redu, baseline,stemmed_search,additional_pos_where))
+        #p(locals())
         scope = len(inp_syntagma_splitted)
         if not self._is_syntagma_scope_right(scope):
             #self.logger.error("The Length ('{}') of  Given SyntagmaToSearch ('{}') is  bigger as allow ('{}'). Please recompute StatsDB with the bigger ContextNumber.".format(scope, inp_syntagma_splitted,self._avaliable_scope))
@@ -1933,7 +2132,7 @@ class Stats(BaseContent,BaseDB):
         if stemmed_search:
             inp_syntagma_splitted =  self._preprocess_syntagma(inp_syntagma_splitted,thread_name=thread_name, syntagma_type=syntagma_type, stemmed_search=stemmed_search)
             if inp_syntagma_unsplitted:
-                inp_syntagma_unsplitted = "++".join(inp_syntagma_splitted)
+                inp_syntagma_unsplitted = self._baseline_delimiter.join(inp_syntagma_splitted)
 
 
         if not indexes:
@@ -1949,15 +2148,15 @@ class Stats(BaseContent,BaseDB):
         where1 = False
         if repl:
             if not where1:
-                where1 = self._get_where_statement(inp_syntagma_splitted,scope=scope,thread_name=thread_name,
+                where1 = tuple(self._get_where_statement(inp_syntagma_splitted,scope=scope,thread_name=thread_name,
                                             with_context=True,syntagma_type=syntagma_type, sentiment=sentiment, 
                                             inp_syntagma_unsplitted=inp_syntagma_unsplitted,stemmed_search=stemmed_search,
-                                            additional_pos_where=additional_pos_where)#, splitted_syntagma=splitted_syntagma)
+                                            additional_pos_where=additional_pos_where))#, splitted_syntagma=splitted_syntagma)
                 if not where1: return False
             #p(where1,"where1_repl", c="b")
             _repl = self.get_reps("repl",inp_syntagma_splitted,scope,where1,indexes,thread_name=thread_name, minimum_columns=minimum_columns,
                                 order_output_by_syntagma_order=order_output_by_syntagma_order, return_full_tuple=return_full_tuple,stemmed_search=False,
-                                just_check_existence=just_check_existence, output_type=output_type,delete_duplicates=delete_duplicates,
+                                output_type=output_type,delete_duplicates=delete_duplicates,
                                 syntagma_type=syntagma_type, for_optimization=for_optimization, get_also_non_full_repetativ_result=get_also_non_full_repetativ_result)
             #p(_repl, "_repl")
             # if get_columns_repl:
@@ -1968,23 +2167,23 @@ class Stats(BaseContent,BaseDB):
 
         if redu:
             if not where1:
-                where1 = self._get_where_statement(inp_syntagma_splitted,scope=scope,thread_name=thread_name, with_context=True,
+                where1 = tuple(self._get_where_statement(inp_syntagma_splitted,scope=scope,thread_name=thread_name, with_context=True,
                                                 syntagma_type=syntagma_type, sentiment=sentiment, inp_syntagma_unsplitted=inp_syntagma_unsplitted,
-                                                stemmed_search=stemmed_search,additional_pos_where=additional_pos_where)#, splitted_syntagma=splitted_syntagma)
+                                                stemmed_search=stemmed_search,additional_pos_where=additional_pos_where))#, splitted_syntagma=splitted_syntagma)
                 if not where1: return False
             #p(where1,"where1_redu", c="b")
             _redu = self.get_reps("redu",inp_syntagma_splitted,scope,where1,indexes,thread_name=thread_name, minimum_columns=minimum_columns,
                             order_output_by_syntagma_order=order_output_by_syntagma_order, return_full_tuple=return_full_tuple,stemmed_search=False,
-                            just_check_existence=just_check_existence, output_type=output_type,delete_duplicates=delete_duplicates,
+                            output_type=output_type,delete_duplicates=delete_duplicates,
                             syntagma_type=syntagma_type, for_optimization=for_optimization, get_also_non_full_repetativ_result=get_also_non_full_repetativ_result)
 
         #p((repl,_repl, redu, _redu))
 
         if baseline:
             if syntagma_type == "lexem":
-                where2 = self._get_where_statement(inp_syntagma_splitted,scope=scope,thread_name=thread_name, with_context=False,syntagma_type=syntagma_type, sentiment=sentiment, inp_syntagma_unsplitted=inp_syntagma_unsplitted,stemmed_search=stemmed_search, additional_pos_where=additional_pos_where)#, splitted_syntagma=splitted_syntagma)
+                where2 = tuple(self._get_where_statement(inp_syntagma_splitted,scope=scope,thread_name=thread_name, with_context=False,syntagma_type=syntagma_type, sentiment=sentiment, inp_syntagma_unsplitted=inp_syntagma_unsplitted,stemmed_search=stemmed_search, additional_pos_where=additional_pos_where))#, splitted_syntagma=splitted_syntagma)
                 if not where2: return False
-                _baseline = list(self._baseline(inp_syntagma_splitted,where=where2,minimum_columns=minimum_columns))
+                _baseline = tuple(self._baseline(inp_syntagma_splitted,where=where2,minimum_columns=minimum_columns, thread_name=thread_name))
             else:
                 all_syntagmas = []
                 if _repl:
@@ -1996,11 +2195,11 @@ class Stats(BaseContent,BaseDB):
 
                 for temp_syntagma in set(all_syntagmas):
                     #p(temp_syntagma, "temp_syntagma")
-                    where2 = self._get_where_statement(temp_syntagma,scope=scope,thread_name=thread_name, with_context=False,syntagma_type="lexem", sentiment=sentiment,
+                    where2 = tuple(self._get_where_statement(temp_syntagma,scope=scope,thread_name=thread_name, with_context=False,syntagma_type="lexem", sentiment=sentiment,
                                                         inp_syntagma_unsplitted=inp_syntagma_unsplitted,stemmed_search=stemmed_search,
-                                                        additional_pos_where=False)#, splitted_syntagma=splitted_syntagma)
+                                                        additional_pos_where=False))#, splitted_syntagma=splitted_syntagma)
                     if not where2: return False
-                    _baseline += list(self._baseline(temp_syntagma,where=where2, minimum_columns=minimum_columns))
+                    _baseline += tuple(self._baseline(temp_syntagma,where=where2, minimum_columns=minimum_columns,thread_name=thread_name))
 
         #p((inp_syntagma_splitted,_repl, _redu, _baseline,))
         if not _repl and not _redu and not _baseline:
@@ -2016,102 +2215,88 @@ class Stats(BaseContent,BaseDB):
 
 
 
-
     def get_reps(self, rep_type,inp_syntagma_splitted,scope,where,indexes,thread_name="Thread0",
-                    order_output_by_syntagma_order=False, return_full_tuple=False, stemmed_search=False,
-                    just_check_existence=False, output_type="list", minimum_columns=False,
-                    delete_duplicates=True, syntagma_type="lexem", for_optimization=False,
-                    get_also_non_full_repetativ_result=False):
-        #p((rep_type,inp_syntagma_splitted,scope,just_check_existence),"get_reps_BEGINN", c="r")
-
-
+                order_output_by_syntagma_order=False, return_full_tuple=False, stemmed_search=False,
+                output_type="list", minimum_columns=False,
+                delete_duplicates=True, syntagma_type="lexem", for_optimization=False,
+                get_also_non_full_repetativ_result=False):
+        #p((rep_type,inp_syntagma_splitted,scope),"get_reps_BEGINN", c="r")
         ### Step 1: Variables Initialization
         _rep = []
         is_full_repetativ = True
+        
+        #if for_optimization:
+        #    col_to_get = "id"
+        #else:
         col_to_get = Stats.min_col[rep_type] if minimum_columns else False
-        #if not id_index:
-        #    id_index
-
-
+        #p((rep_type, inp_syntagma_splitted, get_also_non_full_repetativ_result, for_optimization, scope,where))
+        # p((where), "where_by_get_reps")
         ### Step 2: 
         if order_output_by_syntagma_order:
-            #iterator = izip(inp_syntagma_splitted,where)
             for word,w in izip(inp_syntagma_splitted,where):
-                #p(w, "w_in_rep", c="c")
-                current_reps = list(self._rep_getter_from_db(rep_type,inp_syntagma_splitted,scope=scope,where=w,thread_name=thread_name,columns=col_to_get, output_type=output_type))
+                current_reps = tuple(self._rep_getter_from_db(rep_type,inp_syntagma_splitted,scope=scope,where=w,thread_name=thread_name,columns=col_to_get, output_type=output_type, for_optimization=for_optimization))
+                #if not current_reps:
+                #    return False
                 #p( current_reps, " current_reps")
-                if not current_reps:
+                # p((current_reps, w))
+                #for 
+                if current_reps:
+                    if for_optimization: return True # if match, than return True
+                else:
+                    if for_optimization: continue 
                     is_full_repetativ = False
                     if self._full_repetativ_syntagma:
-                        if not for_optimization:
-                            if just_check_existence: return False
-                            if not get_also_non_full_repetativ_result:
-                                _rep = ()
-                                break
-                        # if return_full_tuple:
-                        #     return (None,is_full_repetativ)
-                        # else:
-                        #     return ()
-
+                        if not get_also_non_full_repetativ_result:
+                            _rep = ()
+                            break
+                          
                 _rep.append( (word,current_reps))
-            #p((rep_type,_rep), "111_rep")
-            ### check, if there any rep exist, 
+
+            if for_optimization: return False # if here, it means, that not one match was found till now.
+
+            ### Check, if reps in containers are empty 
             i = 0
-            #p(_rep,"_rep")
             for container in _rep:
                 if not container[1]:
                     i += 1
-            #print i
             if len(_rep) == i:
                 _rep =  ()
 
         else:
             for w in where:
                 #p(w, "w_in_rep", c="c")
-                current_reps = list(self._rep_getter_from_db(rep_type,inp_syntagma_splitted,scope=scope,where=w,thread_name=thread_name,columns=col_to_get,  output_type=output_type))
-                if not current_reps:
+                #print 1111
+                current_reps = tuple(self._rep_getter_from_db(rep_type,inp_syntagma_splitted,scope=scope,where=w,thread_name=thread_name,columns=col_to_get,  output_type=output_type, for_optimization=for_optimization))
+                #print "current_reps= ", current_reps
+                if current_reps:
+                    #print 22222
+                    if for_optimization: return True # if match, than return True
+                else:
+                    #print 3333
+                    if for_optimization: continue 
                     is_full_repetativ = False
                     if self._full_repetativ_syntagma:
-                        if not for_optimization:
-                            if just_check_existence: return False
-                            if not get_also_non_full_repetativ_result:
-                                _rep = ()
-                                break
+                        if not get_also_non_full_repetativ_result:
+                            _rep = ()
+                            break
+                #print 4444   
                 _rep += current_reps
-        
-        ### Step 3: 
-        if just_check_existence:
-            if _rep:
-                return True
-            else:
-                return False
 
-        #p(123)
-        
+            if for_optimization: return False # if here, it means, that not one match was found till now.
+            #print 555
+
         if _rep:
-            #p("ghjghj")
             ## Step 5: 
+            if get_also_non_full_repetativ_result: return _rep
             id_ix = indexes[rep_type]["id"]
             if  self._full_repetativ_syntagma and scope > 1 and is_full_repetativ:
-                
-                #p((inp_syntagma_splitted,_rep),"inp_syntagma_splitted")
                 reconstructed,length = self._reconstruct_syntagma(rep_type, _rep, order_output_by_syntagma_order,indexes,syntagma_type=syntagma_type,stemmed_search=stemmed_search)
-                #reconstructed = {d:{s:{t:ids for t, ids in s_data.iteritems()} for s, s_data in doc_data.iteritems()} for d, doc_data in reconstructed.iteritems()}
-                #p((reconstructed,length,scope), "reconstruct_syntagma")
                 full_syntagmas, allowed_ids = self._exctract_full_syntagmas(reconstructed,scope,length,inp_syntagma_splitted,syntagma_type=syntagma_type)
-                #p((full_syntagmas, allowed_ids),"_exctract_full_syntagmas")
-
-                #p((full_syntagmas, allowed_ids))
                 _rep = self._filter_full_rep_syn(rep_type,_rep, allowed_ids,order_output_by_syntagma_order ,id_ix) #
-
 
             if delete_duplicates:
                _rep = self._delete_dublicats_in_reps( _rep, order_output_by_syntagma_order,id_ix)
-     
 
-
-
-        #p((rep_type,_rep), "222_rep")
 
         ### Step 6: 
         if return_full_tuple:
@@ -2119,7 +2304,10 @@ class Stats(BaseContent,BaseDB):
                 full_syn_sum = len(full_syntagmas) if _rep else 0
             except:
                 full_syn_sum = None
-            return (_rep, is_full_repetativ, full_syn_sum)
+            if _rep:
+                return (_rep, is_full_repetativ, full_syn_sum)
+            else:
+                _rep
         else:
             return _rep
      
@@ -2372,31 +2560,34 @@ class Stats(BaseContent,BaseDB):
                 #break
         return new_reps
 
-    def _rep_getter_from_db(self, rep_type,inp_syntagma="*", scope=False,where=False, output_type="list", size_to_get=1000, columns=False,thread_name="Thread0",just_check_existence=False):
+    def _rep_getter_from_db(self, rep_type,inp_syntagma="*", scope=False,
+                            where=False, output_type="list", size_to_get=1000,
+                            columns=False,thread_name="Thread0",
+                            for_optimization=False,):
         if inp_syntagma != "*":
             if not where:
                 self.logger.error("Where wasn't given.")
-                yield False
+                #yield False
                 return
 
-        #if rep_type not in Stats.supported_rep_type:
-        #    self.logger.error("Given RepType ('{}') is not exist.".format(rep_type))
-        
         try:
             table_name = Stats.phenomena_table_map[rep_type]
         except:
             self.logger.error("Given RepType ('{}') is not exist.".format(rep_type))
-            yield False
+            #yield False
             return 
 
-        generator = self.statsdb.lazyget(table_name,  columns=columns, where=where, connector_where="AND", output=output_type, case_sensitiv=self._case_sensitiv)
+        generator = self.statsdb.lazyget(table_name,  columns=columns, where=where, connector_where="AND", output=output_type, case_sensitiv=self._case_sensitiv,thread_name=thread_name)
 
-        if just_check_existence:
-            if next(generator):
+        if for_optimization:
+            try:
+                next(generator)
                 yield True
-            else:
-                yield False
-            return
+                return
+            except StopIteration:
+                #pass
+                return
+   
 
         for row in generator:
             yield row
@@ -2459,24 +2650,60 @@ class Stats(BaseContent,BaseDB):
         return all_syntagmas
 
 
+  
 
-
-    def _baseline(self, inp_syntagma="*", max_scope=False,  where=False, connector_where="AND", output="list", size_to_get=1000, thread_name="Thread0", split_syntagma=True,minimum_columns=False ):
-        col_to_get = Stats.min_col["baseline"] if minimum_columns else False
+    def _baseline(self, inp_syntagma="*", max_scope=False,  where=False, connector_where="AND", output="list", size_to_fetch=1000, thread_name="Thread0", split_syntagma=True,minimum_columns=False ,limit=-1, offset=0):
+        #temp_cols_to_get = Stats.min_col["baseline"] if minimum_columns else False
+        #columns = columns if columns else temp_cols_to_get
+        columns = Stats.min_col["baseline"] if minimum_columns else False
+        #p((where, inp_syntagma,max_scope))
+        # p(locals())
         if inp_syntagma == "*":
-            for row in  self.statsdb.lazyget("baseline", columns=col_to_get, where=where, connector_where=connector_where, output=output, case_sensitiv=self._case_sensitiv):
-                if split_syntagma:
-                    row = list(row)
-                    splitted_syntagma = row[0].split("++")
-                    row[0] = splitted_syntagma
+            if max_scope is not False:
+                w = "scope <= {}".format(max_scope)
+                if where:
+                    if isinstance(where, (list, tuple)):
+                        #answer = None
+                        ix = None
+                        for index, tw in  enumerate(where):
+                            if "scope" in tw:
+                                ix = index
+                        if ix:
+                            where[ix] = w
+                        else:
+                            where.append(w)
+                            if connector_where != "AND":
+                                self.logger.error("PossibleWrongData: ConnectorWhere is 'OR' but should be 'AND'")
 
-                if max_scope:
-                    if not  split_syntagma:
-                        splitted_syntagma = row[0].split("++")
-
-                    if  len(splitted_syntagma) <= max_scope:
-                        yield row
+                    else:
+                        temp_where = [where]
+                        if "scope" not in where:
+                            temp_where.append(w)
+                        else:
+                            temp_where = [w]
                 else:
+                    where = w
+
+
+            
+            #baseline_num = len(list(self.statsdb.lazyget("baseline", columns=columns, where=where, connector_where=connector_where, output=output, case_sensitiv=self._case_sensitiv,thread_name=thread_name+"BSGET",limit=limit, offset=offset, size_to_fetch=size_to_fetch)))
+            # p((where,max_scope,baseline_num), "where")
+            # print 000
+            for row in self.statsdb.lazyget("baseline", columns=columns, where=where, connector_where=connector_where, output=output, case_sensitiv=self._case_sensitiv,thread_name=thread_name+"BSGET",limit=limit, offset=offset, size_to_fetch=size_to_fetch):
+                # p(row, "row")
+                # print 111
+                if split_syntagma and row:
+                    # print 222
+                    #temp_row = list(row)
+                    #row = list(row)
+                    splitted_syntagma = row[0].split(self._baseline_delimiter)
+                    #row[0] = splitted_syntagma
+                    r = (splitted_syntagma,) + row[1:]
+                    # p((r, split_syntagma))
+                    yield (splitted_syntagma,) + row[1:]
+                    #yield splitted_syntagma
+                else:
+                    # p((row, split_syntagma))
                     yield row
 
         else:
@@ -2485,11 +2712,14 @@ class Stats(BaseContent,BaseDB):
                 yield False
                 return
 
-            for row in self.statsdb.lazyget("baseline", columns=col_to_get, where=where, connector_where="AND", output=output, case_sensitiv=self._case_sensitiv):
-                if split_syntagma:
+            for row in self.statsdb.lazyget("baseline", columns=columns, where=where, connector_where="AND", output=output, case_sensitiv=self._case_sensitiv,limit=limit, offset=offset):
+                #p(row, "row")
+                if split_syntagma and row:
                     row = list(row)
-                    row[0] = row[0].split("++")
+                    row[0] = row[0].split(self._baseline_delimiter)
                 yield row
+
+        #sys.exit()
 
 
 
@@ -2509,16 +2739,17 @@ class Stats(BaseContent,BaseDB):
                             scope=False, syntagma_type="lexem", sentiment=False,thread_name="Thread0", 
                             with_context=True,stemmed_search=False, additional_pos_where=False):#, splitted_syntagma=True):
         ### Syntagma Preprocessing
-
+        #o = type(inp_syntagma_splitted)
+        #p((inp_syntagma_splitted, o))
         status= True
         convert = False
         if syntagma_type != "pos":
             try:
                 if not inp_syntagma_unsplitted:
                     try:
-                        inp_syntagma_unsplitted = u"++".join(inp_syntagma_splitted)
+                        inp_syntagma_unsplitted = self._baseline_delimiter.join(inp_syntagma_splitted)
                     except TypeError:
-                        inp_syntagma_unsplitted = u"++".join([unicode(syntagma) for syntagma in inp_syntagma_splitted])
+                        inp_syntagma_unsplitted = self._baseline_delimiter.join([unicode(syntagma) for syntagma in inp_syntagma_splitted])
             except (UnicodeDecodeError, UnicodeEncodeError):
                 convert = True
         
@@ -2530,10 +2761,7 @@ class Stats(BaseContent,BaseDB):
                     inp_syntagma_splitted = [word.decode("utf-8") for word in inp_syntagma_splitted]
                 except (UnicodeDecodeError, UnicodeEncodeError):
                     pass
-                #p( inp_syntagma_splitted, "2 inp_syntagma_splitted")
-                #inp_syntagma_unsplitted = inp_syntagma_unsplitted if inp_syntagma_unsplitted else 
 
-                #p(repr(inp_syntagma_unsplitted), "1 inp_syntagma_unsplitted")
                 try: 
                     if inp_syntagma_unsplitted:
                         try:
@@ -2541,10 +2769,10 @@ class Stats(BaseContent,BaseDB):
                         except (UnicodeDecodeError, UnicodeEncodeError):
                             pass
                     else:
-                        inp_syntagma_unsplitted = u"++".join(inp_syntagma_splitted)
+                        inp_syntagma_unsplitted = self._baseline_delimiter.join(inp_syntagma_splitted)
                     #p(repr(inp_syntagma_unsplitted), "inp_syntagma_unsplitted")
                 except (UnicodeDecodeError, UnicodeEncodeError):
-                    inp_syntagma_unsplitted = u"++".join([unicode(t) for t in inp_syntagma_splitted])
+                    inp_syntagma_unsplitted = self._baseline_delimiter.join([unicode(t) for t in inp_syntagma_splitted])
                 #p(repr(inp_syntagma_unsplitted), "2 inp_syntagma_unsplitted")
                 try:
                     additional_pos_where = [word.decode("utf-8") for word in additional_pos_where]
@@ -2554,7 +2782,7 @@ class Stats(BaseContent,BaseDB):
 
             #p(inp_syntagma_splitted, "inp_syntagma_splitted")
             try:
-                wheres = []
+                #wheres = []
                 if with_context: # for repl and redu
                     if syntagma_type == "lexem":
                         if stemmed_search:
@@ -2572,12 +2800,19 @@ class Stats(BaseContent,BaseDB):
                         context_tag_name_r = "contextR"  if syntagma_type == "lexem" else "context_infoR"
                         context_tag_name_l = "contextL"  if syntagma_type == "lexem" else "context_infoL"
                         word_index = 0
-                    # splitted_syntagma = inp_syntagma_splitted if splitted_syntagma else inp_syntagma_splitted.split("++")
-                    # unsplitted_syntagma = inp_syntagma_splitted if splitted_syntagma else inp_syntagma_splitted.split("++")
+                    # splitted_syntagma = inp_syntagma_splitted if splitted_syntagma else inp_syntagma_splitted.split(self._baseline_delimiter)
+                    # unsplitted_syntagma = inp_syntagma_splitted if splitted_syntagma else inp_syntagma_splitted.split(self._baseline_delimiter)
+                    if scope > self.baseline_ngramm_lenght:
+                        self.logger.error("WhereGetter: Given Scope ('{}') is higher as allow ('{}'). (given syntagma:'{}'). ".format(scope, self.baseline_ngramm_lenght, inp_syntagma_splitted))
+                        #yield False
+                        return 
+
                     for token_index in xrange(scope):
                         last_token_index = scope-1
                         where = []
                         for i, token in  zip(range(scope),inp_syntagma_splitted):
+                            #p(token, "token")
+                            #token = token.replace("'", '"') if "'" in token  else token
                             if i < token_index:
                                 #ix = token_index -1
                                 #json_extract("text", "$[1]")
@@ -2605,40 +2840,27 @@ class Stats(BaseContent,BaseDB):
                                     col_name = u"{}{}".format("context_infoR",i-token_index)
                                     search_pattern = u'json_extract("{}", "$[0]")  = "{}"'.format(col_name,additional_pos_where[i])
                                     where.append(search_pattern)
-                                #where.append(u"{}{} {} ".format(context_tag_name_l,token_index-i,search_pattern))
-
-                                # #search_pattern = u"='{}'".format(token) if syntagma_type == "lexem" else  u"LIKE '%{}%'".format(token)
-                                # search_pattern = u"='{}'".format(token) if syntagma_type == "lexem" else  u"LIKE '%{}%'".format(token)
-                                # where.append(u"{}{} {} ".format(context_tag_name_r,i-token_index,search_pattern))
 
                         if sentiment:
                             where.append(u"polarity LIKE '%{}%'".format(sentiment))
+                        yield where
 
-                        #if additional_pos_where and syntagma_type!="pos":
-
-                        #p(where,"where111")
-                        wheres.append(where)
-                    #p(wheres, "wheres")
-                    #status
-                    
-                        #self._add_addit_where_to_where(additional_pos_where, wheres)
-                    #p(wheres, "wheres", c="m")
-                    return wheres
+                    return 
 
 
                 else:
-                    # for baseline
-                    #p(inp_syntagma_splitted,"inp_syntagma_splitted")
-                    #syntagma_qeary = u"syntagma= '{}'".format("++".join([unicode(t) for t in inp_syntagma]))
-                    #p(repr(inp_syntagma_unsplitted), "3 inp_syntagma_unsplitted")
                     if syntagma_type == "pos":
                         #p((inp_syntagma_splitted, inp_syntagma_unsplitted))
-                        self.logger.error("To get Where Expression without context  for SyntagmaType='pos' is not possible. ")
-                        return False
+                        self.logger.error("To get Where Expression without context for SyntagmaType='pos' is not possible. ")
+                        #return False
+                        #yield False
+                        return
                     syntagma_tag ='stemmed' if stemmed_search else "syntagma"
                     syntagma_qeary = u"{}= '{}'".format(syntagma_tag,inp_syntagma_unsplitted)
                     #p([syntagma_qeary], "[syntagma_qeary]")
-                    return [syntagma_qeary]
+                    #return [syntagma_qeary]
+                    yield syntagma_qeary
+                    return 
 
             except (UnicodeDecodeError, UnicodeEncodeError):
                 convert = True
@@ -2735,18 +2957,28 @@ class Stats(BaseContent,BaseDB):
     ###########################Setters####################
 
 #_drop_created_indexes
-    def compute(self,inp_corp, stream_number=1, datatyp="dict", text_field_name="text", adjust_to_cpu=True,min_files_pro_stream=1000,cpu_percent_to_get=50,output="dict",  thread_name="Thread0", create_indexes=True, freeze_db=False, drop_indexes=True,optimized_for_long_syntagmas=False):
+    def compute(self,inp_corp, stream_number=1, datatyp="dict", 
+                adjust_to_cpu=True,min_files_pro_stream=1000,cpu_percent_to_get=50, 
+                thread_name="Thread0", create_indexes=True, freeze_db=False,
+                drop_indexes=True,optimized_for_long_syntagmas=True,
+                baseline_insertion_border=1000000):
         if not self._check_stats_db_should_exist():
             return False
-
+        #p(stream_number, "stream_number")
         if not self._check_db_should_be_an_stats():
             return False
+
+        #self._baseline_intime_insertion_till = baseline_intime_insertion_till
         try:
             if not isinstance(inp_corp, Corpus):
                 self.logger.error("Given InpObject is not from Corpus type. Insert was aborted!")
                 return False
 
-            self._init_insertion_variables()
+            if self.statsdb.get_attr("locked"):
+                self.logger.error("Current DB is still be locked. Possibly it in ht now fr in-useom other process or la thest computation process is failed.")
+                return False
+            self.statsdb.update_attr("locked", True)
+            self._init_compution_variables()
             if  self._db_frozen: ## insert "db_frozen" as attribute to the StatsDB!!!
                msg = "Current StatsDB is closed for new Insertions because it  was already SizeOptimized and all temporary Data was deleted"
                self.logger.error(msg)
@@ -2757,10 +2989,19 @@ class Stats(BaseContent,BaseDB):
             if drop_indexes:
                 self._drop_created_indexes()
 
-            self._init_insertion_variables()
+            self._init_compution_variables()
 
             self.corp = inp_corp
             self._corp_info  = self.corp.info()
+            self._text_field_name = self._corp_info["text_field_name"]
+            self._id_field_name =  self._corp_info["id_field_name"]
+
+            self.statsdb.update_attr("pos_tagger",self._corp_info["pos_tagger"])
+            self.statsdb.update_attr("sentiment_analyzer",self._corp_info["sentiment_analyzer"])
+            self._pos_tagger = self._corp_info["pos_tagger"]
+            self._sentiment_analyzer = self._corp_info["sentiment_analyzer"]
+
+
             self._compute_cleaning_flags()
             #p(self.force_cleaning_flags, "self.force_cleaning_flags")
             #p(self._force_cleaning, "self._force_cleaning")
@@ -2780,6 +3021,7 @@ class Stats(BaseContent,BaseDB):
             if not self._corpus_id:
                 self.statsdb.update_attr("corpus_id", self._corp_info["id"])
                 self.set_all_intern_attributes_from_db()
+
             else:
                 if self._corpus_id != self._corp_info["id"]:
                     self.logger.error("Current StatdDb was already computed/initialized for Corpus with id '{}'. Now you try to insert Corpus with id '{}' and it is not allow.".format(self._corpus_id,self._corp_info["id"]))
@@ -2791,7 +3033,7 @@ class Stats(BaseContent,BaseDB):
 
             ##### Status-Bar - Name of the processed DB
             if self._status_bar:
-                print "\n"
+                # print "\n"
                 if self._in_memory:
                     dbname = ":::IN-MEMORY-DB:::"
                 else:
@@ -2814,7 +3056,7 @@ class Stats(BaseContent,BaseDB):
             if self._status_bar:
                 status_bar_threads_init = self._get_new_status_bar(len(streams), "ThreadsStarted", "threads")
             
-
+            #p((stream_number, len(streams)))
             #i=1
             self._threads_num = len(streams)
             if self._threads_num>1:
@@ -2823,6 +3065,8 @@ class Stats(BaseContent,BaseDB):
                     self.main_status_bar_of_insertions = self._get_new_status_bar(0, "AllThreadsTotalInsertions", unit)
                     self.main_status_bar_of_insertions.refresh()
                     #self.main_status_bar_of_insertions.total = 0
+            else: 
+                self.main_status_bar_of_insertions = False
 
 
             for stream in streams:
@@ -2833,7 +3077,7 @@ class Stats(BaseContent,BaseDB):
                 #p(gen)
 
                 thread_name = stream[0]
-                processThread = threading.Thread(target=self._compute, args=(gen,datatyp,  thread_name,text_field_name), name=thread_name)
+                processThread = threading.Thread(target=self._compute, args=(gen,datatyp,  thread_name,baseline_insertion_border), name=thread_name)
                 processThread.setDaemon(True)
                 processThread.start()
                 self.active_threads.append(processThread)
@@ -2846,7 +3090,7 @@ class Stats(BaseContent,BaseDB):
 
             time.sleep(3)
 
-            if not self._wait_till_all_threads_are_completed("Insert"):
+            if not self._wait_till_all_threads_are_completed("Compute"):
                 return False
 
 
@@ -2867,9 +3111,6 @@ class Stats(BaseContent,BaseDB):
 
             #self._print_summary_status()
 
-
-
-
             inserted_repl = self.statsdb.rownum("replications")
             inserted_redu = self.statsdb.rownum("reduplications")
             uniq_syntagma_in_baseline = self.statsdb.rownum("baseline")
@@ -2880,9 +3121,12 @@ class Stats(BaseContent,BaseDB):
                 self.status_bars_manager.stop()
                 #print "\n"
 
-            self.logger.info("Current StatsDB has '{}' rows in the Replications Table.".format(inserted_repl))
-            self.logger.info("Current StatsDB has '{}' rows in the Reduplications Table.".format(inserted_redu))
-            self.logger.info("Current StatsDB has '{}' rows in the Baseline Table.".format(uniq_syntagma_in_baseline))
+            if not self._status_bar:
+                self.logger.info("Current StatsDB has '{}' rows in the Replications Table; '{}' rows in the Reduplications Table;'{}' rows in the Baseline Table; ".format(inserted_repl,inserted_redu,uniq_syntagma_in_baseline))
+            else:
+                self.logger.debug("Current StatsDB has '{}' rows in the Replications Table; '{}' rows in the Reduplications Table;'{}' rows in the Baseline Table; ".format(inserted_repl,inserted_redu,uniq_syntagma_in_baseline))
+            #self.logger.info("Current StatsDB has '{}' rows in the Reduplications Table.".format(inserted_redu))
+            #self.logger.info("Current StatsDB has '{}' rows in the Baseline Table.".format(uniq_syntagma_in_baseline))
 
 
             self._last_insertion_was_successfull = True
@@ -2890,29 +3134,36 @@ class Stats(BaseContent,BaseDB):
 
 
 
-            self.statsdb.commit()
+            self.statsdb._commit()
             if create_indexes:
                 self.statsdb.init_default_indexes(thread_name=thread_name)
                 self.create_additional_indexes(optimized_for_long_syntagmas=optimized_for_long_syntagmas)
-                self.statsdb.commit()
+                self.statsdb._commit()
+
+            if not self._check_baseline_consistency():
+                self.logger.error("StatsDBCorrupt: Current StatsDB is inconsistent.")
+                return False
 
             if freeze_db:
-                #p("fghjkl")
-                self.optimize_db()
+                self.optimize_db(stream_number=stream_number, min_row_pro_sream=min_files_pro_stream)
 
+            self.statsdb._commit()
             self._compute_baseline_sum()
 
-
+            if not self._check_statsdb_consistency():
+                self.logger.error("StatsDBCorrupt: Current StatsDB is inconsistent.")
+                return False
+            
             if len(self.threads_unsuccess_exit) >0:
                 self.logger.error("StatsComputational process is failed. (some thread end with error)")
                 raise ProcessError, "'{}'-Threads end with an Error.".format(len(self.threads_unsuccess_exit))
+                #self.statsdb.update_attr("locked", False)
                 return False
             else:
                 self.logger.info("StatsComputational process end successful!!!")
+                self.statsdb.update_attr("locked", False)
+                self.statsdb._commit()
                 return True
-
-
-
 
         except Exception, e:
             print_exc_plus() if self._ext_tb else ""
@@ -2924,9 +3175,7 @@ class Stats(BaseContent,BaseDB):
            
 
 
-
-
-    def _compute(self, inp_data, datatyp="dict",  thread_name="Thread0", text_field_name="text", baseline_insertion_border=100000,add_also_repeted_redu_to_baseline=True):
+    def _compute(self, inp_data, datatyp="dict",  thread_name="Thread0",  baseline_insertion_border=1000000,add_also_repeted_redu_to_baseline=True):
         try:
             if not self._check_corp_should_exist():
                 self._terminated = True
@@ -2940,29 +3189,25 @@ class Stats(BaseContent,BaseDB):
                 msg = "CorpInfo wasn't found."
                 self.logger.error(msg)
                 self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
-                return False
+                return False 
 
-            status_bar_insertion_in_the_current_thread = self._initialisation_computation_process( inp_data,text_field_name=text_field_name,  thread_name=thread_name, )
+            status_bar_insertion_in_the_current_thread = self._initialisation_computation_process( inp_data,  thread_name=thread_name, )
             
             if self._status_bar:
                 if not  status_bar_insertion_in_the_current_thread: return False
 
-
-            # if self._status_bar:
-            #     status_bar_of_insertions = self._get_new_status_bar(len(inp_data), "{}:Insertion".format(thread_name), "files")
-
-            
-            #p(inp_data,"inp_data")
-            #p(tuple(inp_data))
             self.logger.debug("_ComputationalProcess: Was started for '{}'-Thread. ".format(thread_name))
-            for row_as_dict in inp_data:
+            i = 0
+            for doc_elem in inp_data:
+                self._check_termination(thread_name=thread_name)
+                i+= 1
                 if self._status_bar:
                     status_bar_insertion_in_the_current_thread.update(incr=1)
-                    if self._threads_num>1:
+                    if self.main_status_bar_of_insertions:
                         self.main_status_bar_of_insertions.update(incr=1)
 
-                #p((row_as_dict["id"],row_as_dict[self._text_field_name]), "row_as_dict[self._text_field_name]")
-                text_elem = json.loads(row_as_dict[self._text_field_name])
+                text_elem = json.loads(doc_elem[1])
+                #p((sum([len(s[0]) for s in  text_elem]), "doc_elem"))
                 if self._force_cleaning:
                     text_elem  = self._preprocess(text_elem,thread_name=thread_name)
                 #p(text_elem, c="m")
@@ -2970,18 +3215,30 @@ class Stats(BaseContent,BaseDB):
                 ### Extraction 
                 extracted_repl_in_text_container, repl_free_text_container, rle_for_repl_in_text_container = self.extract_replications(text_elem, thread_name=thread_name)
                 #p((extracted_repl_in_text_container, repl_free_text_container, rle_for_repl_in_text_container), "REPLS")
+                
                 extracted_redu_in_text_container, redu_free_text_container, mapping_redu = self.extract_reduplications(repl_free_text_container, rle_for_repl_in_text_container, thread_name=thread_name)
                 #p((extracted_redu_in_text_container, redu_free_text_container, mapping_redu), "REDUS")
-                computed_baseline = self.compute_baseline(redu_free_text_container,extracted_redu_in_text_container,add_also_repeted_redu=add_also_repeted_redu_to_baseline)
+                
+                computed_baseline = self.compute_baseline(redu_free_text_container,extracted_redu_in_text_container)
                 stemmed_text_container = [[self.stemm(token) for token in sent] for sent in redu_free_text_container]
+                
                 #p(stemmed_text_container, "stemmed_text_container")
                 ### Insertion
-                self.insert_repl_into_db(row_as_dict,text_elem,extracted_repl_in_text_container, repl_free_text_container,rle_for_repl_in_text_container,redu_free_text_container,mapping_redu,stemmed_text_container)
-                self.insert_redu_into_db(row_as_dict,text_elem,extracted_redu_in_text_container, redu_free_text_container, rle_for_repl_in_text_container, repl_free_text_container, mapping_redu,stemmed_text_container)
-                self.baseline_lazyinsertion_into_db(computed_baseline,baseline_insertion_border=baseline_insertion_border)
 
+                self.insert_repl_into_db(doc_elem,text_elem,extracted_repl_in_text_container, repl_free_text_container,rle_for_repl_in_text_container,redu_free_text_container,mapping_redu,stemmed_text_container, thread_name=thread_name)
+                self.insert_redu_into_db(doc_elem,text_elem,extracted_redu_in_text_container, redu_free_text_container, rle_for_repl_in_text_container, repl_free_text_container, mapping_redu,stemmed_text_container,thread_name=thread_name)
 
-            self.baseline_insert_left_over_data()
+                #if "@ronetejaye" in [t for sent in redu_free_text_container for t in sent]:
+                #    p((doc_elem,redu_free_text_container,repl_free_text_container), "doc_elem")
+                
+                with self.locker:
+                    self.baseline_lazyinsertion_into_db(computed_baseline,extracted_redu_in_text_container,baseline_insertion_border=baseline_insertion_border,thread_name=thread_name)
+
+            self._write_repl_into_db(thread_name=thread_name)
+            self._write_redu_into_db(thread_name=thread_name)        
+
+            with self.locker:
+                self.baseline_insert_left_over_data(thread_name=thread_name)
 
 
             if self._status_bar:
@@ -3007,6 +3264,12 @@ class Stats(BaseContent,BaseDB):
             return False
 
 
+
+    def _check_termination(self, thread_name="Thread0"):
+        if self._terminated:
+            self.logger.critical("'{}'-Thread was terminated.".format(thread_name))
+            self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
+            sys.exit()
 
 
     def _get_occur(self,counted_rep, scope=1,splitted_syntagma=False):
@@ -3045,23 +3308,17 @@ class Stats(BaseContent,BaseDB):
 
 
 
-    def _insert_temporized_sum_into_baseline_table_in_db(self,temporized_sum):
-        # placeholders = " ,".join(["?" for i in range(len(temporized_sum[0]))])
-        # qeary = """
-        # INSERT OR REPLACE INTO baseline VALUES ({});
-        # """
-        #cursor = self.statsdb._db.cursor()
-        #cursor.executemany(qeary, temporized_sum)
-
-        #self.statsdb.executemany(qeary.format(placeholders), temporized_sum, thread_name="sum_inserter")
-        #temporized_sum = []
-        self.statsdb._insertlist_with_many_rows("baseline", temporized_sum, thread_name="sum_inserter")
+    def _insert_temporized_sum_into_baseline_table_in_db(self,temporized_sum,tables_name, ):
+        placeholders = " ,".join(["?" for i in range(len(temporized_sum[0]))])
+        qeary = """
+        INSERT OR REPLACE INTO {} VALUES ({});
+        """
+        self.statsdb._threads_cursors["sum_inserter"].executemany(qeary.format(tables_name,placeholders), temporized_sum)
 
 
 
 
-
-    def recompute_syntagma_repetativity_scope(self, full_repetativ_syntagma):
+    def recompute_syntagma_repetativity_scope(self, full_repetativ_syntagma,_check_statsdb_consistency=True):
         values_from_db = self.statsdb.get_attr("full_repetativ_syntagma")
         if full_repetativ_syntagma not in [True, False]:
             self.logger.error("A non-boolean symbol ('{}') was given as full_repetativ_syntagma-Option. ".format(full_repetativ_syntagma))
@@ -3074,22 +3331,44 @@ class Stats(BaseContent,BaseDB):
         # if self._full_repetativ_syntagma and self._db_frozen and full_repetativ_syntagma == False:
         #     self.logger.warning("Recomputing from True->False is failed!!! Because this StatsDB was already optimized and all not-full-repetativ-syntagmas was already deleted during this process.")
         #     return False
+        if self.statsdb.get_attr("locked"):
+                        self.logger.error("Current DB is still be locked. Possibly it in ht now fr in-useom other process or la thest computation process is failed.")
+                        return False
+
+        self.statsdb.update_attr("locked", True)
 
         
+                
         self.statsdb.update_attr("full_repetativ_syntagma", full_repetativ_syntagma)
         self.set_all_intern_attributes_from_db()
+
         if self._compute_baseline_sum():
-            return True
+            self.logger.info("StatsDB FullSyntagmaRepetativnes was recompute with success.")
+            
+
+        if _check_statsdb_consistency:
+            if not self._check_baseline_consistency():
+                self.logger.error("StatsDBCorrupt: Current StatsDB is inconsistent.")
+                return False
+
+            if not self._check_statsdb_consistency():
+                self.logger.error("StatsDBCorrupt: Current StatsDB is inconsistent.")
+                return False
+
         else:
             self.logger.error("FullRepetativnes wasn't recompute.")
             return False
+
+
+        self.statsdb.update_attr("locked", False)
+        return True
         #self.statsdb.update_attr("full_repetativ_syntagma", full_repetativ_syntagma)
         
 
 
 
 
-    def _compute_baseline_sum(self, insertion_border=10000):
+    def _compute_baseline_sum(self, insertion_border=10000, thread_name="Thread0",size_to_fetch=10000, ):
         if not self._check_stats_db_should_exist():
             return False
 
@@ -3104,15 +3383,19 @@ class Stats(BaseContent,BaseDB):
             status_bar_start.refresh()
             status_bar_current = self._get_new_status_bar(self.statsdb.rownum("baseline"), "Processed:", "syntagma")
 
-
         # ### compute syntagmas to delete
         counter_summerized = 0
         temporized_sum = []
         temp_rep = defaultdict()
 
+
+        minimum_columns = False
+        syntagma_type = "lexem"
+        indexes = self.col_index_min if minimum_columns else self.col_index_orig
+
         #### Compute indexes
-        ix_repl = self.col_index_min["repl"]
-        ix_redu = self.col_index_min["redu"]
+        ix_repl = indexes["repl"]
+        ix_redu = indexes["redu"]
 
         ix_word_redu = ix_redu['normalized_word']
         ix_word_repl = ix_repl['normalized_word']
@@ -3123,115 +3406,156 @@ class Stats(BaseContent,BaseDB):
         ix_doc_id_redu = ix_redu["doc_id"]
         ix_doc_id_repl = ix_repl["doc_id"]
 
+        row_num_bevore = self.statsdb.rownum("baseline") +1000
+        #for i, baseline_container in enumerate(self._baseline("*",max_scope=False, split_syntagma=False,thread_name="baseline_getter")):
+        #gen = self.statsdb.lazyget("baseline", thread_name="baseline_sum")
+        # def intern_gen():
+        #     gen = self.statsdb._threads_cursors["baseline_getter"].execute("SELECT * FROM baseline;") #lazyget("baseline", thread_name="baseline_sum")
+        #     while True:
+        #         results = gen.fetchmany(size_to_fetch)
+        #         results = list(results)
+        #         if not results:
+        #             break
 
-        for baseline_container in self._baseline("*",max_scope=False, split_syntagma=False):
+        #         for row in results:
+        #             yield row
+        ### create_temp_table
+        #self.statsdb._threads_cursors["baseline_creater"].execute("CREATE TABLE 'temp_baseline' AS SELECT sql FROM sqlite_master WHERE type='table' AND name='baseline'" ).fetchall()
+        self.statsdb._commit()
+        self._temp_baseline_name = "_baseline"
+        status = self.statsdb.addtable(self._temp_baseline_name, db_helper.default_columns_and_types_for_stats_baseline ,constraints= db_helper.default_constraints_for_stats_baseline)
+        self.statsdb._commit()
+
+
+        for i, baseline_container in enumerate(self.statsdb.lazyget("baseline", thread_name="baseline_sum")):
+            if i >row_num_bevore:
+               self.logger.error("InvalidState: BaselineGetter send more items as need. Script is failed! ( Probably an ImplementationsError. Please contact Egor Savin: ego@savin.berlin) ")
+               sys.exit()
+                #return 
+            #p(baseline_container, "baseline_container")
             if self._status_bar:
                 status_bar_current.update(incr=1)
             #inp_syntagma =  self._preprocess_syntagma(inp_syntagma,thread_name=thread_name, syntagma_type=syntagma_type)
             unsplitted_syntagma = baseline_container[0]
-            splitted_syntagma = unsplitted_syntagma.split("++")
+            splitted_syntagma = unsplitted_syntagma.split(self._baseline_delimiter)
             #p(baseline_container,"baseline_container")
             scope = len(splitted_syntagma)
+            where = tuple(self._get_where_statement(splitted_syntagma,scope=scope,thread_name=thread_name,
+                                             with_context=True,syntagma_type="lexem"))#, splitted_syntagma=splitted_syntagma)
+            if not where: return False
 
-            data =  self._get_data_for_one_syntagma(splitted_syntagma,inp_syntagma_unsplitted=unsplitted_syntagma,
-                            repl=True, redu=True, baseline=False, minimum_columns=True, return_full_tuple=True)
-            #p((data), "data")
-            if data:
-                repls_container = data["repl"]
-                redus_container = data["redu"]
-                temp_baseline_row = baseline_container[:4]
-                #p(temp_baseline_row, "temp_baseline_row")
+            repls_container = self.get_reps("repl",splitted_syntagma,scope,where,indexes,thread_name=thread_name,return_full_tuple=True,
+                                delete_duplicates=False,syntagma_type=syntagma_type, minimum_columns=minimum_columns)
+            
+            redus_container = self.get_reps("redu",splitted_syntagma,scope,where,indexes,thread_name=thread_name,return_full_tuple=True,
+                                delete_duplicates=False,syntagma_type=syntagma_type, minimum_columns=minimum_columns)
+            
+            temp_baseline_row = baseline_container[:4]
+            
+            #p((repls_container, redus_container, temp_baseline_row))
+            if repls_container or redus_container:
+                counter_summerized += 1
+
+            occur_full_syn_repl = None
+            occur_full_syn_redu = None
+            if scope==1:
+                if repls_container:
+                    repls =repls_container[0]
+                    temp_repl = defaultdict(lambda:defaultdict(int))
+                    for repl in repls:
+                        temp_repl[repl[ix_doc_id_repl]][repl[ix_token_repl]] += 1
+                    occur = self._get_occur(temp_repl)
+                    temp_baseline_row += occur
+                    occur_full_syn_repl = occur[0]
+
+                else:
+                    temp_baseline_row += (None,None)
+
+                if redus_container:    
+                    redus = redus_container[0]
+                    temp_redu = defaultdict(lambda:defaultdict(int))
+                    for redu in redus:
+                        temp_redu[redu[ix_doc_id_redu]][redu[ix_token_redu]] += redu[ix_length_redu]
+
+                    occur = self._get_occur(temp_redu)
+                    temp_baseline_row += occur
+                    occur_full_syn_redu = occur[0]
+
+                else:
+                    temp_baseline_row += (None,None)
+
+                temp_baseline_row += (occur_full_syn_repl,occur_full_syn_redu)
+
+
+            else:
                 occur_full_syn_repl = None
                 occur_full_syn_redu = None
-                if scope==1:
+                #p((baseline_container[0],data),"data")
+                if repls_container:
                     repls =repls_container[0]
-                    if repls:
-                        temp_repl = defaultdict(lambda:defaultdict(int))
-                        for repl in repls:
-                            temp_repl[repl[ix_doc_id_repl]][repl[ix_token_repl]] += 1
-                        occur = self._get_occur(temp_repl)
-                        temp_baseline_row += occur
-                        occur_full_syn_repl = occur[0]
-
-                    else:
-                        temp_baseline_row += (None,None)
-
-                    redus = redus_container[0]
-                    if redus:
-                        temp_redu = defaultdict(lambda:defaultdict(int))
-                        for redu in redus:
-                            temp_redu[redu[ix_doc_id_redu]][redu[ix_token_redu]] += redu[ix_length_redu]
-
-                        occur = self._get_occur(temp_redu)
-                        temp_baseline_row += occur
-                        occur_full_syn_redu = occur[0]
-
-                    else:
-                        temp_baseline_row += (None,None)
-
-                    temp_baseline_row += (occur_full_syn_repl,occur_full_syn_redu)
+                    #p(repls_container, "repls_container")
+                    counted_repls = defaultdict(lambda:defaultdict(lambda:defaultdict(int)))
+                    for repl in repls:
+                        #p(repl[3], "repl[3]")
+                        counted_repls[repl[ix_word_repl]][repl[ix_doc_id_repl]][repl[ix_token_repl]] += 1 #. if not in_redu, that each repl will be counted
+                    #p(counted_repls,"counted_repls")
+                    temp_baseline_row += self._get_occur(counted_repls,scope=scope,splitted_syntagma=splitted_syntagma)
+                    occur_full_syn_repl = repls_container[2] if repls_container[1] else None
 
 
                 else:
-                    occur_full_syn_repl = None
-                    occur_full_syn_redu = None
-                    #p((baseline_container[0],data),"data")
-                    repls =repls_container[0]
-                    if repls:
-                        #p(repls_container, "repls_container")
-                        counted_repls = defaultdict(lambda:defaultdict(lambda:defaultdict(int)))
-                        for repl in repls:
-                            #p(repl[3], "repl[3]")
-                            counted_repls[repl[ix_word_repl]][repl[ix_doc_id_repl]][repl[ix_token_repl]] += 1 #. if not in_redu, that each repl will be counted
-                        #p(counted_repls,"counted_repls")
-                        temp_baseline_row += self._get_occur(counted_repls,scope=scope,splitted_syntagma=splitted_syntagma)
-                        occur_full_syn_repl = repls_container[2] if repls_container[1] else None
+                    temp_baseline_row += (None,None)
 
-
-                    else:
-                        temp_baseline_row += (None,None)
-
+                if redus_container:
                     redus = redus_container[0]
-                    if redus:
-                        counted_redus = defaultdict(lambda:defaultdict(lambda:defaultdict(int)))
-                        for redu in redus:
-                            counted_redus[redu[ix_word_redu]][redu[ix_doc_id_redu]][redu[ix_token_redu]] += redu[ix_length_redu]
-                        #p(counted_redus, "counted_redus")
-                        temp_baseline_row += self._get_occur(counted_redus,scope=scope,splitted_syntagma=splitted_syntagma)
-                        occur_full_syn_redu = redus_container[2] if redus_container[1] else None
+                    counted_redus = defaultdict(lambda:defaultdict(lambda:defaultdict(int)))
+                    for redu in redus:
+                        counted_redus[redu[ix_word_redu]][redu[ix_doc_id_redu]][redu[ix_token_redu]] += redu[ix_length_redu]
+                    #p(counted_redus, "counted_redus")
+                    temp_baseline_row += self._get_occur(counted_redus,scope=scope,splitted_syntagma=splitted_syntagma)
+                    occur_full_syn_redu = redus_container[2] if redus_container[1] else None
 
-                    else:
-                        temp_baseline_row += (None,None)
+                else:
+                    temp_baseline_row += (None,None)
 
-                    #p([occur_full_syn_repl, occur_full_syn_redu], "[occur_full_syn_repl, occur_full_syn_redu]")
-                    temp_baseline_row += (occur_full_syn_repl, occur_full_syn_redu)
-                    #p(temp_baseline_row, "temp_baseline_row")
+                temp_baseline_row += (occur_full_syn_repl, occur_full_syn_redu)
 
-                temporized_sum.append(temp_baseline_row)
+            temporized_sum.append(db_helper.values_to_list( temp_baseline_row, "one"))
+            #self.statsdb._threads_cursors["sum_inserter"].execute(qeary.format(self._temp_baseline_name,placeholders), db_helper.values_to_list( temp_baseline_row, "one") )
 
-                if len(temporized_sum) > insertion_border:
-                    counter_summerized += len(temporized_sum)
-                    self._insert_temporized_sum_into_baseline_table_in_db(temporized_sum)
-                    temporized_sum = []
-
+            if len(temporized_sum) > self._lazyness_border:
+                self._insert_temporized_sum_into_baseline_table_in_db(temporized_sum,self._temp_baseline_name)
+                temporized_sum = []
 
 
         if len(temporized_sum) > 0:
-            counter_summerized += len(temporized_sum)
-            self._insert_temporized_sum_into_baseline_table_in_db(temporized_sum)
+            self._insert_temporized_sum_into_baseline_table_in_db(temporized_sum,self._temp_baseline_name)
             temporized_sum = []
 
-        self.statsdb.commit()
+
+        self.statsdb._threads_cursors["baseline_creater"].execute("DROP  TABLE {};".format("baseline") )
+        self.statsdb._commit()
+        self.statsdb._threads_cursors["baseline_creater"].execute("ALTER TABLE {} RENAME TO baseline;".format(self._temp_baseline_name) )  #  #
+        self.statsdb._commit()
+        self.statsdb._update_temp_indexesList_in_instance(thread_name=thread_name)
+        #self.statsdb._update_database_pragma_list(thread_name=thread_name)
+        self.statsdb._update_pragma_table_info(thread_name=thread_name)
+        self.statsdb._update_temp_tablesList_in_instance(thread_name=thread_name)
+
+
         if self._status_bar:
             status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("Syntagmas: Processed:'{}'; Summerized:'{}';".format(status_bar_current.count, counter_summerized) ), "",  counter_format=self.status_bars_manager.term.bold_white_on_cyan('{fill}{desc}{fill}\n'))
             status_bar_total_summary.refresh()
             self.status_bars_manager.stop()
 
+
+
+
         if counter_summerized > 0:
             self.logger.info("All Syntagmas was counted and summerized.")
             return counter_summerized
         else:
-            self.logger.info("No one Syntagmas was found.")
+            self.logger.info("No one Syntagmas summerized.")
             return False
 
 
@@ -3276,7 +3600,7 @@ class Stats(BaseContent,BaseDB):
             #     self.counters_attrs["_init_preprocessors"][thread_name]["total"] = status_bar_preprocessors_init.total
             #     self.counters_attrs["_init_preprocessors"][thread_name]["desc"] = status_bar_preprocessors_init.desc
 
-            self.logger.info("PreprocessorsInit: All Preprocessors for '{}'-Thread was initialized.".format(thread_name))
+            self.logger.debug("PreprocessorsInit: All Preprocessors for '{}'-Thread was initialized.".format(thread_name))
             return True
         except Exception, e:
             print_exc_plus() if self._ext_tb else ""
@@ -3359,7 +3683,7 @@ class Stats(BaseContent,BaseDB):
 
 
     def extract_reduplications(self,repl_free_text_container,rle_for_repl_in_text_container, thread_name="Thread0"):
-        self.logger.low_debug("ReduExtraction was started")
+        #self.logger.low_debug("ReduExtraction was started")
         extracted_redu_in_text_container = []
         redu_free_text_container = []
         text_elem_mapping = []
@@ -3404,7 +3728,7 @@ class Stats(BaseContent,BaseDB):
             redu_free_text_container.append(rep_free_sent)
             mapping_redu.append(mapped)
             #sys.exit()
-        self.logger.low_debug("ReduExtraction was finished")
+        #self.logger.low_debug("ReduExtraction was finished")
         return extracted_redu_in_text_container, redu_free_text_container, mapping_redu
 
 
@@ -3413,7 +3737,7 @@ class Stats(BaseContent,BaseDB):
 
 
     def extract_replications(self, text_elem, thread_name="Thread0"):
-        self.logger.low_debug("ReplExtraction was started")
+        #self.logger.low_debug("ReplExtraction was started")
         repl_free_text_container = []
         rle_for_repl_in_text_container = []
         extracted_repl_in_text_container = []
@@ -3440,23 +3764,12 @@ class Stats(BaseContent,BaseDB):
                 self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
                 return False
 
-
             if not self._case_sensitiv:
                 sent = [[token_container[0].lower(), token_container[1]]  if token_container[0] else token_container  for token_container in sent ]
 
-
             temp_sent = []
             token_index = -1
-            #p(sent, "sent")
-            #p(sentiment, "sentiment")
-            #total_tokens_number = len(sent)
-            
             for token_container in sent:
-                #repl_free_text_container[sent_index].append([])
-                #repl_free_text_container[sent_index].append("")
-
-                ########### TOKEN LEVEL##################
-                #p(token_container, "token_container")
                 token_index+=1
                 try:
                     token = token_container[0]
@@ -3470,9 +3783,6 @@ class Stats(BaseContent,BaseDB):
                     self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
                     return False
 
-                #p(token_container, "token_container")
-                #p(sent_index, "sent_index", c="r")
-                #if token:
                 if  pos not in self.ignored_pos:
 
                     if token:
@@ -3501,7 +3811,7 @@ class Stats(BaseContent,BaseDB):
 
                 #p((sent_index,token_index, repl_free_text_container[sent_index][token_index],rle_for_repl_in_text_container[sent_index][token_index] ,extracted_repl_in_text_container[sent_index][token_index]))
         #p(repl_free_text_container, "repl_free_text_container")
-        self.logger.low_debug("ReplExtraction was finished")
+        #self.logger.low_debug("ReplExtraction was finished")
         return extracted_repl_in_text_container,  repl_free_text_container, rle_for_repl_in_text_container 
 
 
@@ -3518,8 +3828,8 @@ class Stats(BaseContent,BaseDB):
                     inp_token_list.append(token)
         return inp_token_list
         
-    def compute_baseline(self, redu_free_text_container,extracted_redu_in_text_container, add_also_repeted_redu=True):
-        self.logger.low_debug("Baseline Computation for current text-element was started")
+    def compute_baseline(self, redu_free_text_container,extracted_redu_in_text_container):
+        #self.logger.low_debug("Baseline Computation for current text-element was started")
         ## Step 1: Extract ngramm from redu and repl free text element
         inp_token_list = self._get_cleaned_redu_free(redu_free_text_container)
         computed_baseline  = []
@@ -3527,83 +3837,152 @@ class Stats(BaseContent,BaseDB):
             computed_baseline += [tuple(inp_token_list[i:i+n]) for i in xrange(len(inp_token_list)-n+1)]
 
         ## Step 2: Add reduplicated unigramms
-        if add_also_repeted_redu:
-            for sent in extracted_redu_in_text_container:
-                for redu in sent:
-                    if redu:
-                        #p((redu["word"],),"re_wo")
-                        computed_baseline += [(redu["word"],)]*(redu["length"]-1) # -1, because 1 occur of this unigramm is already in the baseline
-                        
-        self.logger.low_debug("Baseline Computation was finished.")
+
+        #self.logger.low_debug("Baseline Computation was finished.")
         return computed_baseline
 
 
 
-    def temporize_baseline(self, computed_baseline):
+
+
+
+    def baseline_insert_temporized_data(self,temporized_baseline,thread_name="Thread0"):
+        try:
+            #self.logger.low_debug("Insertion Process of temporized Baseline was started")
+            qeary = """
+                    INSERT OR REPLACE INTO baseline VALUES (
+                        :0,
+                        :1,
+                        :2,
+                        COALESCE((SELECT occur_syntagma_all FROM baseline WHERE syntagma=:0), 0) + :3,
+                        NULL,NULL,NULL,NULL,NULL,NULL
+                    );"""
+
+            cursor = self.statsdb._db.cursor()
+
+            def intern_gen():
+                for syntag, count in temporized_baseline.iteritems():
+                    #print syntag
+                    #self.logger.error("{}".format(syntag))
+                    #sys.exit()
+                    yield (
+                            self._baseline_delimiter.join(syntag).strip(),
+                            self._baseline_delimiter.join([self.stemm(w) for w in syntag]).strip(),
+                            len(syntag), 
+                            count,  
+                         )
+
+            cursor.executemany(qeary, intern_gen() )
+            self.logger.low_debug("Temporized Baseline was inserted into DB.")
+            return True
+        except Exception as e:
+            self.logger.error("INsertionError: {}".format(repr(e)),  exc_info=self._logger_traceback)
+            self.terminated = True
+            return False
+
+
+    # def baseline_intime_insertion_into_db(self,thread_name="Thread0"):
+    #     temporized_baseline_to_insert = self.temporized_baseline
+    #     self.temporized_baseline = defaultdict(int)
+    #     thread_name = "basinsrt"
+    #     if self.baseline_insrt_process:
+    #         try:
+    #             i = 0
+    #             while True:
+    #                 #a = self.baseline_insrt_process.isAlive()
+    #                 #p(a, "isalive")
+    #                 i += 1
+    #                 if not self.baseline_insrt_process.isAlive():
+    #                     self.logger.debug("Waiting is finished ->  (BaselineInsertion will be start)")
+    #                     break
+    #                 else:
+    #                     if i >= 50:
+    #                         self.logger.error("Timeout limit was reached. Probably something goes wrong!!!!")
+    #                         self.terminated = True
+    #                         sys.exit()
+    #                     self.logger.debug("Wait till BaselineInsertion is done.")
+    #                     time.sleep(1)
+    #         except AttributeError:
+    #             pass
+    #     #p("5555")
+    #     self.baseline_insrt_process = threading.Thread(target=self.baseline_insert_temporized_data, args=(temporized_baseline_to_insert, thread_name), name=thread_name)
+    #     self.baseline_insrt_process.setDaemon(True)
+    #     self.baseline_insrt_process.start()
+    #     #time.sleep(5)
+
+
+    # def baseline_insert_left_over_data(self,thread_name="Thread0"):
+    #     thread_name = "basinsrt"
+    #     # p("111")
+    #     if self.baseline_insrt_process:
+    #         # p("222")
+    #         i = 0
+    #         try:
+    #             while True:
+    #                 i += 1
+    #                 #a = self.baseline_insrt_process.isAlive()
+    #                 #p(a, "isalive")
+    #                 if not self.baseline_insrt_process.isAlive():
+    #                     self.logger.debug("Waiting is finished ->  (BaselineInsertion will be start)")
+    #                     break
+    #                 else:
+    #                     if i >= 50:
+    #                         self.logger.error("Timeout limit was reached. Probably something goes wrong!!!!")
+    #                     self.logger.debug("Wait till BaselineInsertion is done.")
+    #                     time.sleep(1)
+
+    #         except AttributeError:
+    #             pass
+    #     #p("5555")
+    #     self.baseline_insert_temporized_data(self.temporized_baseline,thread_name=thread_name)
+
+    def temporize_baseline(self, computed_baseline,extracted_redu_in_text_container):
         #self.temporized_baseline = defaultdict(int)
         #p(computed_baseline, "computed_baseline")
         for syntagma in computed_baseline:
             #p(syntagma)
+            #if "@ronetejaye" in syntagma:
+            #    p(syntagma, "syntagma")
             self.temporized_baseline[syntagma] += 1
+
+        #if add_also_repeted_redu:
+        for sent in extracted_redu_in_text_container:
+            for redu in sent:
+                if redu:
+                    #p((redu["word"],),"re_wo")
+                    self.temporized_baseline[(redu["word"],)] += redu["length"]-1
+                    #computed_baseline += [(redu["word"],)]*(redu["length"]-1) # -1, because 1 occur of this unigramm is already in the baseline
+                    
+    
         self.logger.low_debug("BaselineStats for current text-element was temporized.")
 
 
+    def baseline_intime_insertion_into_db(self,thread_name="Thread0"):
+        thread_name = "baseline_insrt"
+        self.baseline_insert_temporized_data(self.temporized_baseline,thread_name=thread_name)
+        self.temporized_baseline= defaultdict(int)
+
+    def baseline_insert_left_over_data(self,thread_name="Thread0"):
+        thread_name = "baseline_insrt"
+        self.baseline_insert_temporized_data(self.temporized_baseline,thread_name=thread_name)
+        self.temporized_baseline= defaultdict(int)
 
 
-    def baseline_insert_all_temporized_data(self):
-        #p(self.temporized_baseline, "self.temporized_baseline")
-        self.logger.low_debug("Insertion Process of temporized Baseline was started")
-        qeary = """
-                INSERT OR REPLACE INTO baseline VALUES (
-                    :0,
-                    :1,
-                    COALESCE((SELECT occur_syntagma_all FROM baseline WHERE syntagma=:0), 0) + :2,
-                    :3,
-                    NULL,NULL,NULL,NULL,NULL,NULL
-                );"""
 
-        cursor = self.statsdb._db.cursor()
-        #self.statsdb.executemany(qeary, self.temporized_baseline.iteritems())
-        #p(list(self.temporized_baseline.iteritems()),"self.temporized_baseline.iteritems()")
-
-        cursor.executemany(qeary, [
-                                        (
-                                            "++".join(syntag),
-                                            "++".join([self.stemm(w) for w in syntag]),
-                                            len(syntag), 
-                                            count,  
-                                         ) 
-                                        for syntag, count in self.temporized_baseline.iteritems()
-                                    ]
-                            )
-        self.temporized_baseline = defaultdict(int)
-        self.logger.low_debug("Temporized Baseline was inserted into DB.")
-
-
-    def baseline_intime_insertion_into_db(self):
-        #p("111")
-        #p(self.temporized_baseline, "self.temporized_baseline")
-        self.baseline_insert_all_temporized_data()
-
-    def baseline_insert_left_over_data(self):
-        #p("222")
-        self.baseline_insert_all_temporized_data()
-
-
-    def baseline_lazyinsertion_into_db(self,computed_baseline, baseline_insertion_border=100000):
+    def baseline_lazyinsertion_into_db(self,computed_baseline,extracted_redu_in_text_container, baseline_insertion_border=100000,thread_name="Thread0", ):
+        #l = len(self.temporized_baseline)
+        #p((l, baseline_insertion_border))
         if len(self.temporized_baseline) > baseline_insertion_border:
-            self.temporize_baseline(computed_baseline)
+            self.temporize_baseline(computed_baseline, extracted_redu_in_text_container)
             self.baseline_intime_insertion_into_db()
         else:
-            self.temporize_baseline(computed_baseline)
+            self.temporize_baseline(computed_baseline,extracted_redu_in_text_container)
         #self.insert_temporized_baseline_into_db()
 
 
 
-
-
-    def insert_repl_into_db(self,row_as_dict,text_elem,extracted_repl_in_text_container, repl_free_text_container,rle_for_repl_in_text_container, redu_free_text_container,mapping_redu,stemmed_text_container, thread_name="Thread0"):
-        self.logger.low_debug("Insertion of current ReplsIntoDB was started")
+    def insert_repl_into_db(self,doc_elem,text_elem,extracted_repl_in_text_container, repl_free_text_container,rle_for_repl_in_text_container, redu_free_text_container,mapping_redu,stemmed_text_container, thread_name="Thread0"):
+        #self.logger.low_debug("Insertion of current ReplsIntoDB was started")
         sent_index = -1
         redufree_len = tuple(len(sent) for sent in redu_free_text_container)
         #p((redu_free_text_container,redufree_len, ))
@@ -3613,19 +3992,15 @@ class Stats(BaseContent,BaseDB):
             sent_index += 1
             token_index = -1
 
-
             #temp_next_left_index_in_orig_t_elem = mapping_redu[sent_index][temp_index]
-
+            #p((doc_elem))
             for repls_for_current_token in sent:
                 token_index += 1
                 if repls_for_current_token:
                     #p(repls_for_current_token, "repls_for_current_token")
                     for repl_container in repls_for_current_token:
                         #p(repl_container, "repl_container")
-                        
                         if repl_container:
-
-
                             try:
                                 #p((sent_index, token_index), c="c")
                                 current_sent_from_map = mapping_redu[sent_index]
@@ -3633,7 +4008,8 @@ class Stats(BaseContent,BaseDB):
                                 token_index_in_redu_free = current_sent_from_map.index(next_left_index_in_orig_t_elem)
                                 it_is_redu = self._is_redu(sent_index,token_index_in_redu_free,redu_free_text_container)
                                 input_dict = {
-                                    "doc_id": row_as_dict[self._id_field_name],
+                                    "doc_id": doc_elem[0],
+                                    # "doc_id": doc_elem[self._id_field_name],
                                     'redufree_len':redufree_len,
                                     "index_in_corpus": (sent_index,token_index),
                                     "index_in_redufree": (sent_index,token_index_in_redu_free),
@@ -3650,19 +4026,141 @@ class Stats(BaseContent,BaseDB):
                             except Exception as e:
                                 #p(sent_container, "sent_container")
                                 self._terminated = True
-                                msg = "Given ReplContainer has wrong structure! '{}'. ('{}')".format(repl_container, e)
+                                msg = "Given ReplContainer has wrong structure! '{}'. ('{}')".format(repl_container, repr(e))
                                 self.logger.error(msg)
                                 self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
                                 return False
 
 
                             #p(((sent_index, token_index),repl_free_text_container[sent_index][token_index], ), "GET KONTEXT FueR DAS WORD")
-                            input_dict = self._get_context_left_for_repl(input_dict, text_elem, token_index_in_redu_free, mapping_redu, redu_free_text_container, sent_index,stemmed_text_container,)
-                            input_dict = self._get_context_right_for_repl(input_dict, text_elem, token_index_in_redu_free, mapping_redu, redu_free_text_container, sent_index,stemmed_text_container,)
+                            #input_dict = 
+                            self._get_context_left_for_repl(input_dict, text_elem, token_index_in_redu_free, mapping_redu, redu_free_text_container, sent_index,stemmed_text_container,)
+                            #input_dict = 
+                            self._get_context_right_for_repl(input_dict, text_elem, token_index_in_redu_free, mapping_redu, redu_free_text_container, sent_index,stemmed_text_container,)
+                            self._repl_inserter(input_dict, thread_name=thread_name)
                             #p(input_dict, "input_dict")
-                            self.statsdb.lazyinsert("replications", input_dict)
+                            #self.statsdb.lazyinsert("replications", input_dict, thread_name=thread_name)
 
-        self.logger.low_debug("Insertion of current ReplsIntoDB was finished")
+        #self.logger.low_debug("Insertion of current ReplsIntoDB was finished")
+
+
+    def _repl_inserter(self, inp_dict, thread_name="Thread0"):
+        if len(self.temporized_repl[thread_name]) > self._lazyness_border:
+            self._temporize_repl(inp_dict, thread_name=thread_name)
+            self._write_repl_into_db(thread_name=thread_name)
+        else:
+            self._temporize_repl(inp_dict, thread_name=thread_name)
+
+    def _temporize_repl(self, inp_dict,thread_name="Thread0"):
+        temp_list = []
+        for col in self._repls_cols:
+            temp_list.append(inp_dict.get(col,None))
+            #temp_list.append()
+        self.temporized_repl[thread_name].append(db_helper.values_to_list(temp_list, "one"))
+
+    def _write_repl_into_db(self,thread_name="Thread0"):
+        #thread_name = 
+        placeholders = ', '.join('?'*len(self._repls_cols))
+        query = "INSERT or IGNORE INTO main.replications VALUES ({});".format(placeholders)
+        #p((query,placeholders),"query")
+        #p(self.temporized_repl[thread_name][0])
+        #p(len(self.temporized_repl[thread_name][0]))
+        self.statsdb._threads_cursors[thread_name].executemany(query,self.temporized_repl[thread_name] )
+        self.temporized_repl[thread_name] = []
+
+
+
+
+
+    def _redu_inserter(self, inp_dict, thread_name="Thread0"):
+        if len(self.temporized_redu[thread_name]) > self._lazyness_border:
+            self._temporize_redu(inp_dict, thread_name=thread_name)
+            self._write_redu_into_db(thread_name=thread_name)
+        else:
+            self._temporize_redu(inp_dict, thread_name=thread_name)
+
+    def _temporize_redu(self, inp_dict,thread_name="Thread0"):
+        temp_list = []
+        for col in self._redus_cols:
+            temp_list.append(inp_dict.get(col,None))
+            #temp_list.append()
+        self.temporized_redu[thread_name].append(db_helper.values_to_list(temp_list, "one"))
+
+    def _write_redu_into_db(self,thread_name="Thread0"):
+        #thread_name = 
+        placeholders = ', '.join('?'*len(self._redus_cols))
+        query = "INSERT or IGNORE INTO main.reduplications VALUES ({});".format(placeholders)
+        #p((query,placeholders),"query")
+        #p(self.temporized_redu[thread_name][0])
+        #p(len(self.temporized_redu[thread_name][0]))
+        self.statsdb._threads_cursors[thread_name].executemany(query,self.temporized_redu[thread_name] )
+        self.temporized_redu[thread_name] = []
+
+
+
+
+
+
+
+    def insert_redu_into_db(self,doc_elem,text_elem,extracted_redu_in_text_container, redu_free_text_container, rle_for_repl_in_text_container, repl_free_text_container, mapping_redu,stemmed_text_container,thread_name="Thread0"):
+        #self.logger.low_debug("Insertion of current RedusIntoDB was started")
+        sent_index = -1
+        #p(extracted_redu_in_text_container, "extracted_redu_in_text_container")
+        
+        redufree_len = tuple(len(sent) for sent in redu_free_text_container)
+        for redu_in_sent in extracted_redu_in_text_container:
+            sent_index += 1
+            for redu in redu_in_sent:
+                #p(redu, c="r")
+                #if redu:
+                #p(redu_in_sent, "redu_in_sent")
+                #p(redu_free_text_container, "redu_free_text_container")
+                try:
+                    rle_word = rle_for_repl_in_text_container[sent_index][redu['start_index_in_orig']]
+                    #p((redu['start_index_in_orig'],rle_for_repl_in_text_container[sent_index][redu['start_index_in_orig']]), "redu['start_index_in_orig']", c="m")
+                    #p(redu_free_text_container[sent_index][redu['index_in_redu_free']], "orig_words")
+                    index_in_redu_free = redu["index_in_redu_free"]
+                    input_dict = {
+                            "doc_id": doc_elem[0],
+                            # "doc_id": doc_elem[self._id_field_name],
+                            'redufree_len':redufree_len,
+                            "index_in_corpus": (sent_index,redu['start_index_in_orig']),
+                            "index_in_redufree": (sent_index,index_in_redu_free),
+                            #"rle_word": rle_word if rle_word else repl_free_text_container[sent_index][redu['start_index_in_orig']],
+                            "pos":text_elem[sent_index][0][redu['start_index_in_orig']][1],
+                            "normalized_word": repl_free_text_container[sent_index][redu['start_index_in_orig']],
+                            "stemmed":stemmed_text_container[sent_index][index_in_redu_free],
+                            'orig_words':redu_free_text_container[sent_index][index_in_redu_free][1],
+                            "redu_length": redu['length'],
+                            "polarity":text_elem[sent_index][1],
+                            #"repl_letter": repl_container[0],
+                            #"index_of_repl": repl_container[2],
+                            }
+                    
+                except Exception as e:
+                    #p(sent_container, "sent_container")
+                    self._terminated = True
+                    msg = "Given ReduContainer has wrong structure! '{}'. ('{}')".format(redu, e)
+                    self.logger.error(msg)
+                    self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
+                    return False
+
+                #sent = 
+                start_index = redu['start_index_in_orig']
+                #redu_length = redu['length']
+
+                #input_dict = 
+                self._get_context_left_for_redu(input_dict, text_elem,  mapping_redu, redu_free_text_container,sent_index , redu,stemmed_text_container,)
+                #input_dict = 
+                self._get_context_right_for_redu(input_dict, text_elem, mapping_redu, redu_free_text_container, sent_index,redu,stemmed_text_container,)
+
+
+                #p("RIGHT STOP ---------------------\n", c="c")
+                #self.statsdb.lazyinsert("reduplications", input_dict, thread_name=thread_name)
+                self._redu_inserter(input_dict, thread_name=thread_name)
+                #p(input_dict, "input_dict")
+
+        #self.logger.low_debug("Insertion of current RedusIntoDB was finished")
 
 
 
@@ -3819,65 +4317,6 @@ class Stats(BaseContent,BaseDB):
 
 
         return input_dict 
-
-
-
-    def insert_redu_into_db(self,row_as_dict,text_elem,extracted_redu_in_text_container, redu_free_text_container, rle_for_repl_in_text_container, repl_free_text_container, mapping_redu,stemmed_text_container):
-        self.logger.low_debug("Insertion of current RedusIntoDB was started")
-        sent_index = -1
-        #p(extracted_redu_in_text_container, "extracted_redu_in_text_container")
-        
-        redufree_len = tuple(len(sent) for sent in redu_free_text_container)
-        for redu_in_sent in extracted_redu_in_text_container:
-            sent_index += 1
-            for redu in redu_in_sent:
-                #p(redu, c="r")
-                #if redu:
-                #p(redu_in_sent, "redu_in_sent")
-                #p(redu_free_text_container, "redu_free_text_container")
-                try:
-                    rle_word = rle_for_repl_in_text_container[sent_index][redu['start_index_in_orig']]
-                    #p((redu['start_index_in_orig'],rle_for_repl_in_text_container[sent_index][redu['start_index_in_orig']]), "redu['start_index_in_orig']", c="m")
-                    #p(redu_free_text_container[sent_index][redu['index_in_redu_free']], "orig_words")
-                    index_in_redu_free = redu["index_in_redu_free"]
-                    input_dict = {
-                            "doc_id": row_as_dict[self._id_field_name],
-                            'redufree_len':redufree_len,
-                            "index_in_corpus": (sent_index,redu['start_index_in_orig']),
-                            "index_in_redufree": (sent_index,index_in_redu_free),
-                            #"rle_word": rle_word if rle_word else repl_free_text_container[sent_index][redu['start_index_in_orig']],
-                            "pos":text_elem[sent_index][0][redu['start_index_in_orig']][1],
-                            "normalized_word": repl_free_text_container[sent_index][redu['start_index_in_orig']],
-                            "stemmed":stemmed_text_container[sent_index][index_in_redu_free],
-                            'orig_words':redu_free_text_container[sent_index][index_in_redu_free][1],
-                            "redu_length": redu['length'],
-                            "polarity":text_elem[sent_index][1],
-                            #"repl_letter": repl_container[0],
-                            
-                            #"index_of_repl": repl_container[2],
-                            }
-                    
-                except Exception as e:
-                    #p(sent_container, "sent_container")
-                    self._terminated = True
-                    msg = "Given ReduContainer has wrong structure! '{}'. ('{}')".format(redu, e)
-                    self.logger.error(msg)
-                    self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
-                    return False
-
-                #sent = 
-                start_index = redu['start_index_in_orig']
-                #redu_length = redu['length']
-
-                input_dict = self._get_context_left_for_redu(input_dict, text_elem,  mapping_redu, redu_free_text_container,sent_index , redu,stemmed_text_container,)
-                input_dict = self._get_context_right_for_redu(input_dict, text_elem, mapping_redu, redu_free_text_container, sent_index,redu,stemmed_text_container,)
-
-
-                #p("RIGHT STOP ---------------------\n", c="c")
-                self.statsdb.lazyinsert("reduplications", input_dict)
-                #p(input_dict, "input_dict")
-
-        self.logger.low_debug("Insertion of current RedusIntoDB was finished")
 
 
 
@@ -4059,17 +4498,44 @@ class Stats(BaseContent,BaseDB):
     ###################Optimizators########################
 
 
+    def get_streams_from_baseline(self,stream_number, max_scope=False,size_to_fetch=1,  split_syntagma=False):
+        row_num = self.statsdb.rownum("baseline")
+        rows_pro_stream = row_num/stream_number
+        streams = []
+        num_of_getted_items = 0
+        for i in range(stream_number):
+            thread_name = "BSThread{}".format(i)
+            # p((i,thread_name ), "get_streams_from_baseline")
+            if i < (stream_number-1): # for gens in between 
+                gen = self._baseline("*",max_scope=False,thread_name=thread_name,limit=rows_pro_stream, offset=num_of_getted_items,size_to_fetch=size_to_fetch, split_syntagma=split_syntagma)
+                
+                num_of_getted_items += rows_pro_stream
+                streams.append((thread_name,LenGen(gen, rows_pro_stream)))
+            else: # for the last generator
+                gen = self._baseline("*",max_scope=False,thread_name=thread_name,limit=-1, offset=num_of_getted_items,size_to_fetch=size_to_fetch, split_syntagma=split_syntagma)
+                
+                streams.append((thread_name,LenGen(gen, row_num-num_of_getted_items)))
+        return streams
 
 
+    def _check_termination(self, thread_name="Thread0"):
+        if self._terminated:
+            self.logger.critical("'{}'-Thread was terminated.".format(thread_name))
+            self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
+            sys.exit()
 
+    def clean_baseline_table(self,stream_number=1, min_row_pro_sream=1000, cpu_percent_to_get=50, adjust_to_cpu=True):
+        #p(self.statsdb.rownum("baseline"))
+        if adjust_to_cpu:
+            stream_number= get_number_of_streams_adjust_cpu( min_row_pro_sream, self.statsdb.rownum("baseline"), stream_number, cpu_percent_to_get=cpu_percent_to_get)
+            if stream_number is None or stream_number==0:
+                #p((self._get_number_of_left_over_files(),self.counter_lazy_getted),"self._get_number_of_left_over_files()")
+                self.logger.error("StreamNumber is 0. Not generators could be returned.", exc_info=self._logger_traceback)
+                return []
 
-
-
-    def _clean_baseline_table(self, thread_name="Thread0"):
-        if not self._check_stats_db_should_exist():
-            return False
-            #return
-        
+        self._init_compution_variables()
+        streams= self.get_streams_from_baseline(stream_number, split_syntagma=False)
+        self._terminated = False
         if self._status_bar:
             try:
                 if not self.status_bars_manager.enabled:
@@ -4079,63 +4545,335 @@ class Stats(BaseContent,BaseDB):
 
             status_bar_start = self._get_new_status_bar(None, self.status_bars_manager.term.center("StatsDB-Optimization") , "", counter_format=self.status_bars_manager.term.bold_white_on_cyan("{fill}{desc}{fill}"))
             status_bar_start.refresh()
-            #status_bar_current = self._get_new_status_bar(self.statsdb.rownum("baseline"), "BaselineOptimization", "syntagma")
-            status_bar_current = self._get_new_status_bar(self.statsdb.rownum("baseline"), "{}:BaselineOptimization".format(thread_name), "syntagma")
-        ### compute syntagmas to delete
-        syntagmas_to_delete = []
-        i = 0
-        for baseline_container in self._baseline("*",max_scope=False):
-            i += 1
-            if self._status_bar:
-                status_bar_current.update(incr=1)
-
-            data =  self._get_data_for_one_syntagma(baseline_container[0],repl=True, redu=True,
-                    baseline=False, syntagma_type="lexem", for_optimization=True,
-                    thread_name=thread_name,just_check_existence=True)
-            if not data:
-                #p(baseline_container[0], "baseline_container[0]")
-                #p(, c="r")
-                syntagmas_to_delete.append(("++".join(baseline_container[0]),))
-
+            status_bar_threads_init = self._get_new_status_bar(len(streams), "ThreadsStarted", "threads")
+            
+            #status_bar_current = self._get_new_status_bar(self.statsdb.rownum("baseline"), "{}:BaselineOptimization".format(thread_name), "syntagma")
+            #if self._status_bar:
+                
+            
+        self._threads_num = len(streams)
         row_num_bevore = self.statsdb.rownum("baseline")
+        if self._threads_num>1:
+            if self._status_bar:
+                unit = "rows"
+                self.main_status_bar = self._get_new_status_bar(row_num_bevore, "AllThreadsTotalInsertions", unit)
+                self.main_status_bar.refresh()
+        else:
+            self.main_status_bar = False
+
+
+        syntagmas_to_delete = []
+        #p(len(syntagmas_to_delete), "syntagmas_to_delete")
+        for stream in streams:
+            gen = stream[1]
+            if not self._isrighttype(gen):
+                self.logger.error("StatsBaselineCleanError: Given InpData not from right type. Please give an list or an generator.", exc_info=self._logger_traceback)
+                return False
+            #p(gen)
+
+            thread_name = stream[0]
+            processThread = threading.Thread(target=self._clean_baseline_table, args=(gen,syntagmas_to_delete, thread_name), name=thread_name)
+            processThread.setDaemon(True)
+            processThread.start()
+            self.active_threads.append(processThread)
+            if self._status_bar:
+                status_bar_threads_init.update(incr=1)
+            #i+=1
+            time.sleep(1)
+
+
+        if not self._wait_till_all_threads_are_completed("Compute"):
+            return False
+
+        #row_num_bevore = self.statsdb.rownum("baseline")
         ##### delete syntagmas from baseline-table
-        qeary = "DELETE FROM baseline WHERE syntagma = ? ;"
-        
+        qeary = "DELETE FROM baseline WHERE syntagma = ?;"
+        #p(len(syntagmas_to_delete), "syntagmas_to_delete")
         if syntagmas_to_delete:
             self.statsdb.executemany(qeary,syntagmas_to_delete)
         row_num_after = self.statsdb.rownum("baseline")
-        #p( )
-        self.statsdb.commit()
+
+        self.statsdb._commit()
         if self._status_bar:
-            bevore = i 
-            after = self.statsdb.rownum("baseline")
-            status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("Syntagmas: Bevore:'{}'; After:'{}'; Removed: '{}'.".format(bevore, after, bevore-after ) ), "",  counter_format=self.status_bars_manager.term.bold_white_on_cyan('{fill}{desc}{fill}\n'))
+            status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("Syntagmas: Bevore:'{}'; After:'{}'; Removed: '{}'.".format(row_num_bevore, row_num_after, row_num_bevore-row_num_after ) ), "",  counter_format=self.status_bars_manager.term.bold_white_on_cyan('{fill}{desc}{fill}\n'))
             status_bar_total_summary.refresh()
             self.status_bars_manager.stop()
-            #print "\n"
-
+        #p(len(syntagmas_to_delete), "syntagmas_to_delete")
+        #syntagmas_to_delete = []
         if (row_num_bevore-row_num_after) == len(syntagmas_to_delete):
-            self.logger.info("Baseline-Table was cleaned.")
+            if self._status_bar:
+                self.logger.info("Baseline-Table was cleaned.")
+            else:
+                self.logger.info("Baseline-Table was cleaned.")
             return True
         else:
             False
 
 
+    def _clean_baseline_table(self, gen,syntagmas_to_delete, thread_name="Thread0"):
+        try:
+            if not self._check_stats_db_should_exist():
+                return False
+                #return
+            ### compute syntagmas to delete
+            if self._status_bar:
+                status_bar_current = self._get_new_status_bar(len(gen), "{}:".format(thread_name), "syntagma")
+
+            minimum_columns = False
+            indexes = self.col_index_min if minimum_columns else self.col_index_orig
+            #indexes = self.col_index_min
+            case = "" if self._case_sensitiv else " COLLATE NOCASE "
+            for baseline_container in gen:
+                was_found = False
+                if self._status_bar:
+                    status_bar_current.update(incr=1)
+                    if self.main_status_bar:
+                        self.main_status_bar.update(incr=1)
+
+                #self._check_termination(thread_name=thread_name)
+                inp_syntagma_splitted = baseline_container[0].split(self._baseline_delimiter)
+                scope = len(inp_syntagma_splitted)
+                syntagma_type = "lexem"
+                where = self._get_where_statement(inp_syntagma_splitted,scope=scope,thread_name=thread_name,
+                                                  with_context=True,syntagma_type=syntagma_type)
+                collected_w = ()
+                for w in where:
+                    #p(w, "w")
+                    #_threads_cursors["Thread0"].execute("SELECT id FROM replications WHERE {} ;".format(" AND ".join(w)))
+                    if w:
+                        current_reps = self.statsdb._threads_cursors[thread_name].execute(u"SELECT id FROM replications WHERE {} {};".format(u" AND ".join(w), case)).fetchone()
+                        #current_reps = self.statsdb.getone("replications", where=w,connector_where="AND",case_sensitiv=self._case_sensitiv,thread_name=thread_name)
+                        #tuple(self._rep_getter_from_db("repl",inp_syntagma_splitted,scope=scope,where=w,thread_name=thread_name, for_optimization=True))
+                        if current_reps:
+                            #p("REPL was found")
+                            was_found = True
+                            break
+
+                        collected_w += (w,)
+                    else:
+                        self.logger.error("No where Statements was given. Probably an ImplementationsError.")
+                        return  False
+                    #else:
+
+                ## Step 2: If no one repls was found, than search for redus
+                if was_found:
+                    continue
+
+                for w in collected_w:
+                    #collected_w.append(w)
+                    if w:
+                        current_reps = self.statsdb._threads_cursors[thread_name].execute(u"SELECT id FROM reduplications WHERE {} {};".format(u" AND ".join(w), case)).fetchone()
+                        #current_reps = current_reps = self.statsdb.getone("reduplications", where=w,connector_where="AND",case_sensitiv=self._case_sensitiv,thread_name=thread_name)
+                        #tuple(self._rep_getter_from_db("redu",inp_syntagma_splitted,scope=scope,where=w,thread_name=thread_name, for_optimization=True))
+                        if current_reps:
+                            #p("REDU was found")
+                            was_found = True
+                            break
+                    else:
+                        self.logger.error("No where Statements was given. Probably an ImplementationsError.")
+                        return False
+                
+                if was_found:
+                    continue
+                
+                syntagmas_to_delete.append((baseline_container[0],))
+            
+            self.threads_status_bucket.put({"name":thread_name, "status":"done"})
+            return True
+        except Exception, e:
+            print_exc_plus() if self._ext_tb else ""
+            msg = "_CleanBaselineTableError: See Exception: '{}'. ".format(e)
+            self.logger.error(msg, exc_info=self._logger_traceback)
+            self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
+            self._terminated = True
+            self.statsdb.rollback()
+            return False
 
 
-    def optimize_db(self,thread_name="Thread0",optimized_for_long_syntagmas=False):
+
+
+    def _check_baseline_consistency(self):
+        try:
+
+            #p(baseline, "baseline")
+            if self._status_bar:
+                try:
+                    if not self.status_bars_manager.enabled:
+                        self.status_bars_manager = self._get_status_bars_manager()
+                except:
+                    self.status_bars_manager = self._get_status_bars_manager()
+
+                status_bar_start = self._get_new_status_bar(None, self.status_bars_manager.term.center("Baseline-ConsistencyTest") , "", counter_format=self.status_bars_manager.term.bold_white_on_cyan("{fill}{desc}{fill}"))
+                status_bar_start.refresh()
+            
+            normalized_word_tag = db_helper.tag_normalized_word
+            consistency = True
+            # counter_inconsistency = 0
+
+            ###############################
+            num = self.statsdb.rownum("baseline")
+            if self._status_bar:
+               status_bar_current = self._get_new_status_bar(num, "BaselineCheck:", "syntagma")
+            #indexes = self.col_index_min if minimum_columns else self.col_index_orig
+            indexes = self.col_index_orig
+            ix_syntagma = indexes["baseline"]["syntagma"]
+            ix_scope = indexes["baseline"]["scope"]
+            ix_stemmed = indexes["baseline"]["stemmed"]
+            for r in self.statsdb.lazyget("baseline"):
+                if self._status_bar:
+                    status_bar_current.update(incr=1)
+
+                syntagma = r[ix_syntagma].split(self._baseline_delimiter)
+                stemmed = r[ix_stemmed].split(self._baseline_delimiter)
+                scope = r[ix_scope]
+                if (len(syntagma)  != scope)  or (len(stemmed) != scope):
+                    #p((len(syntagma) != len(stemmed) != 10),c="r")
+                    consistency = False
+                    self.logger.error("BaselineInvalidEntry: syntagma : '{}';  stemmed: '{}';  scope: '{}'; ".format(syntagma, stemmed, scope))
+
+
+            if self._status_bar:
+                if status_bar_current.count != status_bar_current.total:
+                    status_bar_current.count = status_bar_current.total
+                    status_bar_current.refresh()
+
+                if consistency:
+                    status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("Baseline is consistent."), "",  counter_format=self.status_bars_manager.term.bold_white_on_cyan('{fill}{desc}{fill}\n'))
+                else:
+                    status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("ERROR!!! Baseline is INCONSISTENT."), "",  counter_format=self.status_bars_manager.term.bold_white_on_red('{fill}{desc}{fill}\n'))
+                
+                status_bar_total_summary.refresh()
+                self.status_bars_manager.stop()
+
+            if consistency:
+                return True
+            else:
+                #inconsistent_words
+                #inconsistent_words = inconsistent_words if self._log_content else ":HIDDED_CONTENT:"
+                self.logger.error("StatsDB is inconsistence. Try to set other 'baseline_delimiter' (used now: '{}') And if after that action your Baseline still stay broken than it could be an ImplementationsError. If you have this Problem, please contact Egor Savin (egor@savin.berlin).".format(self._baseline_delimiter))
+                return False
+        except Exception as e:
+            self.logger.error("ConsistencyTestError: '{}' ".format(repr(e)))
+            return False
+
+
+
+    def _check_statsdb_consistency(self):
+        try:
+            baseline = self.statsdb.lazyget("baseline", columns="syntagma", where="scope=1")
+            if baseline:
+                baseline = set([b[0] for b in baseline  if b])
+            else:
+                self.logger.error("BaselineTableErorr: No one syntagma with scope 1 was found. It could mean, that this StatsDB is corrupt or inconsistent")
+                return False
+            #p(baseline, "baseline")
+            if self._status_bar:
+                try:
+                    if not self.status_bars_manager.enabled:
+                        self.status_bars_manager = self._get_status_bars_manager()
+                except:
+                    self.status_bars_manager = self._get_status_bars_manager()
+
+                status_bar_start = self._get_new_status_bar(None, self.status_bars_manager.term.center("StatsDB-ConsistencyTest") , "", counter_format=self.status_bars_manager.term.bold_white_on_cyan("{fill}{desc}{fill}"))
+                status_bar_start.refresh()
+            
+            normalized_word_tag = db_helper.tag_normalized_word
+            consistency = True
+            # counter_inconsistency = 0
+            inconsistent_words = []
+            ##############################
+            ########## REPLS ###########
+            ###############################
+            num_repl = self.statsdb.execute("SELECT count(DISTINCT {}) FROM replications;".format(normalized_word_tag))
+            if num_repl:
+                num_repl = num_repl.fetchone()[0]
+            else:
+                self.logger.error("ERROR by getting ReplRowNumber. consistencyTest is failed.")
+                return False
+
+            if self._status_bar:
+                status_bar_repl = self._get_new_status_bar(num_repl, "ReplsCheck:", "syntagma")
+            for r in self.statsdb.getall("replications", columns=normalized_word_tag, distinct=True):
+                if self._status_bar:
+                    status_bar_repl.update(incr=1)
+                #p(r[0],"r[0]")
+                if r[0] not in baseline:
+                    consistency = False
+                    # counter_inconsistency += 1
+                    try:
+                        word = r[0].decode()
+                    except:
+                        pass
+                    inconsistent_words.append(word)
+                    self.logger.debug(u"StatsDB is inconsistence. There Exist NO-Baseline-Entry  for '{}'-word ".format(word))
+
+
+            ##############################
+            ########## REDUS ###########
+            ##############################
+
+            num_redu = self.statsdb.execute("SELECT count(DISTINCT {}) FROM reduplications;".format(normalized_word_tag))
+            if num_redu:
+                num_redu = num_redu.fetchone()[0]
+            else:
+                self.logger.error("ERROR by getting ReduRowNumber. consistencyTest is failed.")
+                return False
+            #p("555")
+            if self._status_bar:
+                status_bar_redu = self._get_new_status_bar(num_redu, "RedusCheck:", "syntagma")
+            for r in self.statsdb.getall("reduplications", columns=normalized_word_tag,  distinct=True):
+                if self._status_bar:
+                        status_bar_redu.update(incr=1)
+                #p(r[0],"r[0]")
+                if r[0] not in baseline:
+                    consistency = False
+                    # counter_inconsistency += 1
+                    try:
+                        word = r[0].decode()
+                    except:
+                        pass
+                    inconsistent_words.append(word)
+                    self.logger.debug(u"StatsDB is inconsistence. There Exist NO-Baseline-Entry  for '{}'-word ".format(word))
+
+
+            if self._status_bar:
+                #p((num_repl, num_redu))
+                #p((status_bar_repl.count, status_bar_repl.total, status_bar_redu.count, status_bar_redu.total))
+                if status_bar_repl.count != status_bar_repl.total:
+                    status_bar_repl.count = status_bar_repl.total
+                    status_bar_repl.refresh()
+                if status_bar_redu.count != status_bar_redu.total:
+                    status_bar_redu.count = status_bar_redu.total
+                    status_bar_redu.refresh()
+                if consistency:
+                    status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("StatsDB is consistent."), "",  counter_format=self.status_bars_manager.term.bold_white_on_cyan('{fill}{desc}{fill}\n'))
+                else:
+                    status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("ERROR!!! StatsDB is INCONSISTENT."), "",  counter_format=self.status_bars_manager.term.bold_white_on_red('{fill}{desc}{fill}\n'))
+                status_bar_total_summary.refresh()
+                self.status_bars_manager.stop()
+
+            if consistency:
+                return True
+            else:
+                #inconsistent_words
+                inconsistent_words = inconsistent_words if self._log_content else ":HIDDED_CONTENT:"
+                self.logger.error("StatsDB is inconsistence. '{}'-words don't have any entry in BaselineTable. It could be an ImplementationsError. If you have this Problem, please contact Egor Savin (egor@savin.berlin).\n  InconsistentWords: '{}'. ".format(len(inconsistent_words), inconsistent_words))
+                return False
+        except Exception as e:
+            self.logger.error("ConsistencyTestError: '{}' ".format(repr(e)))
+            return False
+
+    def optimize_db(self,stream_number=1,thread_name="Thread0",optimized_for_long_syntagmas=False,min_row_pro_sream=1000, cpu_percent_to_get=50, adjust_to_cpu=True):
         if not self._db_frozen:
-            if self._clean_baseline_table(thread_name=thread_name):
+            if self.clean_baseline_table(stream_number=stream_number,min_row_pro_sream=min_row_pro_sream, cpu_percent_to_get=cpu_percent_to_get, adjust_to_cpu=adjust_to_cpu):
                 #p(self._db_frozen,"self._db_frozen")
                 self.statsdb.update_attr("db_frozen", True)
                 self.set_all_intern_attributes_from_db()
-                self.statsdb.commit()
-                #self._db_frozen
-                #p(self._db_frozen,"self._db_frozen")
-                #self.statsdb.init_default_indexes(thread_name=thread_name)
-                #self.create_additional_indexes(optimized_for_long_syntagmas=optimized_for_long_syntagmas)
+                self.statsdb._commit()
                 if self._db_frozen:
+                    self.logger.info("Current StatsDB was successfully optimized.")
                     return True
+
                 else:
                     return False
             else:
@@ -4187,6 +4925,10 @@ class Stats(BaseContent,BaseDB):
         else:
             scope = scope if scope else self._min_scope_for_indexes
             #scope = 0
+
+        if scope > self.baseline_ngramm_lenght:
+            scope = self.baseline_ngramm_lenght
+
 
         for syntagma_type in ["lexem","pos"]:
             normalized_word_tag_name = "normalized_word" if syntagma_type == "lexem" else "pos"
@@ -4306,7 +5048,7 @@ class Stats(BaseContent,BaseDB):
 
 
 
-        self.statsdb.commit()
+        self.statsdb._commit()
 
         ### Step 6: Print Status
         if self._status_bar:
@@ -4472,7 +5214,7 @@ class Stats(BaseContent,BaseDB):
 
 
 
-    def _initialisation_computation_process(self, inp_data, text_field_name="text",  thread_name="Thread0"):
+    def _initialisation_computation_process(self, inp_data, thread_name="Thread0"):
         if self._status_bar:
             if self._threads_num>1:
                 if self._status_bar:

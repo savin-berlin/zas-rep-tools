@@ -227,7 +227,7 @@ class TestsConfiger(BaseContent,ConfigerData):
 
 
     def create_test_data(self, abs_path_to_storage_place=False, use_original_classes = True, corp_lang_classification=False, 
-                         corp_pos_tagger=True, corp_sent_splitter=True, corp_sentiment_analyzer=True, corp_status_bar=True,
+                         corp_pos_tagger=True, corp_sent_splitter=True, corp_sentiment_analyzer=True, status_bar=True,
                          corp_log_ignored=False, use_test_pos_tagger=False,rewrite=False):
         #if not  corp_language:
         #    corp_language = "de"
@@ -235,7 +235,7 @@ class TestsConfiger(BaseContent,ConfigerData):
         if not self.create_test_dbs(rewrite=rewrite, abs_path_to_storage_place=abs_path_to_storage_place, use_original_classes=use_original_classes, 
                             corp_lang_classification=corp_lang_classification, corp_log_ignored=corp_log_ignored,
                             corp_pos_tagger=corp_pos_tagger, corp_sent_splitter=corp_sent_splitter,
-                            corp_sentiment_analyzer=corp_sentiment_analyzer, corp_status_bar=corp_status_bar,
+                            corp_sentiment_analyzer=corp_sentiment_analyzer, status_bar=status_bar,
                             use_test_pos_tagger=use_test_pos_tagger):
             return False
         self.logger.info("Test Data was initialized.")
@@ -245,7 +245,7 @@ class TestsConfiger(BaseContent,ConfigerData):
  
     def create_test_dbs(self, rewrite=False, abs_path_to_storage_place = False,corp_log_ignored=False,
                         use_original_classes = True, corp_lang_classification=True, use_test_pos_tagger=False,
-                        corp_pos_tagger=True, corp_sent_splitter=True, corp_sentiment_analyzer=True, corp_status_bar=True):
+                        corp_pos_tagger=True, corp_sent_splitter=True, corp_sentiment_analyzer=True, status_bar=True):
         #p(abs_path_to_storage_place, "abs_path_to_storage_place")
         try:
             if not abs_path_to_storage_place:
@@ -261,7 +261,7 @@ class TestsConfiger(BaseContent,ConfigerData):
                     os.remove(os.path.join(abs_path_to_storage_place, fname))
                 msg = "'{}' '.db-journal' files was deleted. ".format(len(exist_fnames_in_dir))
                 self.logger.critical(msg)
-                p(msg, "CRITICAL", c="r")
+                #p(msg, "CRITICAL", c="r")
 
             if not  rewrite:
                 rewrite = self._rewrite
@@ -283,7 +283,7 @@ class TestsConfiger(BaseContent,ConfigerData):
                     if fname not in exist_fnames_in_dir:
                         msg = "Some TestDB are missing. (eg: '{}') Process of TestDB Creation will be started. ".format(fname)
                         self.logger.critical(msg)
-                        p(msg, "CRITICAL", c="r")
+                        #p(msg, "CRITICAL", c="r")
                         clean = True
                         break 
 
@@ -421,7 +421,7 @@ class TestsConfiger(BaseContent,ConfigerData):
                                                     logger_folder_to_save=self._logger_folder_to_save, use_test_pos_tagger=use_test_pos_tagger,
                                                     logger_usage=self._logger_usage, logger_save_logs= self._logger_save_logs,
                                                     mode=self._mode ,  error_tracking=self._error_tracking,  ext_tb= self._ext_tb,
-                                                    stop_if_db_already_exist=self._stop_if_db_already_exist, status_bar=corp_status_bar,
+                                                    stop_if_db_already_exist=self._stop_if_db_already_exist, status_bar=status_bar,
                                                     rewrite=self._rewrite)
                                     #p(corp.info())
                                     #self.logger.debug("444{}:{}:{}:{}".format(dbname, language, platform_name, dbtype))
@@ -509,12 +509,12 @@ class TestsConfiger(BaseContent,ConfigerData):
                                         logger_folder_to_save=self._logger_folder_to_save, logger_usage=self._logger_usage,
                                         logger_save_logs= self._logger_save_logs, mode=self._mode, error_tracking=self._error_tracking, 
                                         ext_tb= self._ext_tb, stop_if_db_already_exist=self._stop_if_db_already_exist,
-                                        status_bar=corp_status_bar,rewrite=self._rewrite)
+                                        status_bar=status_bar,rewrite=self._rewrite)
                                     #p(corp.info())
                                     was_initialized = stats.init(abs_path_to_storage_place,dbname, language, visibility, 
                                                              version=version, corpus_id=corpus_id,  stats_id=stats_id,
                                                              encryption_key=encryption_key,case_sensitiv=False,
-                                                             full_repetativ_syntagma=True)
+                                                             full_repetativ_syntagma=True,baseline_delimiter="++")
                                     #p((encryption_key,dbtype,dbname,language,visibility,platform_name ), "encryption_key____stats")
                                     corp =  activ_corp_dbs[template_name][encryption]["corpus"][language]
                                     #p(corp, "corp")
