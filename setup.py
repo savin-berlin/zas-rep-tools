@@ -23,4 +23,10 @@ setup(name='zas-rep-tools',
               'zas-rep-tools=zas_rep_tools.cli.main:main',
           ],
       },
+      classifiers=[ 
+      'Development Status :: 1 - Beta', 
+      'Intended Audience :: NLP', 
+      'License :: OSI Approved :: MIT',
+      'Programming Language :: Python :: 2'
+]
 )

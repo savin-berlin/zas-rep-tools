@@ -56,7 +56,7 @@ On MacOS
             $ sudo python3 -m ensurepip
             $ pip2 install --upgrade pip
             $ pip3 install --upgrade pip
-
+        ->  [Command Line Tools for Xcode](https://developer.apple.com/download/more/) (You will need a registered Apple ID to download either package.)
 
         -> sqlite
             $ brew install sqlite
@@ -286,14 +286,110 @@ EMOJIS
 
 
 --------
-$ zas-rep-tools corpora add --path_to_read . --file_format_to_read json --dbname streamed --language de  --visibility intern --platform_name twitter --read_from_zip True --reader_formatter_name twitter --stream_number 2
+CORPORA
 
-update_attr 
-    $ zas-rep-tools corpora update_attr --dbname  9560_corpus_twitter_streamed_de_intern_encrypted.db -attr version --value 3 --encryption_key corp
+        add corp 
+            Encrypted:
+                $zas-rep-tools corpora add --path_to_read . --file_format_to_read csv --corp_intern_dbname streamed --language de  --visibility intern --platform_name twitter --read_from_zip False --mode prod --heal_me_if_possible True --formatter_name sifter --encryption_key corp
 
-eport corp 
-zas-rep-tools corpora export --dbname 9560_corpus_twitter_streamed_de_intern_encrypted.db --type_to_export json --export_dir . --export_name ggg
+            Plain-Text:
+                >>> Sifter (csv)
+                $zas-rep-tools corpora add --path_to_read . --file_format_to_read csv --corp_intern_dbname streamed --language de  --visibility intern --platform_name twitter --read_from_zip False --mode prod --heal_me_if_possible True --formatter_name sifter --encryption_key corp
 
+            TXT !!!! Till now it is possible to insert just those corpora, which has their metadata for eauch document in the fname of the files and where each file is a new document
+                zas-rep-tools corpora add --path_to_read . --file_format_to_read txt --corp_intern_dbname blogger --language en --visibility extern --platform_name blogger --del_html True
+
+
+        basic stats
+            encrypted 
+                zas-rep-tools corpora basic_stats --corp_fname 2339_corpus_twitter_streamed_de_intern_encrypted.db  --encryption_key corp
+            plaintext
+                zas-rep-tools corpora basic_stats --corp_fname 4915_corpus_twitter_sifter_de_intern_plaintext.db
+
+
+        update_attr 
+            zas-rep-tools corpora update_attr  --corp_fname 4915_corpus_twitter_sifter_de_intern_plaintext.db  --attr_name version --value 3
+
+
+
+
+
+        GetMeta:
+            For EncryptedDB: 
+                $ zas-rep-tools corpora meta --corp_fname 2339_corpus_twitter_streamed_de_intern_encrypted.db  --encryption_key corp
+
+            For all: 
+                zas-rep-tools corpora meta --corp_fname all
+
+
+        used_tools
+            zas-rep-tools corpora used_tools
+
+        clean_dir
+            zas-rep-tools corpora clean_dir
+
+        Export:
+            Encrypted:
+                zas-rep-tools corpora export --corp_fname 2339_corpus_twitter_streamed_de_intern_encrypted --type_to_export json --rows_limit_in_file 50000 --encryption_key corp
+            PlainText 
+                zas-rep-tools corpora export --corp_fname 4915_corpus_twitter_sifter_de_intern_plaintext --type_to_export csv --rows_limit_in_file 50000
+
+        cols
+            Encrypted:
+                zas-rep-tools corpora cols --corp_fname 2339_corpus_twitter_sifter_de_intern_encrypted.db --encryption_key corp
+            PlainText
+                zas-rep-tools corpora cols --corp_fname 4915_corpus_twitter_sifter_de_intern_plaintext.db
+
+
+        ids 
+            zas-rep-tools corpora ids --corp_fname 4915_corpus_twitter_sifter_de_intern_plaintext.db
+
+
+
+        doc
+            encrypted:
+                zas-rep-tools corpora doc --corp_fname 2339_corpus_twitter_sifter_de_intern_encrypted.db --encryption_key corp --doc_id 345012115070926848
+
+            plaintext
+                zas-rep-tools corpora doc --corp_fname 4915_corpus_twitter_sifter_de_intern_plaintext.db --doc_id 345012115070926848
+
+
+STATS
+
+    basic_stats 
+        zas-rep-tools stats basic_stats --stats_fname 8801_5467_stats_sifter_de_intern_plaintext
+
+    meta
+        zas-rep-tools stats meta --stats_fname 8801_5467_stats_sifter_de_intern_plaintext
+
+    update_attr
+        zas-rep-tools stats update_attr --stats_fname 8801_5467_stats_sifter_de_intern_plaintext --attr_name version --value 3
+
+    export
+        zas-rep-tools stats export --stats_fname 8801_5467_stats_sifter_de_intern_plaintext --export_file_type csv --exp_repl True --syntagma_for_export '😂,😫' --mode prod+ --corp_fname 8801_corpus_twitter_sifter_de_intern_plaintext_no_preproc.db --additional_doc_cols u_given_name,u_description,u_username
+
+        zas-rep-tools stats export --stats_fname 8801_5467_stats_sifter_de_intern_plaintext --export_file_type csv --exp_repl True --syntagma_for_export '*' --mode prod+ --max_scope 1
+
+        zas-rep-tools stats export --stats_fname 8801_5467_stats_sifter_de_intern_plaintext --export_file_type csv --exp_repl True --syntagma_for_export '*' --mode prod+ 
+
+
+
+OUTPUT TABLE: PROBLEM 
+->> in redu+repl 
+sum or group_by of redu could return false results for full_repetativ_syntagma (example: en corp "by, you")
+
+
+
+IMPORTANT:
+-> as corpus could be converter just those documents, which minimum have two fields: -> "id", "text" and the tag names should be given at the beginn, if are different from the default tag names.
+-> 
+
+Given POS of additional:
+["numbers", "EMOIMG", "EMOASC", "mention", "hashtag", "URL", "symbols", "regular"]
+
+
+ALSO!!!
+explain about all mode and show all setting for each mode (ex. prod-)
 
 ##### __Descriptions:__   
 <!-- 

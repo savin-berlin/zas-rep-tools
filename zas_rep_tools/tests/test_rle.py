@@ -24,7 +24,7 @@ from testfixtures import tempdir, TempDirectory
 from distutils.dir_util import copy_tree 
 
 
-from zas_rep_tools.src.classes.configer import Configer
+#from zas_rep_tools.src.classes.configer import Configer
 from zas_rep_tools.src.classes.stats import Stats
 from zas_rep_tools.src.classes.corpus import Corpus
 from zas_rep_tools.src.utils.debugger import p, wipd, wipdn, wipdl, wipdo

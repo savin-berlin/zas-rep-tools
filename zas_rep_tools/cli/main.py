@@ -1526,30 +1526,43 @@ def stats(command1,
 @click.option('--ignore_rt', '-irt', default=False, type=bool)
 @click.option('--filter_strategie', '-f', default=False, type=click.Choice(list(["t", "t+l", "False", False, "false"])))
 @click.option('--save_used_terms', '-sut', default=True, type=bool)
-@click.option('--logs_dir', '-ld', default="logs")
-@click.option('--use_logger_for_classes', '-lc', default=True,type=bool)
-@click.option('--use_logger_for_script', '-ls', default=True,type=bool)
-@click.option('--save_logs', '-sl', default=True,type=bool)
-@click.option('--logger_level', '-ll', default=logging.INFO)
-#@click.option('--logs_dir', '-l', default="logs")
-def streamTwitter( path_to_save,language,stop_words,terms,encoding,ignore_rt, filter_strategie, save_used_terms, logs_dir, use_logger_for_classes, use_logger_for_script, save_logs, logger_level):
-    # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
-    #logger = logger_initialisation("streamTwitter" ,use_logger_for_script, save_logs, logs_dir)
-    this_function_name = sys._getframe().f_code.co_name
-    logger = main_logger(this_function_name, level=logger_level, folder_for_log=logs_dir, use_logger=use_logger_for_script, save_logs=save_logs)
-    #p(list(Streamer.supported_languages)+ [False,"False"])
-    #p(type(ignore_rt))
-    #ignore_rt = bool(ignore_rt)
-    #save_used_terms = bool(save_used_terms)
 
-    if not  was_user_asked_for_path_to_file_with_twitter_creditials():
-        consumer_key, consumer_secret, access_token, access_token_secret  = ask_user_for_twitter_api_data()
-    else:
-        consumer_key, consumer_secret, access_token, access_token_secret = get_api_data()
+@click.option('--mode', '-m', default="prod" ,help="Set one of the Tool Modus", type=click.Choice(helpers.modi))
+@click.option('--logdir', '-ld', default="logs", help="Choose the name of the Directory for log data.")
+def streamTwitter( path_to_save,language,stop_words,terms,encoding,ignore_rt, filter_strategie, save_used_terms,  logdir, mode):
+    logger = get_cli_logger(mode,logdir)
+    func_name = sys._getframe().f_code.co_name
 
-    #p(get_api_data())
-    #p(agreement_data['email'])
+    # self.test_consumer_key = "97qaczWSRfaaGVhKS6PGHSYXh"
+    # self.test_consumer_secret = "mWUhEL0MiJh7FqNlOkQG8rAbC8AYs4YiEOzdiCwx26or1oxivc"
+    # self.test_access_token = "1001080557130932224-qi6FxuYwtvpbae17kCjAS9kfL8taNT"
+    # self.test_access_token_secret = "jCu2tTVwUW77gzOtK9X9svbdKUFvlSzAo4JfIG8tVuSgX"
 
+    #p(configer_obj._user_data["twitter_creditials"])
+    try:
+        configer_obj._user_data["twitter_creditials"]
+        if not configer_obj._user_data["twitter_creditials"]:
+            raise Exception, "STOP"
+    except:
+        configer_obj._cli_menu_get_from_user_twitter_credentials()
+
+
+    try:
+        if not configer_obj._user_data["twitter_creditials"]:
+            logger.error("TwitterCreditials wasn't found. Please give TwitterCreditials before you can use this Tools.")
+            return False
+    except:
+        logger.error("TwitterCreditials wasn't found. Please give TwitterCreditials before you can use this Tools.")
+        return False
+    #p(configer_obj._user_data["twitter_creditials"])
+    #p(configer_obj._user_data["twitter_creditials"][0])
+    configer_obj._user_data["twitter_creditials"][0]
+    consumer_key = configer_obj._user_data["twitter_creditials"][0]["consumer_key"]
+    consumer_secret = configer_obj._user_data["twitter_creditials"][0]["consumer_secret"]
+    access_token = configer_obj._user_data["twitter_creditials"][0]["access_token"]
+    access_token_secret = configer_obj._user_data["twitter_creditials"][0]["access_token_secret"]
+
+    #p((consumer_key, consumer_secret, access_token, access_token_secret, path_to_save))
 
     if stop_words and  not os.path.isfile(stop_words):
         if stop_words not in Streamer.stop_words_collection:
@@ -1564,7 +1577,7 @@ def streamTwitter( path_to_save,language,stop_words,terms,encoding,ignore_rt, fi
     stream = Streamer(consumer_key, consumer_secret, access_token, access_token_secret, path_to_save, platfrom="twitter",
                     language=language, email_addresse=email, stop_words=stop_words, terms=terms,
                     encoding=encoding, ignore_rt=ignore_rt, save_used_terms=save_used_terms, filterStrat=filter_strategie,
-                    logger_level=logger_level, logger_usage=use_logger_for_classes, logger_save_logs= save_logs)
+                    mode=mode)
     stream.stream_twitter()
 
 
@@ -1572,14 +1585,14 @@ def streamTwitter( path_to_save,language,stop_words,terms,encoding,ignore_rt, fi
 
 @main.command('streamerInfo')
 @click.argument('command')
-@click.option('--logs_dir', '-ld', default="logs")
-@click.option('--use_logger_for_classes', '-lc', default=True)
-@click.option('--use_logger_for_script', '-ls', default=True)
-@click.option('--save_logs', '-sl', default=True)
+@click.option('--mode', '-m', default="prod" ,help="Set one of the Tool Modus", type=click.Choice(helpers.modi))
+@click.option('--logdir', '-ld', default="logs", help="Choose the name of the Directory for log data.")
 #@click.option('--logs_dir', '-l', default="logs")
-def streamerInfo(command, logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
+def streamerInfo(command,  logdir, mode):
     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
-    logger = logger_initialisation("streamerInfo" ,use_logger_for_script, save_logs, logs_dir)
+    logger = get_cli_logger(mode,logdir)
+    func_name = sys._getframe().f_code.co_name
+
     possible_commands = ["enc", "lang", "nltk_lang", "twitter_lang", "classiefier_lang", "stop_words", "platforms"]
 
 
