@@ -27,7 +27,7 @@ import csv
 from collections import Counter, defaultdict
 
 
-from zas_rep_tools.src.classes.configer import Configer
+#from zas_rep_tools.src.classes.configer import Configer
 from zas_rep_tools.src.classes.stats import Stats
 from zas_rep_tools.src.classes.reader import Reader
 from zas_rep_tools.src.classes.corpus import Corpus
@@ -97,11 +97,14 @@ class TestZASIntergrationTests(BaseTester,unittest.TestCase):
             temp_item = []
             #p(item)
             #temp_item.append(item["baseline"])
-            extracted[tuple(item["syntagma"])] = item["baseline"]
+            temp = [ [unicode(el) for el in _item ] for _item in item["baseline"]]
+            extracted[tuple(item["syntagma"])] = temp
+            #item["baseline"]
         return extracted
 
 
-
+    def convert(self,inp):
+        return  [ [unicode(el) for el in _item ] for _item in inp]
 
 #################################Beginn##############################################
 ############################EXTERN METHODS###########################################
@@ -187,29 +190,47 @@ class TestZASIntergrationTests(BaseTester,unittest.TestCase):
         #### full_repetativ_syntagma=True + case_sensitiv_stat=False  ######
         case_sensitiv_stat = False
         stats = Stats(mode=self.mode)
-        stats.init(self.tempdir_project_folder, name, language, visibility,  version= version, full_repetativ_syntagma=True,case_sensitiv=case_sensitiv_stat)
+        stats.init(self.tempdir_project_folder, name, language, visibility,  version= version, full_repetativ_syntagma=True,case_sensitiv=case_sensitiv_stat,baseline_delimiter="++",)
         stats.compute(corp)
         #print 
         basic_info = self._get_basic_info_about_reps(stats.get_data(redu=True, repl=True, baseline=True))
-        basic_info[("klitze",)].should.be.equal(([[u'klitze'], u'klitz', 1, 4, None, None, u'2', u'4', None, u'2'],))
-        basic_info[("kleine",)].should.be.equal(([[u'kleine'], u'klein', 1, 4, None, None, u'2', u'4', None, u'2'],))
-        basic_info[("klitze","kleine")].should.be.equal(([[u'klitze', u'kleine'], u'klitz++klein', 2, 2, None, None, u'[2, 2]', u'[4, 4]', None, u'2'],))
-        basic_info[(".",)].should.be.equal(([[u'.'], u'.', 1, 2, u'2', u'2', None, None, u'2', None],))
+        basic_info[("klitze",)].should.be.equal(self.convert(([[u'klitze'], u'klitz', 1, 4, None, None, u'2', u'4', None, u'2'],)))
+        basic_info[("kleine",)].should.be.equal(self.convert(([[u'kleine'], u'klein', 1, 4, None, None, u'2', u'4', None, u'2'],)))
+        basic_info[("klitze","kleine")].should.be.equal(self.convert(([[u'klitze', u'kleine'], u'klitz++klein', 2, 2, None, None, u'[2, 2]', u'[4, 4]', None, u'2'],)))
+        basic_info[(".",)].should.be.equal(self.convert(([[u'.'], u'.', 1, 2, u'2', u'2', None, None, u'2', None],)))
         len(basic_info).should.be.equal(4)
-        #p(basic_info.keys(), "basic_info")
+
+        ### check right summerizing 
+        right_sum_repl = {
+                            u'.': {
+                                    3: [2, {u'.^3': 2}]
+                                   }
+                        }
 
 
+        right_sum_redu = {
+                            u'kleine': {2: 2}, 
+                            u'klitze': {2: 2}
+                        }
+        
+        extracted_repl = { word:{nr_rep:[occur[0],{rle:count  for rle, count in occur[1].items() }] for nr_rep, occur in data.items()} for word, data in  stats.compute_rep_sum("*", "repl").items()}
+        extracted_redu = { word:{nr_rep:occur for nr_rep, occur in data.items()} for word, data in  stats.compute_rep_sum("*", "redu").items()}
+        extracted_repl.should.be.equal(right_sum_repl)
+        extracted_redu.should.be.equal(right_sum_redu)
+
+
+        #sys.exit()
         #### full_repetativ_syntagma=True + case_sensitiv_stat=True  ######
         case_sensitiv_stat = True
         stats = Stats(mode=self.mode)
-        stats.init(self.tempdir_project_folder, name, language, visibility,  version= version, full_repetativ_syntagma=True,case_sensitiv=case_sensitiv_stat)
+        stats.init(self.tempdir_project_folder, name, language, visibility,  version= version, full_repetativ_syntagma=True,case_sensitiv=case_sensitiv_stat,baseline_delimiter="++",)
         stats.compute(corp)
         #print stats.statsdb.getall("replications")
         #print stats.statsdb.getall("reduplications")
         #print stats.statsdb.getall("replications")
         basic_info = self._get_basic_info_about_reps(stats.get_data(redu=True, repl=True, baseline=True))
-        basic_info[(u'.',)].should.be.equal(([[u'.'], u'.', 1, 2, u'2', u'2', None, None, u'2', None],))
-        basic_info[(u'kleine',)].should.be.equal(([[u'kleine'], u'klein', 1, 4, None, None, u'2', u'4', None, u'2'],))
+        basic_info[(u'.',)].should.be.equal(self.convert(([[u'.'], u'.', 1, 2, u'2', u'2', None, None, u'2', None],)))
+        basic_info[(u'kleine',)].should.be.equal(self.convert(([[u'kleine'], u'klein', 1, 4, None, None, u'2', u'4', None, u'2'],)))
         len(basic_info).should.be.equal(2)
         #p(basic_info.keys(), "basic_info")
 
@@ -219,20 +240,20 @@ class TestZASIntergrationTests(BaseTester,unittest.TestCase):
         #### full_repetativ_syntagma=False ######
         case_sensitiv_stat = False
         stats = Stats(mode=self.mode)
-        stats.init(self.tempdir_project_folder, name, language, visibility,  version= version, full_repetativ_syntagma=False,case_sensitiv=case_sensitiv_stat)
+        stats.init(self.tempdir_project_folder, name, language, visibility,  version= version, full_repetativ_syntagma=False,case_sensitiv=case_sensitiv_stat,baseline_delimiter="++")
         stats.compute(corp)
         #print 
         basic_info = self._get_basic_info_about_reps(stats.get_data(redu=True, repl=True, baseline=True))
         
-        basic_info[("klitze",)].should.be.equal(([[u'klitze'], u'klitz', 1, 4, None, None, u'2', u'4', None, u'2'],))
-        basic_info[("kleine",)].should.be.equal(([[u'kleine'], u'klein', 1, 4, None, None, u'2', u'4', None, u'2'],))
-        basic_info[("klitze","kleine")].should.be.equal(([[u'klitze', u'kleine'], u'klitz++klein', 2, 2, None, None, u'[2, 2]', u'[4, 4]', None, None],))
-        basic_info[(".",)].should.be.equal(([[u'.'], u'.', 1, 2, u'2', u'2', None, None, u'2', None],))
-        basic_info[(u'kleine', u'menge', u'.')].should.be.equal(([[u'kleine', u'menge', u'.'], u'klein++meng++.', 3, 2, u'[0, 0, 2]', u'[0, 0, 2]', u'[2, 0, 0]', u'[4, 0, 0]', None, None],))
-        basic_info[(u'klitze', u'kleine', u'menge', u'.')].should.be.equal(([[u'klitze', u'kleine', u'menge', u'.'], u'klitz++klein++meng++.', 4, 2, u'[0, 0, 0, 2]', u'[0, 0, 0, 2]', u'[2, 2, 0, 0]', u'[4, 4, 0, 0]', None, None],))
-        basic_info[(u'klitze', u'kleine', u'menge')].should.be.equal(([[u'klitze', u'kleine', u'menge'], u'klitz++klein++meng', 3, 2, None, None, u'[2, 2, 0]', u'[4, 4, 0]', None, None],))
-        basic_info[(u'kleine', u'menge')].should.be.equal(([[u'kleine', u'menge'], u'klein++meng', 2, 2, None, None, u'[2, 0]', u'[4, 0]', None, None],))
-        basic_info[(u'menge', u'.')].should.be.equal(([[u'menge', u'.'], u'meng++.', 2, 2, u'[0, 2]', u'[0, 2]', None, None, None, None],))
+        basic_info[("klitze",)].should.be.equal(self.convert(([[u'klitze'], u'klitz', 1, 4, None, None, u'2', u'4', None, u'2'],)))
+        basic_info[("kleine",)].should.be.equal(self.convert(([[u'kleine'], u'klein', 1, 4, None, None, u'2', u'4', None, u'2'],)))
+        basic_info[("klitze","kleine")].should.be.equal(self.convert(([[u'klitze', u'kleine'], u'klitz++klein', 2, 2, None, None, u'[2, 2]', u'[4, 4]', None, None],)))
+        basic_info[(".",)].should.be.equal(self.convert(([[u'.'], u'.', 1, 2, u'2', u'2', None, None, u'2', None],)))
+        basic_info[(u'kleine', u'menge', u'.')].should.be.equal(self.convert(([[u'kleine', u'menge', u'.'], u'klein++meng++.', 3, 2, u'[0, 0, 2]', u'[0, 0, 2]', u'[2, 0, 0]', u'[4, 0, 0]', None, None],)))
+        basic_info[(u'klitze', u'kleine', u'menge', u'.')].should.be.equal(self.convert(([[u'klitze', u'kleine', u'menge', u'.'], u'klitz++klein++meng++.', 4, 2, u'[0, 0, 0, 2]', u'[0, 0, 0, 2]', u'[2, 2, 0, 0]', u'[4, 4, 0, 0]', None, None],)))
+        basic_info[(u'klitze', u'kleine', u'menge')].should.be.equal(self.convert(([[u'klitze', u'kleine', u'menge'], u'klitz++klein++meng', 3, 2, None, None, u'[2, 2, 0]', u'[4, 4, 0]', None, None],)))
+        basic_info[(u'kleine', u'menge')].should.be.equal(self.convert(([[u'kleine', u'menge'], u'klein++meng', 2, 2, None, None, u'[2, 0]', u'[4, 0]', None, None],)))
+        basic_info[(u'menge', u'.')].should.be.equal(self.convert(([[u'menge', u'.'], u'meng++.', 2, 2, u'[0, 2]', u'[0, 2]', None, None, None, None],)))
         len(basic_info).should.be.equal(9)
         #p(basic_info.keys(), "basic_info")
 
@@ -320,7 +341,7 @@ class TestZASIntergrationTests(BaseTester,unittest.TestCase):
         ignore_punkt = False
         ignore_num = False
         stats = Stats(mode=self.mode)
-        stats.init(self.tempdir_project_folder, name, language, visibility,  version= version,
+        stats.init(self.tempdir_project_folder, name, language, visibility,  version= version,baseline_delimiter="++",
                     full_repetativ_syntagma=True,case_sensitiv=case_sensitiv_stat,
                     ignore_hashtag=ignore_hashtag, ignore_url=ignore_url, ignore_mention=ignore_mention,
                     ignore_punkt=ignore_punkt, ignore_num=ignore_num)
@@ -329,12 +350,12 @@ class TestZASIntergrationTests(BaseTester,unittest.TestCase):
         #print stats.statsdb.getall("reduplications")
         #print stats.statsdb.getall("replications")
         basic_info = self._get_basic_info_about_reps(stats.get_data(redu=True, repl=True, baseline=True))
-        basic_info[(u'.',)].should.be.equal(([[u'.'], u'.', 1, 2, u'2', u'2', None, None, u'2', None],))
-        basic_info[(u'.', u'#havy')].should.be.equal(([[u'.', u'#havy'], u'.++#havy', 2, 2, u'[2, 4]', u'[2, 8]', None, None, u'2', None],))
-        basic_info[(u'@busy_guy', u'.', u'#havy')].should.be.equal(([[u'@busy_guy', u'.', u'#havy'], u'@busy_guy++.++#havy', 3, 2, u'[4, 2, 4]', u'[8, 2, 8]', None, None, u'2', None],))
-        basic_info[(u'@busy_guy', u'.')].should.be.equal(([[u'@busy_guy', u'.'], u'@busy_guy++.', 2, 2, u'[4, 2]', u'[8, 2]', None, None, u'2', None],))
-        basic_info[(u'@busy_guy',)].should.be.equal(([[u'@busy_guy'], u'@busy_guy', 1, 4, u'4', u'8', u'2', u'4', u'4', u'2'],))
-        basic_info[(u'#havy',)].should.be.equal(([[u'#havy'], u'#havy', 1, 4, u'4', u'8', u'2', u'4', u'4', u'2'],))
+        basic_info[(u'.',)].should.be.equal(self.convert(([[u'.'], u'.', 1, 2, u'2', u'2', None, None, u'2', None],)))
+        basic_info[(u'.', u'#havy')].should.be.equal(self.convert(([[u'.', u'#havy'], u'.++#havy', 2, 2, u'[2, 4]', u'[2, 8]', None, None, u'2', None],)))
+        basic_info[(u'@busy_guy', u'.', u'#havy')].should.be.equal(self.convert(([[u'@busy_guy', u'.', u'#havy'], u'@busy_guy++.++#havy', 3, 2, u'[4, 2, 4]', u'[8, 2, 8]', None, None, u'2', None],)))
+        basic_info[(u'@busy_guy', u'.')].should.be.equal(self.convert(([[u'@busy_guy', u'.'], u'@busy_guy++.', 2, 2, u'[4, 2]', u'[8, 2]', None, None, u'2', None],)))
+        basic_info[(u'@busy_guy',)].should.be.equal(self.convert(([[u'@busy_guy'], u'@busy_guy', 1, 4, u'4', u'8', u'2', u'4', u'4', u'2'],)))
+        basic_info[(u'#havy',)].should.be.equal(self.convert(([[u'#havy'], u'#havy', 1, 4, u'4', u'8', u'2', u'4', u'4', u'2'],)))
         len(basic_info).should.be.equal(6)
         #p(basic_info.keys(), "basic_info")
         
@@ -347,16 +368,16 @@ class TestZASIntergrationTests(BaseTester,unittest.TestCase):
         ignore_punkt = True
         ignore_num = True
         stats = Stats(mode=self.mode)
-        stats.init(self.tempdir_project_folder, name, language, visibility,  version= version,
+        stats.init(self.tempdir_project_folder, name, language, visibility,  version= version,baseline_delimiter="++",
                     full_repetativ_syntagma=True,case_sensitiv=case_sensitiv_stat,
                     ignore_hashtag=ignore_hashtag, ignore_url=ignore_url, ignore_mention=ignore_mention,
                     ignore_punkt=ignore_punkt, ignore_num=ignore_num)
         stats.compute(corp)
         basic_info = self._get_basic_info_about_reps(stats.get_data(redu=True, repl=True, baseline=True))
-        basic_info[(u':hashtag:', u':URL:')].should.be.equal(([[u':hashtag:', u':URL:'], u':hashtag:++:uRL:', 2, 2, None, None, u'[2, 2]', u'[4, 4]', None, u'2'],))
-        basic_info[(u':URL:',)].should.be.equal(([[u':URL:'], u':uRL:', 1, 4, None, None, u'2', u'4', None, u'2'],))
-        basic_info[(u':mention:',)].should.be.equal(([[u':mention:'], u':mention:', 1, 4, None, None, u'2', u'4', None, u'2'],))
-        basic_info[(u':hashtag:',)].should.be.equal(([[u':hashtag:'], u':hashtag:', 1, 4, None, None, u'2', u'4', None, u'2'],))
+        basic_info[(u':hashtag:', u':URL:')].should.be.equal(self.convert(([[u':hashtag:', u':URL:'], u':hashtag:++:uRL:', 2, 2, None, None, u'[2, 2]', u'[4, 4]', None, u'2'],)))
+        basic_info[(u':URL:',)].should.be.equal(self.convert(([[u':URL:'], u':uRL:', 1, 4, None, None, u'2', u'4', None, u'2'],)))
+        basic_info[(u':mention:',)].should.be.equal(self.convert(([[u':mention:'], u':mention:', 1, 4, None, None, u'2', u'4', None, u'2'],)))
+        basic_info[(u':hashtag:',)].should.be.equal(self.convert(([[u':hashtag:'], u':hashtag:', 1, 4, None, None, u'2', u'4', None, u'2'],)))
         len(basic_info).should.be.equal(4)
         #p(basic_info.keys(), "basic_info")
         
@@ -444,7 +465,7 @@ class TestZASIntergrationTests(BaseTester,unittest.TestCase):
         ignore_punkt = False
         ignore_num = False
         stats = Stats(mode=self.mode)
-        stats.init(self.tempdir_project_folder, name, language, visibility,  version= version,
+        stats.init(self.tempdir_project_folder, name, language, visibility,  version= version,baseline_delimiter="++",
                     full_repetativ_syntagma=True,case_sensitiv=case_sensitiv_stat,
                     ignore_hashtag=ignore_hashtag, ignore_url=ignore_url, ignore_mention=ignore_mention,
                     ignore_punkt=ignore_punkt, ignore_num=ignore_num)
@@ -453,25 +474,50 @@ class TestZASIntergrationTests(BaseTester,unittest.TestCase):
         #print stats.statsdb.getall("reduplications")
         #print stats.statsdb.getall("replications")
         basic_info = self._get_basic_info_about_reps(stats.get_data(redu=True, repl=True, baseline=True))
-        basic_info[(u'-)', u'\U0001f600')].should.be.equal(([[u'-)', u'\U0001f600'], u'-)++\U0001f600', 2, 2, u'[4, 2]', u'[4, 2]', None, None, u'2', None],))
-        basic_info[(u'\U0001f600',)].should.be.equal(([[u'\U0001f600'], u'\U0001f600', 1, 2, u'2', u'2', None, None, u'2', None],))
-        basic_info[(u'-)',)].should.be.equal(([[u'-)'], u'-)', 1, 4, u'4', u'4', u'2', u'4', u'4', u'2'],))
-        basic_info[(u'\U0001f308',)].should.be.equal(([[u'\U0001f308'], u'\U0001f308', 1, 2, u'2', u'2', None, None, u'2', None],))
-        basic_info[(u'\U0001f600', u'\U0001f308')].should.be.equal(([[u'\U0001f600', u'\U0001f308'], u'\U0001f600++\U0001f308', 2, 2, u'[2, 2]', u'[2, 2]', None, None, u'2', None],))
-        basic_info[(u'-)', u'\U0001f600', u'\U0001f308')].should.be.equal(([[u'-)', u'\U0001f600', u'\U0001f308'], u'-)++\U0001f600++\U0001f308', 3, 2, u'[4, 2, 2]', u'[4, 2, 2]', None, None, u'2', None],))
+        basic_info[(u'-)', u'\U0001f600')].should.be.equal(self.convert(([[u'-)', u'\U0001f600'], u'-)++\U0001f600', 2, 2, u'[4, 2]', u'[4, 2]', None, None, u'2', None],)))
+        basic_info[(u'\U0001f600',)].should.be.equal(self.convert(([[u'\U0001f600'], u'\U0001f600', 1, 2, u'2', u'2', None, None, u'2', None],)))
+        basic_info[(u'-)',)].should.be.equal(self.convert(([[u'-)'], u'-)', 1, 4, u'4', u'4', u'2', u'4', u'4', u'2'],)))
+        basic_info[(u'\U0001f308',)].should.be.equal(self.convert(([[u'\U0001f308'], u'\U0001f308', 1, 2, u'2', u'2', None, None, u'2', None],)))
+        basic_info[(u'\U0001f600', u'\U0001f308')].should.be.equal(self.convert(([[u'\U0001f600', u'\U0001f308'], u'\U0001f600++\U0001f308', 2, 2, u'[2, 2]', u'[2, 2]', None, None, u'2', None],)))
+        basic_info[(u'-)', u'\U0001f600', u'\U0001f308')].should.be.equal(self.convert(([[u'-)', u'\U0001f600', u'\U0001f308'], u'-)++\U0001f600++\U0001f308', 3, 2, u'[4, 2, 2]', u'[4, 2, 2]', None, None, u'2', None],)))
         len(basic_info).should.be.equal(6)
         #p(basic_info.keys(), "basic_info")
 
         basic_info = self._get_basic_info_about_reps(stats.get_data(inp_syntagma=["EMOIMG"],redu=True, repl=True, baseline=True,syntagma_type="pos", if_type_pos_return_lexem_syn=True))
-        basic_info[(u'\U0001f600',)].should.be.equal([[[u'\U0001f600'], u'\U0001f600', 1, 2, u'2', u'2', None, None, u'2', None]])
-        basic_info[(u'\U0001f308',)].should.be.equal([[[u'\U0001f308'], u'\U0001f308', 1, 2, u'2', u'2', None, None, u'2', None]])
+        basic_info[(u'\U0001f600',)].should.be.equal(self.convert([[[u'\U0001f600'], u'\U0001f600', 1, 2, u'2', u'2', None, None, u'2', None]]))
+        basic_info[(u'\U0001f308',)].should.be.equal(self.convert([[[u'\U0001f308'], u'\U0001f308', 1, 2, u'2', u'2', None, None, u'2', None]]))
         len(basic_info).should.be.equal(2) 
         #p(basic_info.keys(), "basic_info"  )     
 
         basic_info = self._get_basic_info_about_reps(stats.get_data(inp_syntagma=["EMOASC"],redu=True, repl=True, baseline=True,syntagma_type="pos", if_type_pos_return_lexem_syn=True))
-        basic_info[(u'-)',)].should.be.equal([[[u'-)'], u'-)', 1, 4, u'4', u'4', u'2', u'4', u'4', u'2']])
+        basic_info[(u'-)',)].should.be.equal(self.convert([[[u'-)'], u'-)', 1, 4, u'4', u'4', u'2', u'4', u'4', u'2']]))
         len(basic_info).should.be.equal(1) 
         #p(basic_info.keys(), "basic_info"  )  
+
+
+        ### check right summerizing 
+        right_sum_repl = {
+                            u')': {
+                                    9: [2, {u'-)^9': 2}], 
+                                    5: [2, {u'-)^5': 2}]}, 
+                            
+                            u'\U0001f600': {
+                                    6: [2, {u'\U0001f600^6': 2}]}, 
+                            
+                            u'\U0001f308': {
+                                    4: [2, {u'\U0001f308^4': 2}]}
+                        }
+
+
+        right_sum_redu = {u'-)': {2: 2}}
+        
+        extracted_repl = { word:{nr_rep:[occur[0],{rle:count  for rle, count in occur[1].items() }] for nr_rep, occur in data.items()} for word, data in  stats.compute_rep_sum("*", "repl").items()}
+        extracted_redu = { word:{nr_rep:occur for nr_rep, occur in data.items()} for word, data in  stats.compute_rep_sum("*", "redu").items()}
+        extracted_repl.should.be.equal(right_sum_repl)
+        extracted_redu.should.be.equal(right_sum_redu)
+
+        #p((extracted_repl, extracted_redu))
+        #sys.exit()
 
 #################################END##################################################
 ############################EXTERN METHODS############################################

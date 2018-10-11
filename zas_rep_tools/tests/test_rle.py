@@ -24,7 +24,7 @@ from testfixtures import tempdir, TempDirectory
 from distutils.dir_util import copy_tree 
 
 
-#from zas_rep_tools.src.classes.configer import Configer
+from zas_rep_tools.src.classes.configer import Configer
 from zas_rep_tools.src.classes.stats import Stats
 from zas_rep_tools.src.classes.corpus import Corpus
 from zas_rep_tools.src.utils.debugger import p, wipd, wipdn, wipdl, wipdo
@@ -303,22 +303,6 @@ class TestZASHelpersRLE(BaseTester,unittest.TestCase):
         rle.get_rep_free_word_from_rle_in_tuples(self.test_byte_str3_encoded_to_tuples).should.be.equal(u'mit \xdc\xfcberzeugung hat er ales gest\xe4mt!')
         #p(rle.get_rep_free_word_from_rle_in_tuples(self.test_byte_str4_encoded_to_tuples))
         rle.get_rep_free_word_from_rle_in_tuples(self.test_byte_str4_encoded_to_tuples).should.be.equal(u'\u043d\u0443 \u043a\u0430\u043a \u0431\u044b \u043c\u043e\u0436\u043d\u043e \u043b\u0438?')
-
-
-
-    # @attr(status='stable')
-    # @wipd
-    # def test_get_rep_free_word_from_rle_as_tuples_as_unicodestr_511(self):
-    #     rle = Rle()
-    #     #p(rle.get_rep_free_word_from_rle_in_tuples(self.test_byte_str1_encoded_to_tuples))
-    #     rle.get_rep_free_word_from_rle_in_tuples(self.test_byte_str1_encoded_to_tuples).should.be.equal(u'big fat pony. Or how to be hapy!')
-    #     #p(rle.get_rep_free_word_from_rle_in_tuples(self.test_byte_str2_encoded_to_tuples))
-    #     rle.get_rep_free_word_from_rle_in_tuples(self.test_byte_str2_encoded_to_tuples).should.be.equal(u'So beautiful life \U0001f600\U0001f61c \U0001f607')
-    #     #p(rle.get_rep_free_word_from_rle_in_tuples(self.test_byte_str3_encoded_to_tuples))
-    #     rle.get_rep_free_word_from_rle_in_tuples(self.test_byte_str3_encoded_to_tuples).should.be.equal(u'mit \xdc\xfcberzeugung hat er ales gest\xe4mt!')
-    #     #p(rle.get_rep_free_word_from_rle_in_tuples(self.test_byte_str4_encoded_to_tuples))
-    #     rle.get_rep_free_word_from_rle_in_tuples(self.test_byte_str4_encoded_to_tuples).should.be.equal(u'\u043d\u0443 \u043a\u0430\u043a \u0431\u044b \u043c\u043e\u0436\u043d\u043e \u043b\u0438?')
-
 
 
 

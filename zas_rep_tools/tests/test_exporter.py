@@ -26,7 +26,7 @@ import sys
 
 from zas_rep_tools.src.classes.exporter import Exporter
 from zas_rep_tools.src.classes.reader import Reader
-from zas_rep_tools.src.classes.configer import Configer
+#from zas_rep_tools.src.classes.configer import Configer
 from zas_rep_tools.src.utils.debugger import p, wipd, wipdn, wipdl, wipdo
 from zas_rep_tools.src.utils.basetester import BaseTester
 

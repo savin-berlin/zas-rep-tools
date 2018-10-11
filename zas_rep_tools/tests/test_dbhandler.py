@@ -27,7 +27,7 @@ import json
 import time
 
 from zas_rep_tools.src.classes.dbhandler import DBHandler
-from zas_rep_tools.src.classes.configer import Configer
+#from zas_rep_tools.src.classes.configer import Configer
 import  zas_rep_tools.src.utils.db_helper as db_helper
 from zas_rep_tools.src.utils.helpers import Status
 from zas_rep_tools.src.utils.debugger import p, wipd, wipdn, wipdl, wipdo
@@ -204,7 +204,7 @@ class TestZAScorpusDBHandlerDBHandler(BaseTester,unittest.TestCase):
         db.init(typ, self.tempdir_project_folder, name, language,
                 visibility, platform_name, license=license,
                 template_name=template_name, version=version, source=source,
-                additional_columns_with_types_for_documents=new_additional_columns)
+                cols_and_types_in_doc=new_additional_columns)
 
 
         col_and_types_for_twitter_docs = DBHandler.templates["twitter"]
@@ -260,7 +260,7 @@ class TestZAScorpusDBHandlerDBHandler(BaseTester,unittest.TestCase):
         db.init(typ, self.tempdir_project_folder, name, language,
                 visibility, platform_name, license=license,
                 version=version, source=source,
-                additional_columns_with_types_for_documents=new_additional_columns)
+                cols_and_types_in_doc=new_additional_columns)
 
 
 
@@ -3049,7 +3049,8 @@ class TestZAScorpusDBHandlerDBHandler(BaseTester,unittest.TestCase):
                         assert False
 
 
-
+        #p(db.rownum("documents"), "num")
+        #print len(list(db.lazyget("documents",size_to_fetch=5,output="list")))
 
 
 

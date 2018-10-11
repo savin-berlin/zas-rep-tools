@@ -47,7 +47,7 @@ else:
 
 # create test data, id needed
 
-#TestsConfiger(mode="dev", rewrite=True).create_test_data(use_original_classes=True, corp_status_bar=True, corp_log_ignored=True, corp_language="en", corp_lang_classification=False, corp_pos_tagger="tweetnlp")
+#TestsConfiger(mode="dev", rewrite=True).create_test_data(use_original_classes=True, status_bar=True, corp_log_ignored=True, corp_language="en", corp_lang_classification=False, corp_pos_tagger="tweetnlp")
 
 class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
     #_multiprocess_can_split_ = True
@@ -167,7 +167,7 @@ class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
     #     #c.logger.info("fghjkl")
     #     #c.logger.error("fghjkl")
     #     #p(c.text_elements(token=True, unicode_str=True))
-    #     #c.create_test_dbs(use_original_classes=True, corp_status_bar=True, corp_log_ignored=True,corp_lang_classification=True)
+    #     #c.create_test_dbs(use_original_classes=True, status_bar=True, corp_log_ignored=True,corp_lang_classification=True)
     #     #p(c._docs_row_dict(token=True, unicode_str=True, all_values=True , lang="all") )
     #     # p("fghjl")
     #     # time.sleep(2)
@@ -183,10 +183,10 @@ class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
     #     # p("fghjl")
     #     # time.sleep(2)
     #     # p("fghjl")
-    #     #c.create_test_dbs(abs_path_to_storage_place=self.tempdir_project_folder, use_original_classes=True, corp_status_bar=True, corp_log_ignored=True, corp_language="en", corp_lang_classification=False, corp_pos_tagger="tweetnlp")
+    #     #c.create_test_dbs(abs_path_to_storage_place=self.tempdir_project_folder, use_original_classes=True, status_bar=True, corp_log_ignored=True, corp_language="en", corp_lang_classification=False, corp_pos_tagger="tweetnlp")
     #     #p(TestsConfiger(mode=self.mode).self.docs_row_values(token=True, unicode_str=True))
 
-    @attr(status='stable')
+    #@attr(status='stable')
     #@wipd
     def test_create_all_test_dbs_created_with_dbhandler_500(self):
         self.prj_folder()
@@ -264,8 +264,8 @@ class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
         abs_path_to_storage_place=self.tempdir_project_folder
 
         configer = TestsConfiger(mode=self.mode, rewrite=True)
-        #configer.create_test_dbs(abs_path_to_storage_place=abs_path_to_storage_place, use_original_classes=True, corp_status_bar=True, corp_log_ignored=True,corp_lang_classification=True)
-        configer.create_test_dbs(abs_path_to_storage_place=abs_path_to_storage_place, use_original_classes=True, corp_status_bar=True, corp_log_ignored=True,corp_lang_classification=True, use_test_pos_tagger=False)
+        #configer.create_test_dbs(abs_path_to_storage_place=abs_path_to_storage_place, use_original_classes=True, status_bar=True, corp_log_ignored=True,corp_lang_classification=True)
+        configer.create_test_dbs(abs_path_to_storage_place=abs_path_to_storage_place, use_original_classes=True, status_bar=True, corp_log_ignored=True,corp_lang_classification=True, use_test_pos_tagger=False)
 
         created_dbs = [filename for filename in os.listdir(abs_path_to_storage_place) if ".db" in filename]
         number_db_which_should_be_created = len(list(NestedDictValues(self.configer._test_dbs)))
@@ -408,7 +408,7 @@ class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
         abs_path_to_storage_place=self.tempdir_project_folder
         configer = TestsConfiger(mode=self.mode, rewrite=False)
         configer.create_test_data(abs_path_to_storage_place= abs_path_to_storage_place, use_original_classes=True,
-                            corp_status_bar=True, corp_log_ignored=True,corp_lang_classification=True,
+                            status_bar=True, corp_log_ignored=True,corp_lang_classification=True,
                             corp_pos_tagger=False, corp_sentiment_analyzer=False,  use_test_pos_tagger=True)
         #p(os.listdir(abs_path_to_storage_place))
 

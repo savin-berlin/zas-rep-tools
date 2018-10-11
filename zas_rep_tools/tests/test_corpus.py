@@ -29,7 +29,7 @@ import json
 
 from zas_rep_tools.src.classes.corpus import Corpus
 from zas_rep_tools.src.classes.reader import Reader
-from zas_rep_tools.src.classes.configer import Configer
+#from zas_rep_tools.src.classes.configer import Configer
 from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, LenGen, path_to_zas_rep_tools, get_number_of_streams_adjust_cpu
 from zas_rep_tools.src.utils.debugger import p, wipd, wipdn, wipdl, wipdo
 from zas_rep_tools.src.utils.basetester import BaseTester
@@ -318,8 +318,8 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         typ= "corpus"
         language="en"
         
-        reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True, ext_tb=True, mode=self.mode)
-        corp = Corpus( logger_traceback=True, ext_tb=True, mode=self.mode, use_test_pos_tagger=True) #text_field_name=""
+        reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitterstreamapi",logger_traceback=True, ext_tb=True, mode=self.mode)
+        corp = Corpus( logger_traceback=True, ext_tb=True, mode=self.mode, use_test_pos_tagger=True) 
         #corp = Corpus(logger_level=logging.DEBUG)
         corp.init(self.tempdir_project_folder, name, language, visibility, platform_name, 
                     source=source, license=license, template_name=template_name,  version= version,
@@ -356,8 +356,8 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         typ= "corpus"
         language="de"
         
-        reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True, ext_tb=True, mode=self.mode)
-        corp = Corpus(  logger_traceback=True, ext_tb=True, mode=self.mode, use_test_pos_tagger=True) #text_field_name=""
+        reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitterstreamapi",logger_traceback=True, ext_tb=True, mode=self.mode)
+        corp = Corpus(  logger_traceback=True, ext_tb=True, mode=self.mode, use_test_pos_tagger=True) 
         #corp = Corpus(logger_level=logging.DEBUG)
         corp.init(self.tempdir_project_folder, name, language, visibility, platform_name, 
                     source=source, license=license, template_name=template_name,  version= version,
@@ -411,8 +411,8 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         language="de"
 
         reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_small_fake_set), "txt", regex_template="blogger", mode=self.mode)
-        #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True)
-        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=False) #text_field_name=""
+        #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitterstreamapi",logger_traceback=True)
+        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=False) 
         corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license,
                     template_name=template_name,  version= version, corpus_id=corpus_id,
                     preprocession=preprocession,tokenizer=tokenizer,sent_splitter=sent_splitter, pos_tagger=pos_tagger,
@@ -489,8 +489,8 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         language="de"
 
         reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_small_fake_set), "txt", regex_template="blogger", mode=self.mode)
-        #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True)
-        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True) #text_field_name=""
+        #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitterstreamapi",logger_traceback=True)
+        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True) 
         corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license,
                     template_name=template_name,  version= version, corpus_id=corpus_id,
                     preprocession=preprocession,tokenizer=tokenizer,sent_splitter=sent_splitter, pos_tagger=pos_tagger,
@@ -563,8 +563,8 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         language="de"
 
         reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_small_fake_set), "txt", regex_template="blogger", mode=self.mode)
-        #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True)
-        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True) #text_field_name=""
+        #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitterstreamapi",logger_traceback=True)
+        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True) 
         corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license,
                     template_name=template_name,  version= version, corpus_id=corpus_id,
                     preprocession=preprocession,tokenizer=tokenizer,sent_splitter=sent_splitter, pos_tagger=pos_tagger,
@@ -614,8 +614,8 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         language="de"
 
         reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_small_fake_set), "txt", regex_template="blogger", mode=self.mode)
-        #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True)
-        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True) #text_field_name=""
+        #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitterstreamapi",logger_traceback=True)
+        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True) 
         corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license,
                     template_name=template_name,  version= version, corpus_id=corpus_id,
                     preprocession=preprocession,tokenizer=tokenizer,sent_splitter=sent_splitter, pos_tagger=pos_tagger,
@@ -666,8 +666,8 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         del_hashtag = True
         del_html = True
 
-        reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True, ext_tb=True,mode=self.mode)
-        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True) #text_field_name=""
+        reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitterstreamapi",logger_traceback=True, ext_tb=True,mode=self.mode)
+        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True) 
         corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license,
                     template_name=template_name,  version= version, corpus_id=corpus_id,
                     preprocession=preprocession,tokenizer=tokenizer,sent_splitter=sent_splitter, pos_tagger=pos_tagger,
@@ -740,11 +740,6 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
             while i <number_of_values:
                 if i == text_index:
                     pass
-                    #for sent in row_from_db[i]:
-                    #p(row_from_db[i])
-                    #p( row_from_input[i])
-                    #p((row_from_db[i],json.dumps(row_from_input[i])))
-                    #assert row_from_db[i] == json.dumps(row_from_input[i])
                 else:
                     assert row_from_db[i] == row_from_input[i]
                 i+=1
@@ -959,8 +954,8 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         language=lang
 
         #reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_small_fake_set), "txt", regex_template="blogger", mode=self.mode)
-        #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter",logger_traceback=True)
-        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True) #text_field_name=""
+        #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitterstreamapi",logger_traceback=True)
+        corp = Corpus( logger_traceback=True, status_bar=status_bar,mode=self.mode,use_test_pos_tagger=True) 
         
 
         if not init:
@@ -1204,7 +1199,10 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         ############ EN ###################
         ####################################################
         mode = self.mode
-        corp = self._get_test_corp(preprocession=True,tokenizer=True, sent_splitter=False,pos_tagger=False,sentiment_analyzer=False,lang_classification=False, lang="en", mode=mode, init=True, clean=False, emojis_normalization=True)
+        corp = self._get_test_corp(preprocession=True,tokenizer=True,
+                        sent_splitter=False,pos_tagger=False,sentiment_analyzer=False,
+                        lang_classification=False, lang="en", mode=mode, init=True,
+                        clean=False, emojis_normalization=True, status_bar=False)
 
         corp._init_insertions_variables()
         answer1 = corp._init_preprocessors()
@@ -1252,13 +1250,40 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         corp._preprocessing(self.test_unicode_str_de_2).should.be.equal(self.test_unicode_str_de_2_tokenized_not_cleaned_with_emoji_normalization )
         # p(corp._preprocessing(self.test_unicode_str_de_2), "corp._preprocessing(self.test_byte_str_de_2)")
 
+        ## Additional Tests ####
         output =  corp._preprocessing(":-)))) -))) 😀😀😀😀😀-))) -)))")
         right_output = [([(u':-))))', 'EMOASC'), (u'-)))', 'EMOASC'), (u'\U0001f600\U0001f600\U0001f600\U0001f600\U0001f600', 'EMOIMG'), (u'-)))', 'EMOASC'), (u'-)))', 'EMOASC')], (None, None))]
         output.should.be.equal(right_output)
 
 
+        output =  corp._preprocessing( "@RonetteJaye That sounds a++++ (((:")
+        right_output = [([(u'@RonetteJaye', u'mention'), (u'That', u'regular'), (u'sounds', u'regular'), (u'a++++', u'regular'), (u'(((:', 'EMOASC')], (None, None))]
+        output.should.be.equal(right_output)
+        #p(output)
 
 
+        output =  corp._preprocessing(" (((==== ===)))))")
+        right_output = [([(u'(((=======)))))', 'EMOASC')], (None, None))]
+        output.should.be.equal(right_output)
+        #p(output)
+
+
+        output =  corp._preprocessing(" (((====  (((===")
+        right_output = [([(u'(((====', 'EMOASC'), (u'(((===', 'EMOASC')], (None, None))]
+        output.should.be.equal(right_output)
+        #p(output)
+
+
+        output =  corp._preprocessing(" (((====  :))))))  .))))")
+        right_output = [([(u'(((====', 'EMOASC'), (u':))))))', 'EMOASC'), (u'.', u'symbol'), (u'))))', 'EMOASC')], (None, None))]
+        output.should.be.equal(right_output)
+        #p(output)
+
+
+        output =  corp._preprocessing(" :)))) --))))) ;;;;))))) --;;;)))) :::----)))) ---=====(((())))  :))))))  .))))")
+        right_output = [([(u':))))', 'EMOASC'), (u'--)))))', 'EMOASC'), (u';;;;)))))', 'EMOASC'), (u'--;;;))))', 'EMOASC'), (u':::----))))', 'EMOASC'), (u'---=====((((', 'EMOASC'), (u')))):))))))', 'EMOASC'), (u'.', u'symbol'), (u'))))', 'EMOASC')], (None, None))]
+        output.should.be.equal(right_output)
+        #p(output)
 
     @attr(status='stable')
     #@wipd
@@ -1407,7 +1432,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         answer1 = corp._init_preprocessors()
 
         answer1["status"].should.be.equal(True)
-        answer1["desc"].should.be.equal(1)
+        answer1["desc"].should.be.equal(2)
 
 
         self._check_en_sentence(corp)
@@ -1428,7 +1453,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         answer1 = corp._init_preprocessors()
 
         answer1["status"].should.be.equal(True)
-        answer1["desc"].should.be.equal(1)
+        answer1["desc"].should.be.equal(2)
 
         self._check_de_sentence(corp)
 
@@ -1504,7 +1529,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         answer1 = corp._init_preprocessors()
 
         answer1["status"].should.be.equal(True)
-        answer1["desc"].should.be.equal(2)
+        answer1["desc"].should.be.equal(3)
 
 
         self._check_en_sentence(corp)
@@ -1525,7 +1550,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         answer1 = corp._init_preprocessors()
 
         answer1["status"].should.be.equal(True)
-        answer1["desc"].should.be.equal(2)
+        answer1["desc"].should.be.equal(3)
 
         self._check_de_sentence(corp)
 
@@ -1658,7 +1683,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         answer1 = corp._init_preprocessors()
 
         answer1["status"].should.be.equal(True)
-        answer1["desc"].should.be.equal(2)
+        answer1["desc"].should.be.equal(3)
 
         ################FAKE SENT########################
         sents = corp._preprocessing("Hey, what's up???. Wanna meet?")
@@ -1684,7 +1709,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         answer1 = corp._init_preprocessors()
 
         answer1["status"].should.be.equal(True)
-        answer1["desc"].should.be.equal(2)
+        answer1["desc"].should.be.equal(3)
 
 
         self._check_de_sentences(corp)
@@ -1712,7 +1737,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         answer1 = corp._init_preprocessors()
 
         answer1["status"].should.be.equal(True)
-        answer1["desc"].should.be.equal(3)
+        answer1["desc"].should.be.equal(4)
 
         self._check_en_sentences(corp)
 
@@ -1733,7 +1758,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         answer1 = corp._init_preprocessors()
 
         answer1["status"].should.be.equal(True)
-        answer1["desc"].should.be.equal(3)
+        answer1["desc"].should.be.equal(4)
 
         self._check_de_sentences(corp)
 
@@ -1818,7 +1843,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
 
         answer1["status"].should.be.equal(True)
-        answer1["desc"].should.be.equal(3)
+        answer1["desc"].should.be.equal(4)
 
 
         self._check_en_sentences(corp)
@@ -1841,7 +1866,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         answer1 = corp._init_preprocessors()
 
         answer1["status"].should.be.equal(True)
-        answer1["desc"].should.be.equal(3)
+        answer1["desc"].should.be.equal(4)
 
         self._check_de_sentences(corp)
 
@@ -1929,7 +1954,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
 
         answer1["status"].should.be.equal(True)
-        answer1["desc"].should.be.equal(4)
+        answer1["desc"].should.be.equal(5)
 
         self._check_en_sentences(corp)
 
@@ -1950,7 +1975,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         answer1 = corp._init_preprocessors()
 
         answer1["status"].should.be.equal(True)
-        answer1["desc"].should.be.equal(4)
+        answer1["desc"].should.be.equal(5)
 
         self._check_de_sentences(corp)
 
@@ -2097,7 +2122,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
         #p(docs_dict[2])
         # p([tokencontainer[1] for sentcontainer in json.loads(docs[2][2]) for tokencontainer in sentcontainer[0]])
-        [tokencontainer[1] for sentcontainer in json.loads(docs[2][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'ART', u'ADJA', u'ADJA', u'NN', u'mention', u'hashtag', u'hashtag', u'URL', u'ADJD', u'VMFIN', u'NE', u'PTKVZ', u'symbol', u'NN', u'ADJA', u'ADJA', u'NN', u'symbol', u'NE', u'ADJA', u'NN', u'symbol', u'NE', u'VMFIN', u'ADR', u'FM', u'FM', u'symbol', u'FM', u'FM', u'FM', u'FM'])
+        [tokencontainer[1] for sentcontainer in json.loads(docs[2][2]) for tokencontainer in sentcontainer[0]].should.be.equal([u'ART', u'ADJA', u'ADJA', u'NN', u'mention', u'hashtag', u'hashtag', u'URL', u'ADJD', u'FM', u'NE', u'VVFIN', u'symbol', u'NN', u'ADJA', u'ADJA', u'NN', u'symbol', u'NE', u'ADJA', u'NN', u'symbol', u'NE', u'VMFIN', u'ADR', u'FM', u'FM', u'symbol', u'FM', u'FM', u'FM', u'FM'])
         #p(len(json.loads(docs[2][2])))
         len(json.loads(docs[2][2])).should.be.equal(3)
 

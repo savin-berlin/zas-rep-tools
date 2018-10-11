@@ -25,7 +25,7 @@ from testfixtures import tempdir, TempDirectory
 from distutils.dir_util import copy_tree 
 
 
-from zas_rep_tools.src.classes.configer import Configer
+#from zas_rep_tools.src.classes.configer import Configer
 from zas_rep_tools.src.classes.reader import Reader
 from zas_rep_tools.src.utils.debugger import p, wipd, wipdn, wipdl, wipdo
 from zas_rep_tools.src.utils.helpers import LenGen, path_to_zas_rep_tools, get_number_of_streams_adjust_cpu
@@ -375,7 +375,7 @@ class TestZASreaderReader(BaseTester,unittest.TestCase):
     def test_lazyreader_from_twitter_json_with_utf8_511(self):
         self.twitter_corpus()
         end_file_marker = -1
-        reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter", mode=self.mode, end_file_marker=end_file_marker)
+        reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="TwitterStreamAPI", mode=self.mode, end_file_marker=end_file_marker)
         for data in reader.getlazy():
             if data == end_file_marker:
                 continue
@@ -395,7 +395,7 @@ class TestZASreaderReader(BaseTester,unittest.TestCase):
     def test_lazyreader_from_twitter_json_for_given_colnames_512(self):
         self.twitter_corpus()
         end_file_marker = -1
-        reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitter", mode=self.mode, end_file_marker=end_file_marker)
+        reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="TwitterStreamAPI", mode=self.mode, end_file_marker=end_file_marker)
         for data in reader.getlazy(colnames=["text"]):
             if data == end_file_marker:
                 continue
@@ -407,11 +407,24 @@ class TestZASreaderReader(BaseTester,unittest.TestCase):
 
 
 
-    #self.csv_blogger_corpus_temp_abs_path_to_small_fake_subset = os.path.join(self.path_to_temp_BloggerCorpus, 'CSVSmallFakeSubset')
-    #self.csv_blogger_corpus_temp_abs_path_to_high_repetativ_subset = os.path.join(self.path_to_temp_BloggerCorpus, 'CSVHighRepetativSubSet')
-    #self.xml_blogger_corpus_temp_abs_path_to_small_fake_subset = os.path.join(self.path_to_temp_BloggerCorpus, 'XMLSmallFakeSubset')
-    #self.xml_blogger_corpus_temp_abs_path_to_high_repetativ_subset = os.path.join(self.path_to_temp_BloggerCorpus, 'XMLHighRepetativSubSet')
-       
+    #@attr(status='stable')
+    #@wipd
+    def test_lazyreader_from_sifter_twitter_csv_with_utf8_513(self):
+        self.twitter_corpus()
+        end_file_marker = -1
+        self.mode = "prod+"
+        reader = Reader(os.path.join(self.tempdir_twitter_corp, "CSV/zas-rep-tool/sifter"), "csv", formatter_name="sifter", mode=self.mode, end_file_marker=end_file_marker)
+        for data in reader.getlazy(csvdelimiter=";"):
+            if data == end_file_marker:
+                continue
+            if data:
+                #p(data, c="r")
+                assert isinstance(data, dict)
+                #p(data["text"])
+                assert 'text' in data
+                assert 'u_lang' in data
+                assert 'id' in data
+                assert 'u_id' in data
 
 
 
