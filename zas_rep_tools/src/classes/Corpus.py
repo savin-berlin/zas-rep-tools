@@ -34,6 +34,7 @@ from raven import Client
 import execnet
 from nltk.tokenize import TweetTokenizer
 import enlighten
+import multiprocessing as mp
 # db_helper
 
 from  zas_rep_tools.src.extensions.tweet_nlp.ark_tweet_nlp.CMUTweetTagger import check_script_is_present, runtagger_parse
@@ -854,7 +855,9 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
                 thread_name = "Thread{}".format(i)
                 processThread = MyThread(target=self._insert, args=(gen, tablename,  thread_name, log_ignored, dict_to_list), name=thread_name)
-                processThread.setDaemon(True)
+                #processThread = mp.Process(target=self._insert, args=(gen, tablename,  thread_name, log_ignored, dict_to_list), name=thread_name )
+                
+                #processThread.setDaemon(True)
                 processThread.start()
                 self.active_threads.append(processThread)
                 if self._status_bar:

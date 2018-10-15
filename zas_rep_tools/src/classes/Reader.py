@@ -1043,7 +1043,7 @@ class Reader(BaseContent):
 
             if len(self.files_to_read_orig)==0 and len(self.zips_to_read)==0:
                 #p((self._inp_path))
-                self.logger.warning("FilesExtractionProblem: No '{}'-Files or ZIPs was found. (check given FileFormat or given path to text collection).".format(self._file_format), exc_info=self._logger_traceback)
+                self.logger.warning("FilesExtractionProblem: No '{}'-Files or ZIPs was found. (check given FileFormat or given path to text collection).".format(self._file_format))
                 #return self.files_to_read_orig
             self.files_to_read_leftover = copy.deepcopy(self.files_to_read_orig)
             #p(read_from_zip, "444read_from_zip")

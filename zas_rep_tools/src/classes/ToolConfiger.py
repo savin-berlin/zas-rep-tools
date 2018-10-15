@@ -196,14 +196,14 @@ class ToolConfiger(BaseContent,ConfigerData):
                     self._cli_menu_error_agreement()
                     continue
 
-                if "error_tracking" not in self._user_data:
+                if self._user_data["error_tracking"] is None:
                     self._cli_menu_error_agreement()
 
             elif user_info_name == "project_folder":
                 if rewrite:
                     self._cli_menu_get_from_user_project_folder()
                     continue
-                if "project_folder" not in self._user_data:
+                if self._user_data["project_folder"] is None:
                     self._cli_menu_get_from_user_project_folder()
 
             elif user_info_name == "twitter_creditials":
@@ -211,7 +211,7 @@ class ToolConfiger(BaseContent,ConfigerData):
                     self._cli_menu_get_from_user_twitter_credentials()
                     continue
 
-                if "twitter_creditials" not in self._user_data:
+                if self._user_data["twitter_creditials"] is None:
                     self._cli_menu_get_from_user_twitter_credentials()
 
 
@@ -220,7 +220,7 @@ class ToolConfiger(BaseContent,ConfigerData):
                     self._cli_menu_get_from_user_emails()
                     continue
 
-                if "email" not in self._user_data:
+                if  self._user_data["email"] is None:
                     self._cli_menu_get_from_user_emails()
 
             else:
@@ -254,8 +254,16 @@ class ToolConfiger(BaseContent,ConfigerData):
             if not os.path.isdir(os.path.split(self._path_to_user_config_data)[0]):
                 self.logger.debug(" 'user_config' folder was created in '{}' ".format(os.path.split(self._path_to_user_config_data)[0]))
                 os.mkdir(os.path.split(self._path_to_user_config_data)[0])
-            db = MyZODB(self._path_to_user_config_data)
-            db["permission"] = True
+                db = MyZODB(self._path_to_user_config_data)
+                db["permission"] = True
+                db["twitter_creditials"] = None
+                db["email"] = None
+                db["project_folder"] = None
+                db["error_tracking"] = None
+            else:
+                db = MyZODB(self._path_to_user_config_data)
+                db["permission"] = True
+
             return db
         except Exception, e:
             print_exc_plus() if self._ext_tb else ""
@@ -305,6 +313,9 @@ class ToolConfiger(BaseContent,ConfigerData):
             if getted_project_folder ==".":
                 getted_project_folder = os.getcwd()
             self._user_data["project_folder"] = getted_project_folder
+        #else:
+        #    self._user_data["email"] = False
+        #    return 
         
         return  getted_project_folder 
 
@@ -374,7 +385,8 @@ class ToolConfiger(BaseContent,ConfigerData):
                     self.logger.warning( "EmailValidationError: Given Email is not valid. Please retype it.")
                     
         else:
-            pass    
+            self._user_data["email"] = False
+            return     
 
         self._user_data["email"] = getted_emails
 
@@ -503,6 +515,7 @@ class ToolConfiger(BaseContent,ConfigerData):
                     sys.exit()
 
         else:
+            self._user_data["twitter_creditials"] = False
             return 
 
         self._user_data["twitter_creditials"] = getted_credentials

@@ -48,7 +48,7 @@ configer_obj = None
 #logger = None
 main_folders = set_main_folders(project_folder)
 end_file_marker = -1
-
+configer_obj = ToolConfiger(mode="error")
 
 
 
@@ -80,13 +80,14 @@ def main():
     global main_folders
 
 
-    configer_obj = ToolConfiger(mode="error") 
+     
     configer_obj.get_data_from_user(rewrite=False)
 
     answer_error_tracking = configer_obj._user_data['error_tracking']
     project_folder = configer_obj._user_data['project_folder']
     if not project_folder:
         configer_obj.logger.error("ProjectDirectory wasn't given. Please Give first a new ProjectDirectory, before starting to use this tool.")
+        sys.exit()
         return False
     
     else:
@@ -268,7 +269,7 @@ def corpora(command1,
     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
     
     #p(template_name, "template_name")
-
+    #if configer.
     formatter_name = strtobool(formatter_name)
     path_to_read = strtobool(path_to_read)
     file_format_to_read = strtobool(file_format_to_read)
@@ -1620,57 +1621,6 @@ def streamerInfo(command,  logdir, mode):
 
     if command == "platforms":
         print Streamer.supported_platforms
-
-
-    #print Streamer.supported_encodings_types
-
-
-# @main.command('retypeTwitterData')
-# @click.option('--logs_dir', '-l', default="logs")
-# @click.option('--use_logger_for_classes', '-lc', default=True)
-# @click.option('--use_logger_for_script', '-ls', default=True)
-# @click.option('--save_logs', '-sl', default=True)
-# #@click.option('--logs_dir', '-l', default="logs")
-# def retypeTwitterData( logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
-#     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
-#     logger = logger_initialisation("streamTwitter" ,use_logger_for_script, save_logs, logs_dir)
-
-
-#     ask_user_for_twitter_api_data()
-
-
-
-# @main.command('deleteAllUserData')
-# @click.option('--logs_dir', '-l', default="logs")
-# @click.option('--use_logger_for_classes', '-lc', default=True)
-# @click.option('--use_logger_for_script', '-ls', default=True)
-# @click.option('--save_logs', '-sl', default=True)
-# #@click.option('--logs_dir', '-l', default="logs")
-# def deleteAllUserData( logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
-#     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
-#     logger = logger_initialisation("streamTwitter" ,use_logger_for_script, save_logs, logs_dir)
-
-
-#     path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Streamer))))
-#     shutil.rmtree(os.path.join(path_to_zas_rep_tools, "user-config"), ignore_errors=True)
-
-
-# @main.command('respeakAgreement')
-# @click.option('--logs_dir', '-l', default="logs")
-# @click.option('--use_logger_for_classes', '-lc', default=True)
-# @click.option('--use_logger_for_script', '-ls', default=True)
-# @click.option('--save_logs', '-sl', default=True)
-# #@click.option('--logs_dir', '-l', default="logs")
-# def respeakAgreement( logs_dir, use_logger_for_classes, use_logger_for_script, save_logs):
-#     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
-#     logger = logger_initialisation("streamTwitter" ,use_logger_for_script, save_logs, logs_dir)
-#     print "\nRespeaking-Process was started:\n\n"
-#     respeak_agreement()
-
-#     #path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(Streamer))))
-#     #shutil.rmtree(os.path.join(path_to_zas_rep_tools, "user-config"), ignore_errors=True)
-
-
 
 
 
