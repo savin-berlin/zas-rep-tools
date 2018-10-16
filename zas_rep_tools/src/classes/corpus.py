@@ -2270,7 +2270,9 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             except:
                 self.logger.error("TweetNLP_tagger wasn't initialized. Please check if JAVA-6 was installed in your PC.")
                 self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
-            self.terminate = True
+                self.terminate = True
+                return False
+        pos_tagger_obj = None
         self.preprocessors[thread_name]["pos-tagger"] = pos_tagger_obj
         self.logger.debug("INIT-POS-Tagger: '{}'-pos-tagger for '{}'-Thread was initialized.".format(self._pos_tagger,thread_name))
         return True
