@@ -24,7 +24,6 @@ user_data
 user-config.zip
 *.config
 *.secret
-Corpora
 man
 test_data
 

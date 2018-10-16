@@ -3168,20 +3168,37 @@ class DBHandler(BaseContent, BaseDB):
             self.logger.error("ExtensionLoaderError: Passed Obj is not an Sqlite-DB.", exc_info=self._logger_traceback)
             sys.exit()
 
+        i = 0
+        while True:
+            i += 1
+            try:
+                db.enable_load_extension(True)
+                db.load_extension(DBHandler.path_to_json1)
+                self.logger.debug("ExtensionLoader: 'json1'-Extension was loaded into SQLite.")
+                return Status(status=True)
+            except sqlite.OperationalError,e:
+                if i == 2:
+                    self.logger.error("It wasn't possible to compile json1 for SQLITE. Please compile 'JSON1'-C-Extension into '{}' manually.".format(DBHandler.path_to_json1))
+                    sys.exit()
+                if os.path.isfile(DBHandler.path_to_json1+".c"):
+                    print_exc_plus() if self._ext_tb else ""
+                    self.logger.debug("ExtensionLoaderError: 'json1'-Extension wasn't found in '{}'. Probably it wasn't compiled. Please compile this extension  before you can use it.".format(DBHandler.path_to_json1), exc_info=self._logger_traceback)
+                    command_str = "gcc -g -fPIC -shared {} -o {}".format(DBHandler.path_to_json1+".c", DBHandler.path_to_json1+".so")
+                    command = os.popen(command_str)
+                    execute = command.read()
+                    close = command.close()
+                    self.logger.info("Compiled json1 wasn't found. Compilation process was started: ProcessDebug: '{}', '{}'  ".format(execute, close))
+                    
+                    #sys.exit()
+                else:
+                    print_exc_plus() if self._ext_tb else ""
+                    self.logger.error("ExtensionLoaderError: 'json1'-Extension and 'json' C-Source files wasn't found in '{}'. Please give the right path to json1.c File.".format(DBHandler.path_to_json1), exc_info=self._logger_traceback)
+                    sys.exit()
 
-        try:
-            db.enable_load_extension(True)
-            db.load_extension(DBHandler.path_to_json1)
-            self.logger.debug("ExtensionLoader: 'json1'-Extension was loaded into SQLite.")
-            return Status(status=True)
-        except sqlite.OperationalError,e:
-            print_exc_plus() if self._ext_tb else ""
-            self.logger.error("ExtensionLoaderError: 'json1'-Extension wasn't found in '{}'. Probably it wasn't compiled. Please compile this extension  before you can use it.".format(DBHandler.path_to_json1), exc_info=self._logger_traceback)
-            sys.exit()
-        except Exception, e:
-            print_exc_plus() if self._ext_tb else ""
-            self.logger.error("ExtensionLoaderError: Something wrong is happens. 'json1'-Extension wasn't loaded. See following Exception: '{}' ".format(e), exc_info=self._logger_traceback)
-            return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
+            except Exception, e:
+                print_exc_plus() if self._ext_tb else ""
+                self.logger.error("ExtensionLoaderError: Something wrong is happens. 'json1'-Extension wasn't loaded. See following Exception: '{}' ".format(e), exc_info=self._logger_traceback)
+                return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
 
 
     def _load_json1_extention_if_needed(self, db):
