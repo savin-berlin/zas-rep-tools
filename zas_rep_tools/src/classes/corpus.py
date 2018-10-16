@@ -2269,8 +2269,8 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                 if not check_script_is_present():
                     self.logger.error("TweetNLP Java-Script File wasn't found", exc_info=self._logger_traceback)
                     return False
-            except:
-                self.logger.error("TweetNLP_tagger wasn't initialized. Please check if JAVA-6 was installed in your PC.")
+            except Exception as e:
+                self.logger.error("TweetNLP_tagger wasn't initialized. Please check if JAVA was installed on your PC. Exception: '{}'.".format(repr(e)) )
                 self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
                 self.terminate = True
                 return False
