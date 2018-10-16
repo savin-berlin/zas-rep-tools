@@ -2240,6 +2240,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             #self.terminate_all("KeyboardInterrupt")
             return False         
         except Exception, e:
+            #p((inp_list,self._pos_tagger, self.preprocessors[thread_name]["pos-tagger"]))
             self.logger.error("POSTaggerError: in '{}'-Thread. See Exception '{}'.".format(thread_name,e))
             self.terminate = True
             #return [[("",""),("","")],[("",""),("","")]]
@@ -2274,7 +2275,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                 self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
                 self.terminate = True
                 return False
-        pos_tagger_obj = None
+            pos_tagger_obj = None
         self.preprocessors[thread_name]["pos-tagger"] = pos_tagger_obj
         self.logger.debug("INIT-POS-Tagger: '{}'-pos-tagger for '{}'-Thread was initialized.".format(self._pos_tagger,thread_name))
         return True

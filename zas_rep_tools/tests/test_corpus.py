@@ -378,7 +378,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
 
     @attr(status='stable')
-    @wipd
+    #@wipd
     def test_preprocessing_on_example_of_blogger_corp_553_1(self):
         self.prj_folder()
         self.blogger_corpus()
