@@ -110,8 +110,11 @@ def check_script_is_present(run_tagger_cmd=RUN_TAGGER_CMD):
             #_1 = repr(answer)
             #_2 = type(answer)
             #print "_1= ", _1, " _2= ", _2
-            p(list(po.stdout), "po.stdout")
-            lines = [l for l in po.stdout]
+            stdout = list(po.stdout)
+            p(stdout, "stdout")
+            if not stdout:
+                break
+            lines = [l for l in stdout]
             p(lines,"lines")
             
         #print 
