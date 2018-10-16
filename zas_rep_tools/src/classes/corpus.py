@@ -59,7 +59,7 @@ except:
     nltk.download("stopwords")
 
 try:
-    nltk.data.find('punkt')
+    nltk.data.find('tokenizers/punkt')
 except:
     nltk.download("punkt")
 
