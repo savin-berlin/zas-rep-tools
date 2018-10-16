@@ -50,6 +50,19 @@ from zas_rep_tools.src.utils.error_tracking import initialisation
 from zas_rep_tools.src.classes.basecontent import BaseContent, BaseDB
 from zas_rep_tools.src.utils.corpus_helpers import CorpusData
 from zas_rep_tools.src.utils.custom_exceptions import  ZASCursorError, ZASConnectionError,DBHandlerError,ProcessError,ErrorInsertion,ThreadsCrash
+import nltk
+from nltk.corpus import stopwords
+
+try:
+    nltk.data.find('corpora/stopwords')
+except:
+    nltk.download("stopwords")
+
+try:
+    nltk.data.find('punkt')
+except:
+    nltk.download("punkt")
+
 
 import platform
 if platform.uname()[0].lower() !="windows":
@@ -2246,7 +2259,6 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             #return [[("",""),("","")],[("",""),("","")]]
             #sys.exit()
             return False
-
 
 
 
