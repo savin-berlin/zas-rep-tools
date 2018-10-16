@@ -3188,13 +3188,14 @@ class DBHandler(BaseContent, BaseDB):
                     #command = os.popen(command_str)
                     #execute = command.read()
                     #close = command.close()
+                    #if mac "gcc -g -fPIC -dynamiclib YourCode.c -o YourCode.dylib"
 
-                    args2 = ['gcc', '-g', '-fPIC', '-shared',DBHandler.path_to_json1+".c",'-o',DBHandler.path_to_json1+".so"]
+                    args2 = ['gcc', '-g', '-fPIC', '-shared',DBHandler.path_to_json1+".c",'-o',DBHandler.path_to_json1]
                     answer = subprocess.Popen(args2).communicate()
                     self.logger.info("Compiled json1 wasn't found. Compilation process was started: ProcessDebug: '{}'. ".format(answer))
                     #self.logger.info("Compiled json1 wasn't found. Compilation process was started: ProcessDebug: '{}', '{}'  ".format(execute, close))
                     files = os.listdir(os.path.join(path_to_zas_rep_tools, "src/extensions/json1"))
-                    self.logger.critical("FILES::::: {}".format(files))
+                    #self.logger.critical("FILES::::: {}".format(files))
                     #sys.exit()
                 else:
                     print_exc_plus() if self._ext_tb else ""
