@@ -2228,8 +2228,10 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         
             #self.logger.low_debug("'{}'-POSTagger: POS-tagger was called from '{}'-Thread.".format(self._sent_splitter, thread_name))
             if self._pos_tagger == "someweta":
+                #p("someweta")
                 return self._tag_pos_with_someweta(inp_list, thread_name=thread_name)
             elif self._pos_tagger == "tweetnlp":
+                #p("tweetnlp")
                 return self._tag_pos_with_tweetnlp(inp_list)
         except KeyboardInterrupt:
             self.logger.critical("POSTaggerError:  in '{}'-Thread get an  KeyboardInterruption.".format(thread_name))

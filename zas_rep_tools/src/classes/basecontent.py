@@ -24,7 +24,7 @@ from zas_rep_tools.src.utils.debugger import p
 
 class BaseContent(object):
 
-    def __init__(self, mode="prod", save_settings=False, save_status=False,
+    def __init__(self, mode="error", save_settings=False, save_status=False,
                     logger_folder_to_save=False,  logger_usage=True,
                     logger_level=logging.INFO, log_content=False, 
                     logger_save_logs=False, logger_traceback=False, 

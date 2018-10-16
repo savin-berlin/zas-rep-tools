@@ -33,7 +33,10 @@ def _split_results(rows):
                 parts = line.split('\t')
                 tokens = parts[0]
                 tags = parts[1]
-                confidence = float(parts[2])
+                try:
+                    confidence = float(parts[2])
+                except ValueError:
+                    confidence = float(parts[2].replace(",", ".") )
                 yield tokens, tags, confidence
 
 
@@ -70,11 +73,17 @@ def _call_runtagger(tweets, run_tagger_cmd=RUN_TAGGER_CMD):
 def runtagger_parse(tweets, run_tagger_cmd=RUN_TAGGER_CMD):
     """Call runTagger.sh on a list of tweets, parse the result, return lists of tuples of (term, type, confidence)"""
     pos_raw_results = _call_runtagger(tweets, run_tagger_cmd)
+    #print "tweets=", tweets
+    #print "pos_raw_results=",pos_raw_results
+    #sys.exit()
     pos_result = []
+    #print tweets
     for pos_raw_result in pos_raw_results:
         #p(pos_raw_results, "pos_raw_result")
         #sys.exit()
+        #print "1pos_raw_result=", pos_raw_result
         splitted =  list(_split_results(pos_raw_result))[0]
+        #print "splitted=", splitted
         #p((len(splitted),splitted), "splitted)")
         pos_result.append((splitted[0].decode("utf-8"),splitted[1].decode("utf-8")))
     #p(pos_result, "pos_result")

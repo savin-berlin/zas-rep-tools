@@ -137,7 +137,7 @@ class Exporter(BaseContent):
             try:
                 if not self._write_to_csv_files(row, fieldnames, path_to_export_dir, fname, rows_limit_in_file=rows_limit_in_file, encoding=encoding):
                     if self._silent_ignore:
-                        self.logger.debug("toCSV: File is already exist and extraction was stopped. ('silent_ignore' is 'on')")
+                        self.logger.debug("toCSV: File is already exist and extraction was aborted. ('silent_ignore' is 'on')")
                     else:    
                         self.logger.info("toCSV: Test Files are already exist. Extraction to_csv was stopped. Please remove those files or use 'rewrite' option. ")
                     return False
@@ -173,7 +173,7 @@ class Exporter(BaseContent):
             try:
                 if not self._write_to_xml_files(row,  path_to_export_dir, fname, rows_limit_in_file=rows_limit_in_file, encoding=encoding, root_elem_name=root_elem_name, row_elem_name=row_elem_name):
                     if self._silent_ignore:
-                        self.logger.debug("toXML: File is already exist and extraction was stopped. ('silent_ignore' is 'on')")
+                        self.logger.debug("toXML: File is already exist and extraction was aborted. ('silent_ignore' is 'on')")
                     else:    
                         self.logger.info("toXML: Test Files are already exist. Extraction to_json was stopped. Please remove those files or use 'rewrite' option. ")
                     #p("ghjkl")
@@ -200,7 +200,7 @@ class Exporter(BaseContent):
             #p((row,  path_to_export_dir, fname))
                 if not self._write_to_json_files(row,  path_to_export_dir, fname, rows_limit_in_file=rows_limit_in_file, encoding=encoding, unicode_encode=unicode_encode):
                     if self._silent_ignore:
-                        self.logger.debug("toJSON: File is already exist and extraction was stopped. ('silent_ignore' is 'on')")
+                        self.logger.debug("toJSON: File is already exist and extraction was aborted. ('silent_ignore' is 'on')")
                     else:    
                         self.logger.info("toJSON: Test Files are already exist. Extraction to_json was stopped. Please remove those files or use 'rewrite' option. ")
                     return False
@@ -241,7 +241,7 @@ class Exporter(BaseContent):
             
             if not self.sqlite_db.initempty(path_to_export_dir, dbname, encryption_key=encryption_key)["status"]:
                 if self._silent_ignore:
-                    self.logger.debug("toSQLLITE: File is already exist and extraction was stopped. ('silent_ignore' is 'on')")
+                    self.logger.debug("toSQLLITE: File is already exist and extraction was aborted. ('silent_ignore' is 'on')")
                 else:    
                     self.logger.info("toSQLITE: Test Files are already exist. Extraction to_json was stopped. Please remove those files or use 'rewrite' option. ")
                 return False

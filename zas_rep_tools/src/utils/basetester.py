@@ -63,14 +63,15 @@ class BaseTester(object):
         #### MODI######
         #self.mode = "test"
         #self.mode = "test+s+"
-        self.mode = "test+s-"
+        #self.mode = "test+s-"
         #self.mode = "dev"
         #self.mode = "dev-"
         #self.mode = "silent"
+        self.mode = "error"
 
         #### Set TestsConfiger #####
         clear_logger()
-        self.configer = TestsConfiger(mode="silent" ) # MODE SHOULD BE "test". !!!
+        self.configer = TestsConfiger(mode="silent") # MODE SHOULD BE "test". !!!
 
         self.tempdir = TempDirectory()
         

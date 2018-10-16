@@ -317,7 +317,8 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
         stats_id = self.configer.init_info_data["twitter"]["id"]["stats"]
         typ= "corpus"
         language="en"
-        
+        self.mode = "prod"
+
         reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitterstreamapi",logger_traceback=True, ext_tb=True, mode=self.mode)
         corp = Corpus( logger_traceback=True, ext_tb=True, mode=self.mode, use_test_pos_tagger=True) 
         #corp = Corpus(logger_level=logging.DEBUG)
@@ -581,7 +582,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
 
     @attr(status='stable')
-    #@wipd
+    @wipd
     def test_insert_parallel_many_threads_on_example_of_blogger_corp_555(self):
         self.prj_folder()
         self.blogger_corpus()

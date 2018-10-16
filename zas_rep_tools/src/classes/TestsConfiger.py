@@ -239,8 +239,6 @@ class TestsConfiger(BaseContent,ConfigerData):
     def create_test_data(self, abs_path_to_storage_place=False, use_original_classes = True, corp_lang_classification=False, 
                          corp_pos_tagger=True, corp_sent_splitter=True, corp_sentiment_analyzer=True, status_bar=True,
                          corp_log_ignored=False, use_test_pos_tagger=False,rewrite=False):
-        #if not  corp_language:
-        #    corp_language = "de"
         self.create_testsets(rewrite=rewrite,abs_path_to_storage_place=abs_path_to_storage_place,silent_ignore = True)
         if not self.create_test_dbs(rewrite=rewrite, abs_path_to_storage_place=abs_path_to_storage_place, use_original_classes=use_original_classes, 
                             corp_lang_classification=corp_lang_classification, corp_log_ignored=corp_log_ignored,
@@ -256,13 +254,9 @@ class TestsConfiger(BaseContent,ConfigerData):
     def create_test_dbs(self, rewrite=False, abs_path_to_storage_place = False,corp_log_ignored=False,
                         use_original_classes = True, corp_lang_classification=True, use_test_pos_tagger=False,
                         corp_pos_tagger=True, corp_sent_splitter=True, corp_sentiment_analyzer=True, status_bar=True):
-        #p(abs_path_to_storage_place, "abs_path_to_storage_place")
         try:
             if not abs_path_to_storage_place:
                 abs_path_to_storage_place = os.path.join(self._path_to_zas_rep_tools, self._path_to_testdbs)
-            #p(abs_path_to_storage_place, "abs_path_to_storage_place")
-            #sys.exit()
-
             ### clean journal files
             exist_fnames_in_dir = os.listdir(abs_path_to_storage_place)
             exist_fnames_in_dir = [fname for fname in exist_fnames_in_dir if ".db-journal" in fname]
@@ -573,6 +567,8 @@ class TestsConfiger(BaseContent,ConfigerData):
             abs_path_to_storage_place = self._path_to_zas_rep_tools
         #p("fghjk")
         created_sets = []
+        if not abs_path_to_storage_place:
+            sys.exit()
         try:
             # make test_sets for Blogger Corp 
             for  file_format, test_sets in self._types_folder_names_of_testsets.iteritems():
@@ -692,272 +688,6 @@ class TestsConfiger(BaseContent,ConfigerData):
 ####################################################################################
 ####################################################################################
 ####################################################################################
-
-
-
-
-
-    # def _get_user_config_db(self):
-    #     #try:
-    #     try:
-    #         if not os.path.isdir(os.path.split(self._path_to_user_config_data)[0]):
-    #             self.logger.debug(" 'user_config' folder was created in '{}' ".format(os.path.split(self._path_to_user_config_data)[0]))
-    #             os.mkdir(os.path.split(self._path_to_user_config_data)[0])
-    #         db = MyZODB(self._path_to_user_config_data)
-    #         db["permission"] = True
-    #         return db
-    #     except Exception, e:
-    #         print_exc_plus() if self._ext_tb else ""
-    #         if "permission" in str(e).lower():
-    #             self.logger.error("UserConfigDBGetterError: Problem with permission. Probably solution. Please execute same command with 'sudo'-Prefix and enter your admin password. Exception: '{}'. ".format(e) ,exc_info=self._logger_traceback)
-    #         else: 
-    #             self.logger.error("UserConfigDBGetterError: '{}'. ".format(e) ,exc_info=self._logger_traceback)
-    #         return False
- 
- 
-
-
-
-
-
-    # def _cli_menu_get_from_user_project_folder(self):
-
-    #     getted_project_folder  = False
-
-    #     def _get_input(args):
-    #         getted_input = input(args)
-    #         return str(getted_input)
-    #     # Create the menu
-    #     menu1 = SelectionMenu(["No", "Yes"],
-    #                             title="Set Project Folder.",
-    #                             #subtitle="(via Email)",
-    #                             prologue_text="Every created database will be saved in the project folder. Before you can work with this tool you need to set up an Project Folder. Do you want to do it now? (if you want to use current directory as project folder just type an dot. exp: '.' )",
-    #                             #epilogue_text="222"
-    #                             )
-
-    #     menu1.show()
-    #     menu1.join()
-    #     selection1 = menu1.selected_option
-    #     #print selection1
-
-    #     if selection1 == 1:
-    #         status = True
-    #         while status:
-    #             prj_fldr = raw_input("Enter Project Folder: ")
-    #             if os.path.isdir(prj_fldr):
-    #                 getted_project_folder = prj_fldr
-    #                 status = False
-    #             else: 
-    #                 self.logger.critical("DirValidation: Given project Folder is not exist. Please retype it. (or type 'Ctrl+D' or 'Ctrl+C' to interrupt this process.)")
-    #                 #print 
-
-    #     if getted_project_folder:
-    #         if getted_project_folder ==".":
-    #             getted_project_folder = os.getcwd()
-    #         self._user_data["project_folder"] = getted_project_folder
-        
-    #     return  getted_project_folder 
-
-
-
-    # def _cli_menu_get_from_user_emails(self):
-    #     getted_emails = []
-    #     # Create the menu
-    #     menu1 = SelectionMenu(["No", "Yes"],
-    #                 title="User Notification.",
-    #                 subtitle="(via Email)",
-    #                 prologue_text="This package can send to the users some important information. For example some day statistics for Twitter-Streamer or if some error occurs. Do you want to use this possibility? (Your email adress will stay on you Computer and will not be send anywhere.)",
-    #                 #epilogue_text="222"
-    #                 )
-
-    #     menu1.show()
-    #     menu1.join()
-    #     selection1 = menu1.selected_option
-    #     #print selection1
-
-    #     if selection1 == 1:
-    #         # Part 1: Get number of emails 
-    #         status = True
-    #         while status:
-    #             menu2 = ConsoleMenu(
-    #                                 title="Number of email addresses.",
-    #                                 #subtitle="(via Email)",
-    #                                 prologue_text="How much email addresses do you want to set?",
-    #                                 #epilogue_text="222"
-    #                                 )
-    #             one_email = SelectionItem("one", 0)
-    #             number_of_emails = FunctionItem("many", function=raw_input, args=["Enter a number:  "], should_exit=True)
-                
-    #             menu2.append_item(one_email)
-    #             menu2.append_item(number_of_emails)
-    #             menu2.show()
-    #             menu2.join()
-    #             getted_number = number_of_emails.return_value
-    #             selection2 = menu2.selected_option
-    #             #print selection2, getted_number
-    #             if selection2 == 0:
-    #                 status = False
-    #                 number = 1
-    #             else:
-    #                 try:
-    #                     if unicode(getted_number).isnumeric() or isinstance(getted_number, int):
-    #                         number = int(getted_number)
-    #                         status = False
-                            
-    #                     else:
-    #                         self.logger.error("InputErr: Given Object is not an integer. Please retype your input! (in 5 seconds...)", exc_info=self._logger_traceback) 
-    #                         time.sleep(3)
-
-    #                 except Exception, e:
-    #                     self.logger.critical("EmailNumberGetterError: '{}'. ".format(e))
-
-    #         ## Part2 : Get Email 
-    #         getted_emails = []
-    #         i=0
-    #         while i < number:
-    #             email = str(raw_input("(#{} from {}) Enter Email: ".format(i+1, number)))
-    #             is_valid = validate_email(email)
-    #             if is_valid:
-    #                 getted_emails.append(email)
-    #                 i+= 1
-    #             else: 
-    #                 self.logger.warning( "EmailValidationError: Given Email is not valid. Please retype it.")
-                    
-    #     else:
-    #         pass    
-
-    #     self._user_data["email"] = getted_emails
-
-    #     return getted_emails
-       
-
-
-
-
-
-    # def _cli_menu_error_agreement(self):
-    #     menu = SelectionMenu(["No", "Yes"],
-    #                 title="Error-Tracking Agreement.",
-    #                 #subtitle="(agreement)",
-    #                 prologue_text="This package use a nice possibility of the online error tracking.\n It means, if you will get an error than the developers could get an notice about it in the real time. Are you agree to send information about errors directly to developers?",
-    #                 #epilogue_text="222"
-    #                 )
-    #     menu.show()
-    #     selection = menu.selected_option
-    #     self._user_data["error_tracking"] = False if selection==0 else True
-
-    #     return selection
-
-
-
-
-
-    # def _cli_menu_get_from_user_twitter_credentials(self):
-    #     if not internet_on():
-    #         self.logger.critical("InternetConnectionError: No Internet connection was found. Please check your connection to Internet and repeat this step. (Internet Connection is needed to validate your Twitter Credentials.)")
-    #         sys.exit()
-    #         #return []
-
-    #     getted_credentials = []
-
-    #     def _get_input(args):
-    #         getted_input = input(args)
-    #         return str(getted_input)
-    #     # Create the menu
-    #     menu1 = SelectionMenu(["No", "Yes"],
-    #                 title="Twitter API Credentials.",
-    #                 #subtitle="",
-    #                 prologue_text="If you want to stream Twitter via official Twitter API than you need to enter your account Credentials. To get more information about it - please consult a README File of this package  (https://github.com/savin-berlin/zas-rep-tools). Under 'Start to use streamer' you can see  how you can exactly get this data. Do you want to enter this data now?",
-    #                 #epilogue_text="222"
-    #                 )
-
-
-    #     menu1.show()
-    #     menu1.join()
-    #     selection1 = menu1.selected_option
-    #     #print selection1
-
-    #     if selection1 == 1:
-    #         # Part 1: Get number of emails 
-    #         status = True
-    #         while status:
-    #             menu2 = ConsoleMenu(
-    #                                 title="Number of twitter accounts.",
-    #                                 #subtitle="(via Email)",
-    #                                 prologue_text="How much twitter accounts do you want to set up?",
-    #                                 #epilogue_text="222"
-    #                                 )
-    #             one_email = SelectionItem("one", 0)
-    #             number_of_emails = FunctionItem("many", function=raw_input, args=["Enter a number:  "], should_exit=True)
-                
-    #             menu2.append_item(one_email)
-    #             menu2.append_item(number_of_emails)
-    #             menu2.show()
-    #             menu2.join()
-    #             getted_number = number_of_emails.return_value
-    #             selection2 = menu2.selected_option
-    #             #print selection2, getted_number
-    #             if selection2 == 0:
-    #                 status = False
-    #                 number = 1
-    #             else:
-    #                 try:
-    #                     if unicode(getted_number).isnumeric() or isinstance(getted_number, int):
-    #                         number = int(getted_number)
-    #                         status = False
-                            
-    #                     else:
-    #                         self.logger.error("InputErr: Given Object is not an integer. Please retype your input! (in 5 seconds...)", exc_info=self._logger_traceback)
-    #                         #print "InputErr: Given Object is not an integer. Please retype your input! (in 5 seconds...)"
-    #                         time.sleep(3)
-
-    #                 except Exception, e:
-    #                     self.logger.error("EmailNumberGetterError: '{}'. ".format(e), exc_info=self._logger_traceback)
-
-    #         ## Part2 : Get Email 
-    #         i=0
-    #         while i < number:
-    #             print "\n\n(#{} from {}) Enter Twitter Credentials: ".format(i+1, number)
-    #             consumer_key = raw_input("Enter consumer_key: ")
-    #             consumer_secret = raw_input("Enter consumer_secret: ")
-    #             access_token = raw_input("Enter access_token: ")
-    #             access_token_secret = raw_input("Enter access_token_secret: ")
-
-                
-    #             if internet_on():
-    #                 api = twitter.Api(consumer_key=consumer_key,
-    #                                 consumer_secret=consumer_secret,
-    #                                 access_token_key=access_token,
-    #                                 access_token_secret=access_token_secret)
-    #                 try:
-    #                     if api.VerifyCredentials():
-    #                         getted_credentials.append({"consumer_key":consumer_key,
-    #                                     "consumer_secret":consumer_secret,
-    #                                     "access_token":access_token,
-    #                                     "access_token_secret":access_token_secret
-    #                                     })
-    #                         i +=1
-    #                     else:
-    #                         print "InvalidCredential: Please retype them."
-
-    #                 except Exception, e:
-    #                     if "Invalid or expired token" in str(e):
-    #                         self.logger.critical("InvalidCredential: Please retype them.")
-    #                     elif "Failed to establish a new connection" in str(e):
-    #                         self.logger.critical("InternetConnectionFailed: '{}' ".format(e))
-    #                     else:
-    #                         self.logger.critical("TwitterCredentialsCheckerError: '{}' ".format(e))
-                        
-    #             else:
-    #                 self.logger.critical("InternetConnectionError: No Internet connection was found. Please check your connection to Internet and repeat this step. (Internet Connection is needed to validate your Twitter Credentials.)")
-    #                 sys.exit()
-
-    #     else:
-    #         pass    
-
-    #     self._user_data["twitter_creditials"] = getted_credentials
-
-    #     return getted_credentials
 
 
 
