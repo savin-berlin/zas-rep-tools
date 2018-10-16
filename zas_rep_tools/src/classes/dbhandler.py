@@ -3183,11 +3183,15 @@ class DBHandler(BaseContent, BaseDB):
                 if os.path.isfile(DBHandler.path_to_json1+".c"):
                     print_exc_plus() if self._ext_tb else ""
                     self.logger.debug("ExtensionLoaderError: 'json1'-Extension wasn't found in '{}'. Probably it wasn't compiled. Please compile this extension  before you can use it.".format(DBHandler.path_to_json1), exc_info=self._logger_traceback)
-                    command_str = "gcc -g -fPIC -shared {} -o {}".format(DBHandler.path_to_json1+".c", DBHandler.path_to_json1+".so")
-                    command = os.popen(command_str)
-                    execute = command.read()
-                    close = command.close()
-                    self.logger.info("Compiled json1 wasn't found. Compilation process was started: ProcessDebug: '{}', '{}'  ".format(execute, close))
+                    #command_str = "gcc -g -fPIC -shared {} -o {}".format(DBHandler.path_to_json1+".c", DBHandler.path_to_json1+".so")
+                    #command = os.popen(command_str)
+                    #execute = command.read()
+                    #close = command.close()
+
+                    args2 = ['gcc', '-g', '-fPIC', '-shared',DBHandler.path_to_json1+".c",'-o',DBHandler.path_to_json1+".so"]
+                    answer = subprocess.Popen(args2).communicate()
+                    self.logger.info("Compiled json1 wasn't found. Compilation process was started: ProcessDebug: '{}'. ".format(answer))
+                    #self.logger.info("Compiled json1 wasn't found. Compilation process was started: ProcessDebug: '{}', '{}'  ".format(execute, close))
                     files = os.listdir(os.path.join(path_to_zas_rep_tools, "src/extensions/json1"))
                     self.logger.critical("FILES::::: {}".format(files))
                     #sys.exit()
