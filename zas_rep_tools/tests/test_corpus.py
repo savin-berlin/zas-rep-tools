@@ -616,7 +616,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
         reader = Reader(os.path.join(self.tempdir_blogger_corp, self.txt_blogger_small_fake_set), "txt", regex_template="blogger", mode=self.mode)
         #reader = Reader(os.path.join(self.tempdir_twitter_corp, self.json_twitter_set), "json", formatter_name="twitterstreamapi",logger_traceback=True)
-        corp = Corpus( logger_traceback=True, status_bar=True,mode=self.mode,use_test_pos_tagger=True) 
+        corp = Corpus( logger_traceback=True, status_bar=False,mode=self.mode,use_test_pos_tagger=True) 
         corp.init(self.tempdir_project_folder, name, language, visibility, platform_name,  source=source, license=license,
                     template_name=template_name,  version= version, corpus_id=corpus_id,
                     preprocession=preprocession,tokenizer=tokenizer,sent_splitter=sent_splitter, pos_tagger=pos_tagger,
