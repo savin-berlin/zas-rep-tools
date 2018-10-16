@@ -103,6 +103,7 @@ def check_script_is_present(run_tagger_cmd=RUN_TAGGER_CMD):
         #po = subprocess.Popen([run_tagger_cmd, '--help'], stdout=subprocess.PIPE)
         while not po.poll():
             lines = [l for l in po.stdout]
+            #p(lines)
         #print 
         # we expected the first line of --help to look like the following:
         assert "RunTagger [options]" in lines[0]
