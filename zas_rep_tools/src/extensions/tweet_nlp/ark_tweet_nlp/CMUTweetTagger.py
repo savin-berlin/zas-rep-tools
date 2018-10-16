@@ -113,16 +113,17 @@ def check_script_is_present(run_tagger_cmd=RUN_TAGGER_CMD):
             #_2 = type(answer)
             #print "_1= ", _1, " _2= ", _2
             stdout = list(po.stdout)
-            p(stdout, "stdout")
-            if i >= 1: break
+            #p(stdout, "stdout")
+            if i >= 2: break
             if not stdout: break
             lines = [l for l in stdout]
-            p(lines,"lines")
+            return "RunTagger [options]" in lines[0]
+            #p(lines,"lines")
             
         #print 
         # we expected the first line of --help to look like the following:
-        assert "RunTagger [options]" in lines[0]
-        success = True
+        
+        #success = True
     except OSError as err:
         print "Caught an OSError, have you specified the correct path to runTagger.sh? We are using \"%s\". Exception: %r" % (run_tagger_cmd, repr(err))
     return success
