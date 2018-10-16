@@ -3188,7 +3188,8 @@ class DBHandler(BaseContent, BaseDB):
                     execute = command.read()
                     close = command.close()
                     self.logger.info("Compiled json1 wasn't found. Compilation process was started: ProcessDebug: '{}', '{}'  ".format(execute, close))
-                    
+                    files = os.listdir(os.path.join(path_to_zas_rep_tools, "src/extensions/json1"))
+                    self.logger.critical("FILES::::: {}".format(files))
                     #sys.exit()
                 else:
                     print_exc_plus() if self._ext_tb else ""
