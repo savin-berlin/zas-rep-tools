@@ -157,70 +157,44 @@ class TestZASToolConfigerToolConfiger(BaseTester,unittest.TestCase):
 
 ###################  Corpus Initialization :500############################################ 
    
-    @attr(status='stable')
+    #@attr(status='stable')
     #@wipd
     def test_get_user_data_for_error_tracking_500(self):
+        pass
         configer = ToolConfiger(mode=self.mode)        
         
-        p(configer._user_data)
-        #configer.get_data_from_user(rewrite=True)
-        processThread = threading.Thread(target=configer.get_data_from_user, args=(False, True), name="Tester")
-        processThread.setDaemon(True)
-        processThread.start()
+        # # # #p(configer._user_data)
+        # #configer.get_data_from_user(rewrite=True)
+        # processThread = threading.Thread(target=configer.get_data_from_user, args=(False, True), name="Tester")
+        # processThread.setDaemon(True)
+        # processThread.start()
         
 
-        #p(processThread.isAlive())
-        #time.sleep(1.2)
-        wd_bevore =  str(os.getcwd())
-        while processThread.isAlive():
-            time.sleep(2)
-            if processThread.isAlive():
-                self.SendKeys("3")
-                self.SendKeys("return")
-            else:
-                break
+        # #p(processThread.isAlive())
+        # #time.sleep(1.2)
+        # wd_bevore =  str(os.getcwd())
+        # while processThread.isAlive():
+        #     time.sleep(2)
+        #     if processThread.isAlive():
+        #         self.SendKeys("3")
+        #         self.SendKeys("return")
+        #     else:
+        #         break
 
         
-        #self.SendKeys("3")
-        #self.SendKeys("return")
-        #time.sleep(1)
-        wd_after =  str(os.getcwd())
-        #p((wd_bevore, wd_after))
-        if wd_bevore != wd_after:
-            wd_after2 =  str(os.getcwd())
-            p(wd_after2,"wd_after2")
-            assert False
-            #self.SendKeys("cd {}".format(wd_bevore))
-            #self.SendKeys(wd_bevore)
-            #self.SendKeys("return")
+        # #self.SendKeys("3")
+        # #self.SendKeys("return")
+        # #time.sleep(1)
+        # wd_after =  str(os.getcwd())
+        # #p((wd_bevore, wd_after))
+        # if wd_bevore != wd_after:
+        #     wd_after2 =  str(os.getcwd())
+        #     p(wd_after2,"wd_after2")
+        #     assert False
+        #     #self.SendKeys("cd {}".format(wd_bevore))
+        #     #self.SendKeys(wd_bevore)
+        #     #self.SendKeys("return")
 
-
-
-
-        #p(configer._cli_menu_error_agreement())
-        #p(configer._user_data)
-
-        #p(configer._cli_menu_get_from_user_twitter_credentials())
-        #p(configer._user_data)
-
-        #p(configer._cli_menu_get_from_user_emails())
-        #p(configer._user_data)
-
-        # p(configer._cli_menu_get_from_user_project_folder())
-        # p(configer._user_data)
-
-     
-        #p(configer._user_data.clean())
-        # p(configer._user_data)
-
-        #configer.get_data_from_user()
-        # p(configer._user_data)
-
-        #configer.get_data_from_user(rewrite=True)
-        #p(configer._user_data)
-
-        # configer.get_data_from_user("email", rewrite=True)
-        # p(configer._user_data)
 
 
 
