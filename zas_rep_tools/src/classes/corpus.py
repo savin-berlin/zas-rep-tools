@@ -2247,7 +2247,6 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
 
 
-
     def _set_pos_tagger(self, thread_name="Thread0"):
         #p(self._pos_tagger)
     
@@ -2264,10 +2263,14 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             #p(pos_tagger_obj)
             #sys.exit()
         elif self._pos_tagger == "tweetnlp":
-            if not check_script_is_present():
-                self.logger.error("TweetNLP Java-Script File wasn't found", exc_info=self._logger_traceback)
-                return False
-            pos_tagger_obj = None
+            try:
+                if not check_script_is_present():
+                    self.logger.error("TweetNLP Java-Script File wasn't found", exc_info=self._logger_traceback)
+                    return False
+            except:
+                self.logger.error("TweetNLP_tagger wasn't initialized. Please check if JAVA-6 was installed in your PC.")
+                self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
+            self.terminate = True
         self.preprocessors[thread_name]["pos-tagger"] = pos_tagger_obj
         self.logger.debug("INIT-POS-Tagger: '{}'-pos-tagger for '{}'-Thread was initialized.".format(self._pos_tagger,thread_name))
         return True
