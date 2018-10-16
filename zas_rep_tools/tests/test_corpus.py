@@ -339,7 +339,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
 
     @attr(status='stable')
-    #@wipd
+    @wipd
     def test_insert_with_preprocession_from_json_in_many_thread_on_twitter_example_552(self):
         self.prj_folder()
         self.twitter_corpus()
