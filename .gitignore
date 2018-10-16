@@ -3,6 +3,8 @@
 !*/
 !*.*
 
+*.dSYM
+
 HEAD
 .DS_STORE
 *.pyc
