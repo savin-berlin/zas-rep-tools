@@ -102,7 +102,9 @@ def check_script_is_present(run_tagger_cmd=RUN_TAGGER_CMD):
         # old call - made a direct call to runTagger.sh (not Windows friendly)
         #po = subprocess.Popen([run_tagger_cmd, '--help'], stdout=subprocess.PIPE)
         #p(po.poll(), "11po.poll()")
+        i = -1
         while not po.poll():
+            i+= 1
         #for answer in po.poll():
             #if not answer:
             #    break
@@ -112,8 +114,8 @@ def check_script_is_present(run_tagger_cmd=RUN_TAGGER_CMD):
             #print "_1= ", _1, " _2= ", _2
             stdout = list(po.stdout)
             p(stdout, "stdout")
-            if not stdout:
-                break
+            if i >= 1: break
+            if not stdout: break
             lines = [l for l in stdout]
             p(lines,"lines")
             
