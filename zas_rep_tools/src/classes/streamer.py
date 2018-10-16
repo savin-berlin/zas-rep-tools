@@ -61,6 +61,7 @@ if platform.uname()[0].lower() !="windows":
 else:
     import colorama
 
+from  zas_rep_tools_data.utils import path_to_data_folder, path_to_models, path_to_someweta_models, path_to_stop_words
 from zas_rep_tools.src.utils.zaslogger import ZASLogger
 #from zas_rep_tools.src.utils.logger import main_logger
 from zas_rep_tools.src.utils.debugger import p
@@ -71,7 +72,7 @@ from zas_rep_tools.src.classes.basecontent import BaseContent
 
 #from zas_rep_tools.src.classes.configer import Configer
 
-abs_paths_to_stop_words = os.path.join(path_to_zas_rep_tools, "data/stop_words/")
+abs_paths_to_stop_words = path_to_stop_words
 
 
 global last_error

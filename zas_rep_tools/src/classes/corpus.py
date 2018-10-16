@@ -37,6 +37,7 @@ import enlighten
 import multiprocessing as mp
 # db_helper
 
+from  zas_rep_tools_data.utils import path_to_data_folder, path_to_models, path_to_someweta_models, path_to_stop_words
 from  zas_rep_tools.src.extensions.tweet_nlp.ark_tweet_nlp.CMUTweetTagger import check_script_is_present, runtagger_parse
 from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, LenGen, path_to_zas_rep_tools, is_emoji, text_has_emoji, char_is_punkt, text_has_punkt, text_is_punkt, text_is_emoji, categorize_token_list, recognize_emoticons_types,removetags, remove_html_codded_chars, get_number_of_streams_adjust_cpu, Rle, instance_info, MyThread, SharedCounterExtern, SharedCounterIntern, Status,function_name,statusesTstring,rle,from_ISO639_2, to_ISO639_2
 from zas_rep_tools.src.utils.traceback_helpers import print_exc_plus
@@ -2253,7 +2254,9 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         self.logger.low_debug("INIT-POS-Tagger: Start the initialization of '{}'-pos-tagger for '{}'-Thread.".format(self._pos_tagger,thread_name))
         if self._pos_tagger == "someweta":
             model_name = Corpus.pos_tagger_models[self._pos_tagger][self._language][0]
-            path_to_model = os.path.join(path_to_zas_rep_tools,"data/models/SoMeWeTa/",model_name)
+            path_to_model = os.path.join(path_to_someweta_models,model_name)
+            #p((model_name, path_to_model))
+            #self.logger.critical("{}, {}".format(model_name, path_to_model))
             pos_tagger_obj = self._get_someweta_pos_tagger(path_to_model,thread_name=thread_name)
             if not pos_tagger_obj:
                 self.logger.error("POS-Tagger for '{}'-Thread wasn't initialized.".format(thread_name), exc_info=self._logger_traceback)

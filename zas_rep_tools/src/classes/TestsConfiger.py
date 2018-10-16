@@ -22,7 +22,7 @@ import logging
 import inspect
 import shutil
 import traceback
-import shelve
+#import shelve
 import time
 import json
 from collections import defaultdict
@@ -37,6 +37,7 @@ import twitter
 from nltk.tokenize import TweetTokenizer
 
 
+from  zas_rep_tools_data.utils import path_to_data_folder, path_to_models, path_to_someweta_models, path_to_stop_words
 from zas_rep_tools.src.utils.debugger import p
 from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, MyZODB,transaction, path_to_zas_rep_tools, internet_on, make_zipfile, instance_info, SharedCounterExtern, SharedCounterIntern, Status, function_name,statusesTstring
 import zas_rep_tools.src.utils.db_helper as db_helper
@@ -63,6 +64,10 @@ class TestsConfiger(BaseContent,ConfigerData):
         #InstanceAttributes: Initialization
         self._path_to_zas_rep_tools = path_to_zas_rep_tools
         self._path_to_user_config_data = os.path.join(self._path_to_zas_rep_tools, "user_config/user_data.fs")
+        self._path_to_zas_rep_tools_data = path_to_data_folder
+        self._path_to_zas_rep_tools_someweta_models = path_to_someweta_models
+        self._path_to_zas_rep_tools_stop_words = path_to_stop_words
+
         #self._user_data= self._get_user_config_db()
         # if not self._user_data:
         #     sys.exit()
@@ -134,6 +139,11 @@ class TestsConfiger(BaseContent,ConfigerData):
     @cached_property
     def path_to_zas_rep_tools(self):
         return copy.deepcopy(self._path_to_zas_rep_tools)
+
+    @cached_property
+    def path_to_zas_rep_tools_data(self):
+        return copy.deepcopy(self._path_to_zas_rep_tools_data)
+
 
     @cached_property
     def path_to_testdbs(self):

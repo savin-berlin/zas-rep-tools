@@ -5,7 +5,12 @@ global-exclude *.pyc
 global-exclude *.DS_Store
 global-exclude *.egg-info
 
-recursive-exclude . *.pyc, *.DS_Store, *.egg-info
+global-exclude *.fs
+global-exclude *.index
+global-exclude *.lock
+global-exclude *.tmp
+
+recursive-exclude . *.pyc, *.DS_Store, *.egg-info, *.fs, *.index, *.lock, *.tmp
 
 
 graft zas_rep_tools/tests
