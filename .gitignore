@@ -1,3 +1,8 @@
+
+*
+!*/
+!*.*
+
 HEAD
 .DS_STORE
 *.pyc
@@ -26,6 +31,7 @@ user-config.zip
 *.secret
 man
 test_data
+#json1p
 
 # virtualenv
 include
