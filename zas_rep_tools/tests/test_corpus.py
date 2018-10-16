@@ -582,7 +582,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
 
     @attr(status='stable')
-    @wipd
+    #@wipd
     def test_insert_parallel_many_threads_on_example_of_blogger_corp_555(self):
         self.prj_folder()
         self.blogger_corpus()
