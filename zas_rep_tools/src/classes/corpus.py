@@ -2269,6 +2269,9 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         if self._pos_tagger == "someweta":
             model_name = Corpus.pos_tagger_models[self._pos_tagger][self._language][0]
             path_to_model = os.path.join(path_to_someweta_models,model_name)
+            if not os.path.isfile(path_to_model):
+                self.logger.error("Current Model wasn't found: '{}'. ".format(path_to_model))
+                return False
             #p((model_name, path_to_model))
             #self.logger.critical("{}, {}".format(model_name, path_to_model))
             pos_tagger_obj = self._get_someweta_pos_tagger(path_to_model,thread_name=thread_name)
