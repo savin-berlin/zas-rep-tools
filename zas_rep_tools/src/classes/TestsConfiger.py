@@ -35,7 +35,7 @@ from validate_email import validate_email
 import urllib2
 import twitter
 from nltk.tokenize import TweetTokenizer
-
+from nose.tools import nottest
 
 from  zas_rep_tools_data.utils import path_to_data_folder, path_to_models, path_to_someweta_models, path_to_stop_words
 from zas_rep_tools.src.utils.debugger import p
@@ -52,10 +52,11 @@ from zas_rep_tools.src.utils.zaslogger import ZASLogger
 from zas_rep_tools.src.classes.basecontent import BaseContent
 from zas_rep_tools.src.utils.configer_helpers import ConfigerData
 
+@nottest
 class TestsConfiger(BaseContent,ConfigerData):
     def __init__(self, rewrite=False,stop_if_db_already_exist = True,**kwargs):
         super(type(self), self).__init__(**kwargs)
-        #p((self._mode,self._logger_save_logs), "self._logger_save_logs", c="b")
+
         #Input: Encapsulation:
         self._rewrite = rewrite
         self._stop_if_db_already_exist = stop_if_db_already_exist
@@ -67,11 +68,6 @@ class TestsConfiger(BaseContent,ConfigerData):
         self._path_to_zas_rep_tools_data = path_to_data_folder
         self._path_to_zas_rep_tools_someweta_models = path_to_someweta_models
         self._path_to_zas_rep_tools_stop_words = path_to_stop_words
-
-        #self._user_data= self._get_user_config_db()
-        # if not self._user_data:
-        #     sys.exit()
-
 
         #self._get_user_config_db() 
         if not self._check_correctness_of_the_test_data():
@@ -94,7 +90,9 @@ class TestsConfiger(BaseContent,ConfigerData):
         ############################################################
 
     def __del__(self):
-        super(type(self), self).__del__()
+        pass
+        #super(type(self), self).__del__()
+
 
 
 
@@ -145,10 +143,12 @@ class TestsConfiger(BaseContent,ConfigerData):
         return copy.deepcopy(self._path_to_zas_rep_tools_data)
 
 
+    @nottest
     @cached_property
     def path_to_testdbs(self):
         return copy.deepcopy(self._path_to_testdbs)       
 
+    @nottest
     @cached_property
     def test_dbs(self):
         return copy.deepcopy(self._test_dbs)             
@@ -169,7 +169,7 @@ class TestsConfiger(BaseContent,ConfigerData):
     def columns_in_stats_tables(self):
         return copy.deepcopy(self._columns_in_stats_tables)     
 
-
+    @nottest
     @cached_property
     def path_to_testsets(self):
          return copy.deepcopy(self._path_to_testsets)   
@@ -236,6 +236,7 @@ class TestsConfiger(BaseContent,ConfigerData):
     #             self.logger.critical("Not supported user_data_getter ('{}').".format(user_info_name))
 
 
+    @nottest
     def create_test_data(self, abs_path_to_storage_place=False, use_original_classes = True, corp_lang_classification=False, 
                          corp_pos_tagger=True, corp_sent_splitter=True, corp_sentiment_analyzer=True, status_bar=True,
                          corp_log_ignored=False, use_test_pos_tagger=False,rewrite=False):
@@ -250,7 +251,7 @@ class TestsConfiger(BaseContent,ConfigerData):
         return True
 
 
- 
+    @nottest
     def create_test_dbs(self, rewrite=False, abs_path_to_storage_place = False,corp_log_ignored=False,
                         use_original_classes = True, corp_lang_classification=True, use_test_pos_tagger=False,
                         corp_pos_tagger=True, corp_sent_splitter=True, corp_sentiment_analyzer=True, status_bar=True):
@@ -554,10 +555,11 @@ class TestsConfiger(BaseContent,ConfigerData):
             return False
 
 
-
+    @nottest
     def create_testsets(self, rewrite=False, abs_path_to_storage_place=False, silent_ignore = True):
         return list(self.create_testsets_in_diff_file_formats(rewrite=rewrite, abs_path_to_storage_place=abs_path_to_storage_place,silent_ignore=silent_ignore))
 
+    @nottest
     def create_testsets_in_diff_file_formats(self, rewrite=False, abs_path_to_storage_place=False, silent_ignore = True):
         #p(abs_path_to_storage_place)
         #sys.exit()

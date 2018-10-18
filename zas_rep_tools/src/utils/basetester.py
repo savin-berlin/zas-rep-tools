@@ -20,6 +20,7 @@ import codecs
 import sys
 import gc
 
+from nose.tools import nottest
 from nose.plugins.attrib import attr
 from testfixtures import tempdir, TempDirectory
 from distutils.dir_util import copy_tree
@@ -31,6 +32,7 @@ from zas_rep_tools.src.utils.zaslogger import ZASLogger,clear_logger
 global is_test_data_exist
 is_test_data_exist = False
 
+@nottest
 def create_test_data():
     global is_test_data_exist
     if not is_test_data_exist:
@@ -93,7 +95,7 @@ class BaseTester(object):
 
 
 
-
+    @nottest
     def create_all_test_data(self):
         self.prj_folder()
         self.test_dbs()
@@ -103,7 +105,7 @@ class BaseTester(object):
 
 
 
-
+    @nottest
     def test_dbs(self):
         #####################
         #### Test DBs########

@@ -25,6 +25,8 @@ from testfixtures import tempdir, TempDirectory
 from distutils.dir_util import copy_tree 
 import json
 import time
+import gc
+from testfixtures import tempdir, TempDirectory
 
 from zas_rep_tools.src.classes.TestsConfiger import TestsConfiger
 from zas_rep_tools.src.classes.dbhandler import DBHandler
@@ -50,20 +52,61 @@ else:
 #TestsConfiger(mode="dev", rewrite=True).create_test_data(use_original_classes=True, status_bar=True, corp_log_ignored=True, corp_language="en", corp_lang_classification=False, corp_pos_tagger="tweetnlp")
 
 class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
+#class TestZASTestsConfigerTestsConfiger():
     #_multiprocess_can_split_ = True
-    _multiprocess_shared_  = True
-    #@classmethod 
+    #_multiprocess_shared_  = True
+    #  #@classmethod 
     def setUp(self):
         #p(str(super))
-        
+        #pass
         super(type(self), self).setUp()
         #super(BaseTester, self).__init__()
         #p(self.__dict__)
         
 
-    #@classmethod 
+    # #@classmethod 
     def tearDown(self):
         super(type(self), self).tearDown()
+
+        #pass
+
+    # def setUp(self):
+
+    #     create_test_data()
+
+    #     gc.collect() ## Start Garbage Collector, before start with the new test case.
+        
+    #     #### MODI######
+    #     #self.mode = "test"
+    #     self.mode = "test+s+"
+    #     #self.mode = "test+s-"
+    #     #self.mode = "dev"
+    #     #self.mode = "dev-"
+    #     #self.mode = "silent"
+    #     #self.mode = "error"
+
+    #     #### Set TestsConfiger #####
+    #     clear_logger()
+    #     self.configer = TestsConfiger(mode="silent") # MODE SHOULD BE "test". !!!
+
+    #     self.tempdir = TempDirectory()
+        
+
+    #     self.path_to_zas_rep_tools = self.configer.path_to_zas_rep_tools
+    #     #gc.collect()
+
+
+    # #@classmethod 
+    # def tearDown(self):
+    #     #del self.configer
+    #     t = self.tempdir
+    #     #self.tempdir.cleanup()
+    #     del self
+    #     gc.collect()
+    #     t.cleanup()
+    #     del t
+    #     #gc.collect()
+
 
 
 
@@ -82,6 +125,20 @@ class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
 
 
     ###### xxx: 000 ######
+
+    def _unidiff_output(self,expected, actual):
+        """
+        Helper function. Returns a string containing the unified diff of two multiline strings.
+        """
+
+        import difflib
+        expected=expected.splitlines(1)
+        actual=actual.splitlines(1)
+
+        diff=difflib.unified_diff(expected, actual)
+
+        return ''.join(diff)
+
 
 
     def _get_meta_data_by_db_file_name(self, db_fname_to_search):
@@ -239,18 +296,6 @@ class TestZASTestsConfigerTestsConfiger(BaseTester,unittest.TestCase):
                 ### Here for stats
                 pass
 
-    def _unidiff_output(self,expected, actual):
-        """
-        Helper function. Returns a string containing the unified diff of two multiline strings.
-        """
-
-        import difflib
-        expected=expected.splitlines(1)
-        actual=actual.splitlines(1)
-
-        diff=difflib.unified_diff(expected, actual)
-
-        return ''.join(diff)
 
 
 
