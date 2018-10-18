@@ -40,7 +40,6 @@ class TestZASreaderReader(BaseTester,unittest.TestCase):
     #@classmethod 
     def setUp(self):
         #p(str(super))
-        
         super(type(self), self).setUp()
         #super(BaseTester, self).__init__()
         #p(self.__dict__)
@@ -412,7 +411,7 @@ class TestZASreaderReader(BaseTester,unittest.TestCase):
     def test_lazyreader_from_sifter_twitter_csv_with_utf8_513(self):
         self.twitter_corpus()
         end_file_marker = -1
-        self.mode = "prod+"
+        #self.mode = "prod+"
         reader = Reader(os.path.join(self.tempdir_twitter_corp, "CSV/zas-rep-tool/sifter"), "csv", formatter_name="sifter", mode=self.mode, end_file_marker=end_file_marker)
         for data in reader.getlazy(csvdelimiter=";"):
             if data == end_file_marker:
