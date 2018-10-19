@@ -92,12 +92,89 @@ class BaseContent(object):
 
 
     def __del__(self):
+        from collections import defaultdict
+        import os, sys
         #proc = psutil.Process()
         #p( proc.open_files() )
+        from blessings import Terminal
+        self.t = Terminal()
+        print "\n\n"
         p("<<<", c="r")
+        
+        d = defaultdict(lambda: [0, []])
         for proc in psutil.process_iter():
-            proc = psutil.Process()
-        p( proc.open_files() ,c="c")
+            if proc:
+                try:
+                    for pr in proc.open_files():
+                        if pr:
+                            #print type(pr.path)
+                            #print pr.path
+                            root = str(pr.path).split("/")
+                            #print root
+                            if len(root) <= 1:
+                                continue
+
+                            if root[1] in  ["Applications","System","Library","usr",".Spotlight-V100",".DocumentRevisions-V100"]:
+                                pattern = "{}/{}".format(root[1], root[2])
+                                d[pattern][0] += 1
+                                d[pattern][1].append(root[-1])
+                                continue 
+                            elif root[1] in  ["private","Volumes","Users"]:
+                                pattern = "{}/{}/{}".format(root[1], root[2],root[3])
+                                d[pattern][0] += 1
+                                d[pattern][1].append(root[-1])
+                                continue 
+                            #else:
+
+                            if len(root) >= 5:
+                                pattern = "{}/{}/{}/{}".format(root[1], root[2],root[3],root[4])
+                                d[pattern][0] += 1
+                                d[pattern][1].append(root[-1])
+                            elif len(root) >= 4:
+                                pattern = "{}/{}/{}".format(root[1], root[2],root[3])
+                                d[pattern][0] += 1
+                                d[pattern][1].append(root[-1])
+                            elif len(root) >= 3:
+                                pattern = "{}/{}".format(root[1], root[2])
+                                d[pattern][0] += 1
+                                d[pattern][1].append(root[-1])
+                            else:
+                                d[root[1]][0] += 1
+                                d[root[1]][1].append(root[-1])
+                except:
+                    pass
+        #print sum([num[0] for num in d.values])
+        print self.t.bold_black_on_bright_magenta + "\n\n\n\nall_Process ({})".format(sum([num[0] for num in d.values()])) + self.t.normal
+        #print d    
+        #filename, file_extension = os.path.splitext('/path/to/somefile.ext')
+        for key in sorted(d.keys()):  
+            value = d[key]
+            #value[0]
+            extentions = defaultdict(lambda: [0, []])
+            #if isinstance( value[1], int ) :
+            #    sys.exit()
+            for fname in value[1]:
+                #if isinstance( fname, int ) :
+                #    sys.exit()
+                #print repr(fname)
+                filename, file_extension = os.path.splitext(fname)
+                extentions[file_extension][0] += 1
+                extentions[file_extension][1].append(filename)
+
+            print  "  {}{}  {} {}".format(self.t.bold_black_on_bright_white,value[0], key, self.t.normal)
+            for ext in sorted(extentions.keys()):
+               #print "            {}  {}  ({})".format(ext, extentions[ext][0], set(extentions[ext][1])) 
+               print "            {}  {}  ".format(ext, extentions[ext][0]) 
+
+
+        # print self.t.bold_black_on_bright_magenta + "\n\ncurrent_Process" + self.t.normal
+        # proc = psutil.Process().open_files()
+        # print proc
+
+        # for pr in proc:
+        #     if pr:
+        #         print "    " +  pr.path
+        #p(psutil.Process().open_files(), "PROCESS" ,c="m")
         p(">>>", c="r")
         print "\n\n\n\n"
            #p( proc.open_files() )
