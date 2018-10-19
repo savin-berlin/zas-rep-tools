@@ -2054,7 +2054,8 @@ class TestZAScorpusDBHandlerDBHandler(BaseTester,unittest.TestCase):
     def test_work_with_json_list_575(self):
         self.prj_folder()
         self.test_dbs()
-
+        id_index = self.configer.columns_in_doc_table["blogger"].index("id")
+        text_index = self.configer.columns_in_doc_table["blogger"].index("text")
         #db = DBHandler(devmode=True)
         db = DBHandler(mode=self.mode)
         db.init("corpus", self.tempdir_project_folder, "blogger", "de", "extern", platform_name="blogs", license="MIT" , template_name="blogger", version="2", source="LanguageGoldMine", corpus_id="7614")
@@ -2064,9 +2065,9 @@ class TestZAScorpusDBHandlerDBHandler(BaseTester,unittest.TestCase):
         #p(self.configer.docs_row_values(token=True, unicode_str=True)["blogger"])
         num_of_insertions = len(self.configer.docs_row_values(token=True, unicode_str=True)["blogger"])
         #p(num_of_insertions)
-
+        #p(db.rownum("documents"), "00")
         db.insertlist("documents", inp_list)
-
+        #p(db.rownum("documents"), "11")
         if num_of_insertions != db.rownum("documents"):
            assert False
 
@@ -2079,24 +2080,20 @@ class TestZAScorpusDBHandlerDBHandler(BaseTester,unittest.TestCase):
                     if item1 != json.dumps(item2):
                         assert False
 
-        id_index = self.configer.columns_in_doc_table["blogger"].index("id")
-        text_index = self.configer.columns_in_doc_table["blogger"].index("text")
 
+        #p(db.rownum("documents"), "22")
         #c = db.execute('SELECT * FROM documents WHERE json_extract("text", "$[1]") LIKE "%tt%";')
         #p(c.fetchall())
         #p((id_index, text_index), c="r")
+
         for row in inp_list:
             #p(row)
             input_id = row[id_index]
             text_element = row[text_index]
-            c = db.execute('select json_extract("text", "$[0]") from documents WHERE id={};'.format(input_id))
-            
-            # p((c.fetchall(), len(c.fetchall())), c="r")
-            # p((c.fetchall(), len(c.fetchall())), c="r")
-            # p(c.fetchall()[0][0])
-            #p((c.fetchall(), text_element[0]))
-            # if c.fetchall()[0][0] != text_element[0]:
-            #     assert False
+            c = db.execute('select json_extract("text", "$[0]") from documents WHERE id={};'.format(input_id),thread_name="test")
+
+        #p(db.rownum("documents"), "33")
+        #p(db._db, "44")
 
 
 

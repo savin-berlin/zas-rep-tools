@@ -13,6 +13,7 @@
 #
 import gc
 import logging
+import psutil
 
 from zas_rep_tools.src.utils.error_tracking import initialisation
 from zas_rep_tools.src.utils.traceback_helpers import print_exc_plus
@@ -90,7 +91,6 @@ class BaseContent(object):
         super(BaseContent, self).__init__(**kwargs)
 
 
-
     def __del__(self):
         if not self._is_destructed:
             if self._logger_usage:
@@ -106,7 +106,9 @@ class BaseContent(object):
                         self.logger.status(statuses_as_str)
             
                 self._is_destructed = True
-
+                self.L._close_handlers()
+                del self.L
+                gc.collect() 
 
 
     def _log_settings(self,attr_to_flag=False,attr_to_len=False):

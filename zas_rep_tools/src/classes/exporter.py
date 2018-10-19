@@ -306,6 +306,10 @@ class Exporter(BaseContent):
                 self.current_jsonfile.write("\n\n ]")
                 self.current_jsonfile.close()
                 self._number_of_inserts_in_the_current_file = 0
+                try:
+                    self.current_jsonfile.close()
+                except:
+                   pass
                 self.current_jsonfile = self._get_new_file(path_to_dir , fname, "json", encoding=encoding, file_flag="a+", open_file_with_codecs=unicode_encode)
                 if not self.current_jsonfile:
                     return False
@@ -401,6 +405,10 @@ class Exporter(BaseContent):
             if self._number_of_inserts_in_the_current_file >= rows_limit_in_file:
                 self.current_csvfile.close()
                 self._number_of_inserts_in_the_current_file = 0
+                try:
+                    self.current_csvfile.close()
+                except:
+                    pass
                 self.current_csvfile = self._get_new_file(path_to_dir , fname, "csv", encoding=encoding)
                 #p(self.current_csvfile, "self.current_csvfile")
                 if not self.current_csvfile:
@@ -471,6 +479,10 @@ class Exporter(BaseContent):
             if self._number_of_inserts_in_the_current_file >= rows_limit_in_file:
                 self._save_output_into_current_xml_file()
                 self._number_of_inserts_in_the_current_file = 0
+                try:
+                    self.current_xmlfile.close()
+                except:
+                    pass
                 self.current_xmlfile = self._get_new_file(path_to_dir , fname, "xml", encoding=encoding)
                 if not self.current_xmlfile:
                     return False

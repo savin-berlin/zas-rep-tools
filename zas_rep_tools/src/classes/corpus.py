@@ -52,6 +52,7 @@ from zas_rep_tools.src.utils.corpus_helpers import CorpusData
 from zas_rep_tools.src.utils.custom_exceptions import  ZASCursorError, ZASConnectionError,DBHandlerError,ProcessError,ErrorInsertion,ThreadsCrash
 import nltk
 from nltk.corpus import stopwords
+import gc
 
 try:
     nltk.data.find('corpora/stopwords')

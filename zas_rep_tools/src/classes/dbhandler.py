@@ -131,7 +131,7 @@ class DBHandler(BaseContent, BaseDB):
         self._arguments_for_connection = self._get_arguments_for_conn()
         self.locker = threading.Lock()
         self._double_items =  "or REPLACE" if self._replace_double_items else "or IGNORE"
-
+        
         if self._thread_safe:
             self.logger.info("DBHandler was started in ThreadSafeMode.")
         else:
@@ -164,7 +164,13 @@ class DBHandler(BaseContent, BaseDB):
 
 
     def __del__(self):
-
+        #import psutil
+        #for proc in psutil.process_iter():
+        #    p("<<<")
+        #    for f in proc.open_files():
+        #        print f
+        #    p(">>>")
+        #    #p( proc.open_files() )
         if self._db:
             if self._use_cash:
                 self._write_cashed_insertion_to_disc()
@@ -175,8 +181,11 @@ class DBHandler(BaseContent, BaseDB):
             if self._created_backups:
                 for dbname in copy.deepcopy(self._created_backups):
                     self._del_backup(dbname)
-
-
+            try:
+                self._db.close()
+                del self._threads_cursors
+            except:
+                pass
 
         if int(self.error_insertion_counter) > 0:
             self.logger.error("'{}'-ErrorInsertion(s) was done.".format(int(self.error_insertion_counter)))
@@ -185,8 +194,9 @@ class DBHandler(BaseContent, BaseDB):
         self._db = False
         self.logger.debug("DB-Instance was destructed")
 
+        
+        #self.logger.newline(1)
         super(type(self), self).__del__()
-        # self.logger.newline(1)
 
 
 
@@ -539,6 +549,7 @@ class DBHandler(BaseContent, BaseDB):
             self.logger.info("Empty-DB ({}) was initialized and saved on the disk: '{}'. ".format(fileName, path_to_db))
             #self.logger.info("Empty-DB ({}) was connected.".format(fileName))
             self._mainDB_was_initialized = True
+            
             return Status(status=True)
         else:
             self.logger.error("Given Project Folder is not exist: '{}'. ".format(prjFolder), exc_info=self._logger_traceback)
@@ -614,6 +625,7 @@ class DBHandler(BaseContent, BaseDB):
             self._update_temp_attributsList_in_instance(thread_name=thread_name)
             self._update_temp_indexesList_in_instance(thread_name=thread_name)
             self.not_initialized_dbs.append("main")
+            
         except sqlite.DatabaseError, e:
             print_exc_plus() if self._ext_tb else ""
             self.logger.error("DatabaseError: {}".format(e), exc_info=self._logger_traceback)
@@ -2709,24 +2721,15 @@ class DBHandler(BaseContent, BaseDB):
 
     def _default_db_closer(self, for_encryption=False):
         try:
-        
             self._commit()
-
-        
             if self._db:
-
                 del self._threads_cursors
-            
-
                 gc.collect()
-
-            
                 self._db.close()
-            
-
                 self._init_instance_variables()
             else:
                 msg = "No activ DB was found. There is nothing to close!"
+
                 self.logger.error(msg)
                 return Status(status=False, desc=msg)
 

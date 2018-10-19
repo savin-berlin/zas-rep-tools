@@ -91,6 +91,7 @@ class BaseTester(object):
         gc.collect()
         t.cleanup()
         del t
+        #del self
         #gc.collect()
 
 

@@ -7,6 +7,7 @@ from collections import defaultdict
 import codecs
 import traceback
 import inspect
+import gc
 #import logging.Handler
 
 from logutils.colorize import ColorizingStreamHandler
@@ -17,6 +18,9 @@ from zas_rep_tools.src.utils.custom_exceptions import StackTraceBack
 #ZASLogger._root_logger
 
 def clear_logger():
+    del ZASLogger._root_logger
+    del ZASLogger._handlers
+    del ZASLogger._loggers
     ZASLogger._root_logger = None
     ZASLogger._creation_day = None
     ZASLogger._creation_time = None
@@ -77,7 +81,26 @@ class ZASLogger(object):
             self._set_time()
             self._set_dirs()
 
+    #def __del__(self):
 
+
+    def _close_handlers(self):
+        if ZASLogger._handlers[self._logger_name]:
+            for handler_name, handler in ZASLogger._handlers[self._logger_name].items():
+                #p((handler_name), c="r")
+                if handler_name == 'FileHandler':
+                    for file_handler in handler.values():
+                        #p((file_handler), c="r")
+                        file_handler.flush()
+                        file_handler.close()
+                        del file_handler
+                else:
+                    handler.flush()
+                    handler.close()
+                    del handler
+            del ZASLogger._handlers[self._logger_name]
+            #del self
+            gc.collect()     
 
 
     def update_root_logger(self):

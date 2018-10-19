@@ -93,39 +93,8 @@ class BasicConnection(object):#, sqlite):
     def close(self):
         if not self._connection:
             raise ZASConnectionError, "No active Connection!"
-        #p(self)
         self._connection.close()
         self._connection = False  
-        # i = 0
-        # status = True
-        # while status:
-        #     try:
-        #         if not self._connection:
-        #             raise ZASConnectionError, "No active Connection!"
-        #         self._connection.close()
-        #         self._connection = False    
-        #     except OperationalError, e: 
-        #         if "unable to close due to" in str(e):
-        #             # if i == 0:
-        #             #     print self._init_cursors
-        #             #     for c in self._init_cursors:
-        #             #         print ">>>>", c
-        #             #         del c
-        #             #         #print ">>>>", c
-        #             #     print self._init_cursors
-        #             if i < 5:
-        #                 print "unable to close due to"
-        #                 print i
-        #                 i += 1
-        #                 time.sleep(1)
-        #                 continue
-        #             else:
-        #                 status = False
-        #                 raise OperationalError, e
-        #         else:
-        #             status = False
-        #             raise OperationalError, e
-                    
 
 
     def commit(self):
@@ -196,7 +165,10 @@ class BasicCursor(object):
         self.cursor = self.connection.cursor(*args, **kwargs)
 
     def __del__(self):
-        self.cursor.close()
+        try:
+            self.cursor.close()
+        except:
+            pass
         #p("CURSOR WAS DESTRUCTED", c="m")
 
 
