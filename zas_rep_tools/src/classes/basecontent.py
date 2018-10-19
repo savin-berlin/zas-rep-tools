@@ -92,8 +92,8 @@ class BaseContent(object):
 
 
     def __del__(self):
-        proc = psutil.Process()
-        p( proc.open_files() )
+        #proc = psutil.Process()
+        #p( proc.open_files() )
 
         for proc in psutil.process_iter():
             p("<<<")
