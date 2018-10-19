@@ -534,8 +534,10 @@ class Reader(BaseContent):
                 output_data.update({self._text_field_name:file_data})
                 try:
                     f.close()
+                    del f
                 except:
                     pass
+                    
                 if colnames:
                     return self._get_data_from_dic_for_given_keys(colnames, output_data)
                 else:
@@ -650,6 +652,7 @@ class Reader(BaseContent):
 
             try:
                 f.close()
+                del f
             except:
                 pass
 
@@ -784,6 +787,7 @@ class Reader(BaseContent):
 
             try:
                 f.close()
+                del f
             except:
                 pass
 
@@ -978,9 +982,10 @@ class Reader(BaseContent):
                     yield row_dict 
             try:
                 f.close()
+                del f
             except:
                 pass
-                
+
         except ValueError, e: # this was implemented, because twitter streamer send sometimes inconsistent tweets, where json is not correct
             print_exc_plus() if self._ext_tb else ""
             if not str_to_reread:

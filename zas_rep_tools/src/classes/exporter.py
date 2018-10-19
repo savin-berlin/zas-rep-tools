@@ -151,6 +151,7 @@ class Exporter(BaseContent):
         #p(self.current_csvfile, "000self.current_csvfile")
         if self.current_csvfile:
             self.current_csvfile.close()
+            del self.current_csvfile
             self.logger.info("CSVWriter: '{}' rows  was exported into CSV File(s) in '{}'.".format(rows_was_exported,path_to_export_dir))
             #p(self.current_csvfile, "11self.current_csvfile")
             return True
@@ -217,6 +218,7 @@ class Exporter(BaseContent):
             self.current_jsonfile.seek(-1, os.SEEK_END)
             self.current_jsonfile.write("\n\n ]")
             self.current_jsonfile.close()
+            del self.current_jsonfile
             self.logger.info("JSONWriter: '{}' rows  was exported into JSONS File(s) in '{}'.".format(rows_was_exported,path_to_export_dir))
             return True
         else:#
@@ -263,6 +265,7 @@ class Exporter(BaseContent):
 
         try:
             self.sqlite_db.close()
+            del self.sqlite_db
         except Exception, e:
             print_exc_plus() if self._ext_tb else ""
             self.logger.error("SQLITEWriterError: Following Exception was throw: '{}'. ".format(e), exc_info=self._logger_traceback)
@@ -440,6 +443,7 @@ class Exporter(BaseContent):
         #encoded_into_str = {k.encode(encoding): v.encode(encoding) for k,v in row_as_dict.iteritems()}
         #p(encoded_into_str)
         self.current_csv_writer.writerow(encoded_into_str)
+        self.current_csv_writer.close()
         #self.current_csv_writer.writerow(row_as_dict)
         self._number_of_inserts_in_the_current_file += 1
         return True
