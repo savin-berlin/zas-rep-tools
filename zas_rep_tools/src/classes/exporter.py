@@ -408,7 +408,7 @@ class Exporter(BaseContent):
         
         if self.current_csvfile:
             if self._number_of_inserts_in_the_current_file >= rows_limit_in_file:
-                self.current_csvfile.close()
+                #self.current_csvfile.close()
                 self._number_of_inserts_in_the_current_file = 0
                 try:
                     self.current_csvfile.close()
@@ -443,7 +443,7 @@ class Exporter(BaseContent):
         #encoded_into_str = {k.encode(encoding): v.encode(encoding) for k,v in row_as_dict.iteritems()}
         #p(encoded_into_str)
         self.current_csv_writer.writerow(encoded_into_str)
-        self.current_csv_writer.close()
+        #self.current_csv_writer.close()
         #self.current_csv_writer.writerow(row_as_dict)
         self._number_of_inserts_in_the_current_file += 1
         return True
