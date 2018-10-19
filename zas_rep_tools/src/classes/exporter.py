@@ -31,6 +31,7 @@ import json
 import inspect
 import traceback
 import re
+import gc
 
 from collections import defaultdict
 from raven import Client
@@ -308,6 +309,7 @@ class Exporter(BaseContent):
                 self._number_of_inserts_in_the_current_file = 0
                 try:
                     self.current_jsonfile.close()
+                    del self.current_jsonfile
                 except:
                    pass
                 self.current_jsonfile = self._get_new_file(path_to_dir , fname, "json", encoding=encoding, file_flag="a+", open_file_with_codecs=unicode_encode)
@@ -407,6 +409,7 @@ class Exporter(BaseContent):
                 self._number_of_inserts_in_the_current_file = 0
                 try:
                     self.current_csvfile.close()
+                    del self.current_csvfile
                 except:
                     pass
                 self.current_csvfile = self._get_new_file(path_to_dir , fname, "csv", encoding=encoding)
@@ -465,6 +468,7 @@ class Exporter(BaseContent):
             #p(output_xml)
             self.current_xmlfile.write(output_xml)
             self.current_xmlfile.close()
+            del self.current_xmlfile
             self.current_xmlfile = False
         else:
             self.logger.error("SaveOutputIntoXMLError: There is not activ XML-Files", exc_info=self._logger_traceback)
@@ -481,6 +485,7 @@ class Exporter(BaseContent):
                 self._number_of_inserts_in_the_current_file = 0
                 try:
                     self.current_xmlfile.close()
+                    del self.current_xmlfile
                 except:
                     pass
                 self.current_xmlfile = self._get_new_file(path_to_dir , fname, "xml", encoding=encoding)

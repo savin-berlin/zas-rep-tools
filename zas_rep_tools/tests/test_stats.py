@@ -5174,7 +5174,7 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
         
 
-        stats.open(os.path.join(self.tempdir_testdbs,self.db_blogger_plaintext_stats_en))
+        stats.open(os.path.join(self.tempdir_testdbs,self.db_blogger_plaintext_stats_de))
         
         #stats.export(self.tempdir_project_folder, redu=True, repl=True, export_file_type="csv", max_scope=3)
 

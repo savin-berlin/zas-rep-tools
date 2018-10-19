@@ -104,11 +104,15 @@ class BaseContent(object):
                     statuses_as_str = statusesTstring(str(self.__class__.__name__).lower())
                     if statuses_as_str:
                         self.logger.status(statuses_as_str)
-            
+                
+                try:
+                    
+                    self.L._close_handlers()
+                    del self.L
+                    gc.collect()
+                except:
+                    pass
                 self._is_destructed = True
-                self.L._close_handlers()
-                del self.L
-                gc.collect() 
 
 
     def _log_settings(self,attr_to_flag=False,attr_to_len=False):
