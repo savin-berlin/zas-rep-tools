@@ -27,6 +27,12 @@ class BasicConnection(object):#, sqlite):
     # def __del__(self):
     #     #p(self._init_cursors, "init_cursors")
     #     #p("CONNECTION WAS DESTRUCTED", c="r")
+    def __del__(self):
+        try:
+            self._connection.close()
+            del self._connection
+        except:
+            pass
 
 
     def connect(self, *args, **kwargs):

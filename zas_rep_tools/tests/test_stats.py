@@ -158,7 +158,7 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 ###################  Corpus Initialization :500############################################ 
     @attr(status='stable')
     #@wipd
-    def test_new_plaintext_corpus_initialization_500(self):
+    def test_new_plaintext_stats_initialization_500(self):
         self.prj_folder()
         name = self.configer.init_info_data["blogger"]["name"]
         language = self.configer.init_info_data["blogger"]["language"]
@@ -181,7 +181,7 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
    
     @attr(status='stable')
     #@wipd
-    def test_new_encrypted_corpus_initialization_501(self):
+    def test_new_encrypted_stats_initialization_501(self):
         self.prj_folder()
         name = self.configer.init_info_data["blogger"]["name"]
         language = self.configer.init_info_data["blogger"]["language"]
@@ -207,7 +207,7 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
     @attr(status='stable')
     #@wipd
-    def test_open_plaintext_blogger_corpus_502(self):
+    def test_open_plaintext_blogger_stats_502(self):
         self.prj_folder()
         self.test_dbs()
         name = self.configer.init_info_data["blogger"]["name"]
@@ -240,7 +240,7 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
    
     @attr(status='stable')
     #@wipdl
-    def test_open_encrypted_twitter_corpus_503(self):
+    def test_open_encrypted_twitter_stats_503(self):
         self.prj_folder()
         self.test_dbs()
         name = self.configer.init_info_data["twitter"]["name"]

@@ -532,6 +532,10 @@ class Reader(BaseContent):
 
 
                 output_data.update({self._text_field_name:file_data})
+                try:
+                    f.close()
+                except:
+                    pass
                 if colnames:
                     return self._get_data_from_dic_for_given_keys(colnames, output_data)
                 else:
@@ -593,6 +597,7 @@ class Reader(BaseContent):
                         row_dict = self._csv_sifter_formatter(row_dict,f_name=f_name)
                         if row_dict == -10:
                             yield -10
+
                             return 
                     else:
                         self.logger.critical("CSVReaderError: Given '{}'-FormatterName is invalid for CSVFiles. Please choice one of the following: '{}'. Execution of the Program was stopped. (fname: '{}')".format(self._formatter_name, Reader.reader_supported_formatter["csv"], f_name))
@@ -642,6 +647,11 @@ class Reader(BaseContent):
                     yield self._get_data_from_dic_for_given_keys(colnames, row_dict)
                 else:
                     yield row_dict
+
+            try:
+                f.close()
+            except:
+                pass
 
         except Exception, e:
             print_exc_plus() if self._ext_tb else ""
@@ -771,6 +781,11 @@ class Reader(BaseContent):
                     yield self._get_data_from_dic_for_given_keys(colnames, row_dict)
                 else:
                     yield row_dict
+
+            try:
+                f.close()
+            except:
+                pass
 
 
         except Exception, e:
@@ -961,6 +976,11 @@ class Reader(BaseContent):
                     yield self._get_data_from_dic_for_given_keys(colnames, row_dict)
                 else:
                     yield row_dict 
+            try:
+                f.close()
+            except:
+                pass
+                
         except ValueError, e: # this was implemented, because twitter streamer send sometimes inconsistent tweets, where json is not correct
             print_exc_plus() if self._ext_tb else ""
             if not str_to_reread:
