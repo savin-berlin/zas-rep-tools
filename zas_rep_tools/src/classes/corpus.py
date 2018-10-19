@@ -906,6 +906,8 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
             self._print_summary_status()
             self.opened_gateways.terminate()
+            del self.opened_gateways
+            gc.collect()
             #self.corpdb.commit()
             
             if self._status_bar:
@@ -2053,7 +2055,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             #p(self.opened_gateways, "self.opened_gateways")
             gw  = self.opened_gateways.makegateway("popen//python=python3//id={}".format(gw_id))
             channel = gw.remote_exec("""
-                import sys
+                import sys, gc
                 from somajo import Tokenizer
                 #print "hhh"
                 tokenizer = Tokenizer({2})
@@ -2061,6 +2063,8 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                 while True:
                     received = channel.receive()
                     if received == -1:
+                        del tokenizer
+                        gc.collect()
                         channel.send("stopped")
                         break
                     channel.send(tokenizer.tokenize(received))
@@ -2194,13 +2198,15 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             gw  = self.opened_gateways.makegateway("popen//python=python3//id=sent_splitter_{}".format(thread_name))
             #self.opened_gateways.append(gw)
             channel = gw.remote_exec("""
-                import sys
+                import sys,gc
                 from somajo import  SentenceSplitter
                 sentence_splitter = SentenceSplitter({})
                 channel.send("ready")
                 while True:
                     received = channel.receive()
                     if received == -1:
+                        del sentence_splitter
+                        gc.collect()
                         channel.send("stopped")
                         break
                     channel.send(sentence_splitter.split(received))
@@ -2313,7 +2319,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             gw  = self.opened_gateways.makegateway("popen//python=python3//id=pos_{}".format(thread_name))
             #self.opened_gateways.append(gw)
             channel = gw.remote_exec("""
-                    import sys
+                    import sys, gc
                     from someweta import  ASPTagger
 
                     asptagger = ASPTagger(5, 10)
@@ -2323,6 +2329,8 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                     while True:
                         received = channel.receive()
                         if received == -1:
+                            del asptagger
+                            gc.collect()
                             channel.send("stopped")
                             break
                         channel.send(asptagger.tag_sentence(received))
