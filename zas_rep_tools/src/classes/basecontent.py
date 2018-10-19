@@ -92,6 +92,9 @@ class BaseContent(object):
 
 
     def __del__(self):
+        proc = psutil.Process()
+        p( proc.open_files() )
+        #del self.L
         if not self._is_destructed:
             if self._logger_usage:
                 if self._save_settings:
@@ -106,7 +109,6 @@ class BaseContent(object):
                         self.logger.status(statuses_as_str)
                 
                 try:
-                    
                     self.L._close_handlers()
                     del self.L
                     gc.collect()
