@@ -5183,79 +5183,79 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
         ######## EXHAUSTED TYPE ###########
         ########################################
         rewrite= True
-        self.tempdir_project_folder = "./export"
+        #self.tempdir_project_folder = "./export"
         ######### I FOR ALL SYNTAGMA ##############
         ##### Export in dirr formats
         #stats.recompute_syntagma_repetativity_scope(False)
         stats.export(self.tempdir_project_folder, repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=False,max_scope=2)
-#         stats.export(self.tempdir_project_folder, repl=True, redu=True,export_file_type="xml",output_table_type="exhausted",rewrite=rewrite,)
-#         stats.export(self.tempdir_project_folder, repl=True, redu=True,export_file_type="json",output_table_type="exhausted",rewrite=rewrite,)
+        stats.export(self.tempdir_project_folder, repl=True, redu=True,export_file_type="xml",output_table_type="exhausted",rewrite=rewrite,)
+        stats.export(self.tempdir_project_folder, repl=True, redu=True,export_file_type="json",output_table_type="exhausted",rewrite=rewrite,)
         
         
 
-#         # #### Export with additional columns from CorpusDB
-#         stats.export(self.tempdir_project_folder, repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
-#             additional_doc_cols=["gender", "working_area", "age"],  fname="WITH_ADDIT_COLS_FROM_CORP",
-#             path_to_corpdb=os.path.join(self.tempdir_testdbs,self.db_blogger_plaintext_corp_de))
+        # #### Export with additional columns from CorpusDB
+        stats.export(self.tempdir_project_folder, repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
+            additional_doc_cols=["gender", "working_area", "age"],  fname="WITH_ADDIT_COLS_FROM_CORP",
+            path_to_corpdb=os.path.join(self.tempdir_testdbs,self.db_blogger_plaintext_corp_de))
 
 
-#         #### Export with NULL Kontext
-#         stats.export(self.tempdir_project_folder, repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
-#                     context_len_left=False, context_len_right=False, fname="NULL_KONTEXT")
-#         stats.export(self.tempdir_project_folder, repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
-#                     context_len_left=1, context_len_right=2, fname="1_2_KONTEXT_")
+        #### Export with NULL Kontext
+        stats.export(self.tempdir_project_folder, repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
+                    context_len_left=False, context_len_right=False, fname="NULL_KONTEXT")
+        stats.export(self.tempdir_project_folder, repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
+                    context_len_left=1, context_len_right=2, fname="1_2_KONTEXT_")
 
 
-#         #### Export with NULL Kontext
-#         stats.export(self.tempdir_project_folder, repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
-#                     max_scope=1, fname="MAX_SCOPE_VON_ONE")
-# # 
+        #### Export with NULL Kontext
+        stats.export(self.tempdir_project_folder, repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
+                    max_scope=1, fname="MAX_SCOPE_VON_ONE")
+# 
 
 
-# #         # # ######### II FOR FEW SYNTAGMA #############
+#         # # ######### II FOR FEW SYNTAGMA #############
 
-#         ##### stemmed search 
-#         stats.export(self.tempdir_project_folder, syntagma=["klitze"], repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
-#                    stemmed_search=True, fname="STEMMED_FOR_KLITZE")
+        ##### stemmed search 
+        stats.export(self.tempdir_project_folder, syntagma=["klitze"], repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
+                   stemmed_search=True, fname="STEMMED_FOR_KLITZE")
 
-#         stats.export(self.tempdir_project_folder, syntagma=["klitze", "kleine"], repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
-#             stemmed_search=True, fname="STEMMED_FOR_KLITZE_KLEINE")
+        stats.export(self.tempdir_project_folder, syntagma=["klitze", "kleine"], repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
+            stemmed_search=True, fname="STEMMED_FOR_KLITZE_KLEINE")
 
-#         stats.export(self.tempdir_project_folder, syntagma=["klitze", "kleine"], repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
-#             stemmed_search=False, fname="UN_STEMMED_FOR_KLITZE_KLEINE")
+        stats.export(self.tempdir_project_folder, syntagma=["klitze", "kleine"], repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
+            stemmed_search=False, fname="UN_STEMMED_FOR_KLITZE_KLEINE")
 
-#         stats.export(self.tempdir_project_folder, syntagma=[["klitze", "kleine"],["klitzes", "kleines"],["klitz", "klein"]], repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
-#             stemmed_search=False, fname="UN_STEMMED_FOR_ALL_KLITZ_KLEIN")
+        stats.export(self.tempdir_project_folder, syntagma=[["klitze", "kleine"],["klitzes", "kleines"],["klitz", "klein"]], repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
+            stemmed_search=False, fname="UN_STEMMED_FOR_ALL_KLITZ_KLEIN")
 
-#         # ##### pos search 
-#         stats.export(self.tempdir_project_folder, syntagma=["EMOIMG", "EMOASC"], repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
-#             stemmed_search=False, fname="EMOIMG_EMOASC", syntagma_type="pos")
-
-
-#         stats.export(self.tempdir_project_folder, syntagma=["EMOIMG"], repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
-#             stemmed_search=False, fname="EMOIMG", syntagma_type="pos")
+        # ##### pos search 
+        stats.export(self.tempdir_project_folder, syntagma=["EMOIMG", "EMOASC"], repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
+            stemmed_search=False, fname="EMOIMG_EMOASC", syntagma_type="pos")
 
 
-#         stats.export(self.tempdir_project_folder, syntagma=["EMOASC"], repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
-#             stemmed_search=False, fname="EMOASC", syntagma_type="pos")
-
-#         # # ########################################
-#         # # ######## SUM TYPE ###########
-#         # # ########################################
-#         stats.export(self.tempdir_project_folder, repl=True, redu=False,export_file_type="csv", output_table_type="sum", fname="SUM_REPL",rewrite=rewrite,)
-#         stats.export(self.tempdir_project_folder, repl=False, redu=True,export_file_type="csv", output_table_type="sum", fname="SUM_REDU",rewrite=rewrite,)
-
-#         stats.export(self.tempdir_project_folder,syntagma=["EMOIMG"], repl=True, redu=False,export_file_type="csv", rewrite=rewrite,
-#             output_table_type="sum", fname="SUM_REPL_EMOIMG",syntagma_type="pos")
-#         stats.export(self.tempdir_project_folder,syntagma=["EMOASC"], repl=False, redu=True,export_file_type="csv", rewrite=rewrite,
-#             output_table_type="sum", fname="SUM_REDU_EMOASC",syntagma_type="pos")
+        stats.export(self.tempdir_project_folder, syntagma=["EMOIMG"], repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
+            stemmed_search=False, fname="EMOIMG", syntagma_type="pos")
 
 
+        stats.export(self.tempdir_project_folder, syntagma=["EMOASC"], repl=True, redu=True,export_file_type="csv",output_table_type="exhausted",rewrite=rewrite,
+            stemmed_search=False, fname="EMOASC", syntagma_type="pos")
+
+        # # ########################################
+        # # ######## SUM TYPE ###########
+        # # ########################################
+        stats.export(self.tempdir_project_folder, repl=True, redu=False,export_file_type="csv", output_table_type="sum", fname="SUM_REPL",rewrite=rewrite,)
+        stats.export(self.tempdir_project_folder, repl=False, redu=True,export_file_type="csv", output_table_type="sum", fname="SUM_REDU",rewrite=rewrite,)
+
+        stats.export(self.tempdir_project_folder,syntagma=["EMOIMG"], repl=True, redu=False,export_file_type="csv", rewrite=rewrite,
+            output_table_type="sum", fname="SUM_REPL_EMOIMG",syntagma_type="pos")
+        stats.export(self.tempdir_project_folder,syntagma=["EMOASC"], repl=False, redu=True,export_file_type="csv", rewrite=rewrite,
+            output_table_type="sum", fname="SUM_REDU_EMOASC",syntagma_type="pos")
 
 
-#         files = os.listdir(self.tempdir_project_folder)
-#         #p(files)
-#         len(files).should.be.equal(18)
+
+
+        files = os.listdir(self.tempdir_project_folder)
+        #p(files)
+        len(files).should.be.equal(18)
 
 
 
