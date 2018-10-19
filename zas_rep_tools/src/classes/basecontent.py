@@ -94,15 +94,15 @@ class BaseContent(object):
     def __del__(self):
         #proc = psutil.Process()
         #p( proc.open_files() )
-
+        p("<<<", c="r")
         for proc in psutil.process_iter():
-            p("<<<")
+            
             proc = psutil.Process()
         
-            p( proc.open_files() )
-            for f in proc.open_files():
-               print f
-            p(">>>")
+        p( proc.open_files() c="c")
+            ##for f in proc.open_files():
+             #  print f
+        p(">>>", c="r")
            #p( proc.open_files() )
         if not self._is_destructed:
             if self._logger_usage:
