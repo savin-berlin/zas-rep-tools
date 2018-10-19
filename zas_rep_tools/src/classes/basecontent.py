@@ -98,8 +98,8 @@ class BaseContent(object):
         for proc in psutil.process_iter():
             proc = psutil.Process()
         p( proc.open_files() ,c="c")
-        print "\n\n\n\n"
         p(">>>", c="r")
+        print "\n\n\n\n"
            #p( proc.open_files() )
         if not self._is_destructed:
             if self._logger_usage:
