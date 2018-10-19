@@ -96,12 +96,8 @@ class BaseContent(object):
         #p( proc.open_files() )
         p("<<<", c="r")
         for proc in psutil.process_iter():
-            
             proc = psutil.Process()
-        
-        p( proc.open_files() c="c")
-            ##for f in proc.open_files():
-             #  print f
+        p( proc.open_files() ,c="c")
         p(">>>", c="r")
            #p( proc.open_files() )
         if not self._is_destructed:
