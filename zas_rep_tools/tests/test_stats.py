@@ -3008,11 +3008,27 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
         len(item["repl"]).should.be.equal(repl_num)
 
     
+    def convert_all_lists_to_tuples(self, giv_object):
+        new_obj = []
+        for item in giv_object:
+            try:
+                new_item = []
+                for underitem in item: 
+                    new_item.append(tuple(underitem) )
+                new_obj.append(tuple(new_item))
+            except:
+                try:
+                    new_obj.append(tuple(item))
+                except:
+                    new_obj.append(item)
+
+        return tuple(new_obj)
+
 
 
 
     @attr(status='stable')
-    # @wipd
+    #@wipd
     def test_get_data_for_one_syntagma_611_1(self):
         self.prj_folder()
         #self.blogger_corpus()
@@ -3079,8 +3095,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
 
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -3125,8 +3141,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
         right_redu = [(2, 8888, u'[4, 11]', u'[0, 2]', u'[0, 1]', u'kleine', u'klein', u'{"kle^5in^5e": 1, "klein^3e": 1}', 2, u'NE', u'["neutral", 0.0]', None, None, None, None, None, None, None, None, u'klitze', u'["NN", {"klitze": 1, "kli^4tze^7": 1}, "klitz"]', u'\xfcberaschung', u'["NN", null, "uberasch"]', u'.', u'["symbol", null, "."]', u'trotzdem', u'["PAV", null, "trotzd"]', u'hat', u'["VAFIN", null, "hat"]', u'sie', u'["PPER", null, "sie"]')]
         
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -3207,8 +3223,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
                      (17, 11111, u'[5, 6, 15, 3]', u'[3, 0]', u'[3, 0]', u'kleines', u'klein', u'{"kle^4i^5n^3e^2s^3": 1, "klein^4e^3s^4": 1, "kleine^4s^7": 1}', 3, u'NN', u'["neutral", 0.0]', 3, u'["number", null, "3"]', 4, u'["number", null, "4"]', 5, u'["number", null, "5"]', 6, u'["number", null, "6"]', u'.', u'["symbol", null, "."]', u'm\xe4dchen', u'["NN", null, "madch"]', u'.', u'["symbol", null, "."]', None, None, None, None, None, None),
                  ]
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -3261,8 +3277,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
                      (1, 8888, u'[4, 11]', u'[0, 0]', u'[0, 0]', u'klitze', u'klitz', u'{"klitze": 1, "kli^4tze^7": 1}', 2, u'NN', u'["neutral", 0.0]', None, None, None, None, None, None, None, None, None, None, u'kleine', u'["NE", {"kle^5in^5e": 1, "klein^3e": 1}, "klein"]', u'\xfcberaschung', u'["NN", null, "uberasch"]', u'.', u'["symbol", null, "."]', u'trotzdem', u'["PAV", null, "trotzd"]', u'hat', u'["VAFIN", null, "hat"]'),
                      (2, 8888, u'[4, 11]', u'[0, 2]', u'[0, 1]', u'kleine', u'klein', u'{"kle^5in^5e": 1, "klein^3e": 1}', 2, u'NE', u'["neutral", 0.0]', None, None, None, None, None, None, None, None, u'klitze', u'["NN", {"klitze": 1, "kli^4tze^7": 1}, "klitz"]', u'\xfcberaschung', u'["NN", null, "uberasch"]', u'.', u'["symbol", null, "."]', u'trotzdem', u'["PAV", null, "trotzd"]', u'hat', u'["VAFIN", null, "hat"]', u'sie', u'["PPER", null, "sie"]'),
                  ]
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))  
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))  
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -3323,8 +3339,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
                  ]
 
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))  
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))  
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -3368,8 +3384,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
         extracted_syntagma = item["syntagma"]
 
 
-        # tuple(extracted_repl).should.be.equal(tuple(right_repl))  
-        # tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        # set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))  
+        # set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         # list( lunicode(str(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         # extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -3438,8 +3454,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
                          None,
              )
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -3497,8 +3513,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
                          1,
              )
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -3561,8 +3577,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
                  ]
 
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -3580,7 +3596,7 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
 
     @attr(status='stable')
-    # @wipd
+    #@wipd
     def test_get_data_611_2(self):
         self.prj_folder()
         #self.blogger_corpus()
@@ -3710,8 +3726,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
 
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -3762,8 +3778,9 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
 
         right_redu = [[8888, u'[4, 11]', u'[0, 1]', u'[0, 2]', 2]]
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        #p(self.convert_all_lists_to_tuples(extracted_repl))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -3819,8 +3836,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
                       ),
                  ]
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -3873,8 +3890,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
 
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -3911,8 +3928,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
         right_redu = [(2, 8888, u'[4, 11]', u'[0, 2]', u'[0, 1]', u'kleine', u'klein', u'{"kle^5in^5e": 1, "klein^3e": 1}', 2, u'NE', u'["neutral", 0.0]', None, None, None, None, None, None, None, None, u'klitze', u'["NN", {"klitze": 1, "kli^4tze^7": 1}, "klitz"]', u'\xfcberaschung', u'["NN", null, "uberasch"]', u'.', u'["symbol", null, "."]', u'trotzdem', u'["PAV", null, "trotzd"]', u'hat', u'["VAFIN", null, "hat"]', u'sie', u'["PPER", null, "sie"]')]
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -3947,8 +3964,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
         right_redu = []
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -4014,8 +4031,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
         right_redu = ()
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -4080,7 +4097,7 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
 
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
         extracted_redu.should.be.equal(right_redu)
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
@@ -4132,8 +4149,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
 
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -4182,8 +4199,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
                  ]
 
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -4238,8 +4255,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
         right_redu = ()
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -4282,8 +4299,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
 
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -4321,8 +4338,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
         right_redu = ()
 
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -4360,8 +4377,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
 
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -4569,8 +4586,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
             extracted_syntagma = item["syntagma"]
 
             assert item["stem_syn"] == ["klitz", "klein"]
-            tuple(extracted_repl).should.be.equal(tuple(right_repl))
-            tuple(extracted_redu).should.be.equal(tuple(right_redu))
+            set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+            set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
             list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
             extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -4629,8 +4646,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
 
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -4671,8 +4688,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
         right_redu = []
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -4715,8 +4732,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
         right_redu = [(3, 8888, u'[4, 11]', u'[1, 10]', u'[1, 10]', u'-)', u'-)', u'{"-)^3": 2}', 2, u'EMOASC', u'["positive", 0.5]', u'gemacht', u'["VVPP", null, "gemacht"]', u'!', u'["symbol", null, "!"]', u':-)', u'["EMOASC", null, ":-)"]', u'-)', u'["EMOASC", null, "-)"]', u'\U0001f600', u'["EMOIMG", null, "\\ud83d\\ude00"]', None, None, None, None, None, None, None, None, None, None)]
         
 
-        tuple(extracted_repl).should.be.equal(tuple(right_repl))
-        tuple(extracted_redu).should.be.equal(tuple(right_redu))
+        set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+        set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
         list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
         #p((extracted_syntagma, right_syntagma))
         extracted_syntagma.should.be.equal(right_syntagma)
@@ -4876,8 +4893,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
             extracted_syntagma = item["syntagma"]
 
             item["stem_syn"] = ["klein"]
-            tuple(extracted_repl).should.be.equal(tuple(right_repl))
-            tuple(extracted_redu).should.be.equal(tuple(right_redu))
+            set(self.convert_all_lists_to_tuples(extracted_repl)).should.be.equal(set(self.convert_all_lists_to_tuples(right_repl)))
+            set(self.convert_all_lists_to_tuples(extracted_redu)).should.be.equal(set(self.convert_all_lists_to_tuples(right_redu)))
             list( list(unicode(elem) for elem in  item ) for item in extracted_baseline).should.be.equal(list( list(  unicode(elem) for elem in  item ) for item in right_baseline))
             extracted_syntagma.should.be.equal(right_syntagma)
 
@@ -7905,7 +7922,7 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
                             (u',++but++i++realy++liked++it', u',++but++i++reali++like++it', 6, 1, None, None, None, None, None, None)]
         #p(baseline ,"baseline")
     
-        [ [unicode(item) for item in b ] for b in baseline].should.be.equal([ [unicode(item) for item in b ] for b in right_baseline])
+        set([ tuple(unicode(item) for item in b ) for b in baseline]).should.be.equal(set([ tuple(unicode(item) for item in b ) for b in right_baseline]))
         assert stats._compute_baseline_sum() > 0
 
 
