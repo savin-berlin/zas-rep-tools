@@ -147,6 +147,7 @@ In order to use ZAS-REP-TOOLS you'll need the following installed Dependencies i
 
 #### Dependencies Installation 
 following installation commands should be seeing as just an idea how and could become incorrect with time. Important is, that all above listed Dependencies are installed, before you can start to SetUp the Tool. 
+
 <sub>*$ - symbol ensure the begin of the command, which should be copy-pasted into the terminal window.*</sub>
 
 ##### On Linux (UbuntuOS 16.04.5 LTS)
@@ -199,6 +200,7 @@ following installation commands should be seeing as just an idea how and could b
 
 
 <br/>
+
 ##### On Windows (Win10)
   (this tool could be invoked just up from the Windows10 Version)
 
@@ -219,6 +221,7 @@ following installation commands should be seeing as just an idea how and could b
 
 
 <br/>
+
 ##### On macOS (10.13.6)
     0. open Terminal
     1. Install brew
@@ -384,7 +387,7 @@ following installation commands should be seeing as just an idea how and could b
 </sub> </p>
 
 ## 5. Functionality
-5.1 **CLI-Functions **
+5.1 **CLI-Functions**
 Current CommandLineInterface support interaction for following entry points: 
 
 - configer
@@ -729,3 +732,4 @@ It means that your Computer dont have enought of the RAM or the Swap is to short
 </tr>
 </table>
 </p>
+
