@@ -25,13 +25,12 @@ ___
 
 ---
 
-<br/>
-<br/>
+
+
 **ZAS-REP-TOOLS** is a bundle of Tools for automatic extraction and quantification of the repetitions from the unstructured textual Data Collections for different languages with additional Search Engine wrapped around extracted data +  on-board supplied Twitter Streamer to collect real-time tweets. 
 
 
-<br/>
-<br/>
+
 
 ---
 
