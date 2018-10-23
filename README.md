@@ -368,10 +368,10 @@ following installation commands should be seeing as just an idea how and could b
    -  **Full Repetitiveness**
     <sub>(Each syntagma with scope > 1 have an additional attribute - full-repetitiveness.)</sub>
     
-      **Replications**
+    - **Replications**
         If Every element of an syntagma was replicated, than Full-Repetitiveness for this Syntagma is True.
             -   ex: 'iiii llllovvveee verrry muuuuch', 'veryyyy verrryy muccchhhh', 'verrrrryyy muchhhhhh'
-      **Reduplications**
+    - **Reduplications**
         If every element of an syntagma was reduplicated, than Full-Repetitiveness for this Syntagma is True.
             -   ex: 'very very very much much', "veeeerrryyy veeerryy mmmuuccc muuucch much "
 
