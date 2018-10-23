@@ -45,6 +45,7 @@ ___
 
 
 <a name="toc"/>
+
 ## Table of Contents
 
 1. [Hardware Requirements](#requirements)
@@ -101,6 +102,7 @@ ___
 <a name="requirements"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
+
 ## 1. Hardware Requirements
  
 
@@ -118,6 +120,7 @@ ___
 <a name="dependencies"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
+
 ## 2. Dependencies
 
 
@@ -250,6 +253,7 @@ following installation commands should be seeing as just an idea how and could b
 <a name="settingup"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
+
 ## 3. Setting up
 
 <sub>*Set background color of your terminal to dark (ex. black, dark blue etc.)*</sub>
@@ -285,6 +289,7 @@ following installation commands should be seeing as just an idea how and could b
 <a name="definitions"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
+
 ## 4. Definitions
 
 
@@ -368,6 +373,7 @@ following installation commands should be seeing as just an idea how and could b
 <a name="functionality"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
+
 ## 5. Functionality
 5.1 **CLI-Functions **
 Current CommandLineInterface support interaction for following entry points: 
@@ -547,6 +553,7 @@ Used NLP-Methods:
 <a name="workflow"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
+
 ## 6. WorkFlow
 
 Step 1: Corpus Data Base Creation 
@@ -565,6 +572,7 @@ Step 3: Export of the computed Statistics
 <a name="tutorials"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
+
 ## 7. Tutorials
 
 <br/>
@@ -578,6 +586,7 @@ Step 3: Export of the computed Statistics
 <a name="input/output"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
+
 ## 8. Input/Output
 
 <br/>
@@ -591,6 +600,7 @@ Step 3: Export of the computed Statistics
 <a name="citing"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
+
 ## 9. Citing ZAS-REP-TOOLS
 
 
@@ -610,6 +620,7 @@ Step 3: Export of the computed Statistics
 
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
+
 <a name="errors"/>
 ## 10. Possible errors and warnings
 
@@ -658,6 +669,7 @@ It means that your Computer dont have enought of the RAM or the Swap is to short
 <a name="acknowledgements"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
+
 ## 11. Acknowledgements
 
 
