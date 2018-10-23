@@ -403,7 +403,7 @@ In the following part you can see a small explanation to each entry point:
 
 -           $ zas-rep-tools configer
      - prjdir
-        <sub>current tool search and create all DBs just in the given project folder </sub>
+        <sub>Folder where all User Data will be saved for current copy of the Tool.</sub>
         - clean
         - set
         - reset
