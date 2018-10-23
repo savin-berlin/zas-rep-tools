@@ -204,7 +204,7 @@ def configer(command1,command2,  mode,logdir ):
 @click.option('--template_name', '-templ', default='False', help="Templates are there for initialization of the preinitialized Document Table in the DB. Every Columns in the DocumentTable should be initialized. For this you can use Templates (which contain preinitialized Information)  or initialize manually those columns manually with the   '--cols_and_types_in_doc'-Option.", type=click.Choice(list(DBHandler.templates.keys())+["False"]))
 @click.option('--version', '-ver', default=1, help="Version Number of the DB")
 @click.option('--cols_and_types_in_doc', '-additcols', default=False, help="Every Columns in the DocumentTable should be initialized. Every Document Table has already two default columns (id, text) if you want to insert also other columns, please define them here with the type names. The colnames should correspond to the colnames in the input text data and be given in the following form: 'colname1:coltype1,colname2:coltype2,colname3:coltype3' ")
-@click.option('--corpus_id_to_init', '-optsyn', default=False, help="Manually given corpid")
+@click.option('--corpus_id_to_init', '-cid', default=False, help="Manually given corpid")
 @click.option('--tokenizer', '-tok', default='True', help="Select Tokenizer by name", type=click.Choice(list(CorpusData.supported_tokenizer)+["False", "True"]) ) 
 @click.option('--pos_tagger', '-ptager', default='False', help="Select POS-Tagger by name", type=click.Choice(list(CorpusData.supported_pos_tagger)+["False", "True"]))
 @click.option('--sentiment_analyzer', '-sentim', default='False', help="Select Sentiment Analyzer by name", type=click.Choice(list(CorpusData.supported_sentiment_analyzer)+["False", "True"]))
