@@ -338,6 +338,7 @@ following installation commands should be seeing as just an idea how and could b
 
    - **Uniq vs. Exhausted Re(du)plication**
      <sub>(Every repetitions could be quantified in the uniq or exhausted way)</sub>
+     
      * **Replications**
         -> Every reduplicated letter will be counted once as exhausted replication and each word contained one or many replications will be counted once as uniq replication. 
         -        ex: 'vvvvveeery'
@@ -366,6 +367,7 @@ following installation commands should be seeing as just an idea how and could b
 
    -  **Full Repetitiveness**
     <sub>(Each syntagma with scope > 1 have an additional attribute - full-repetitiveness.)</sub>
+
      * **Replications**
         If Every element of an syntagma was replicated, than Full-Repetitiveness for this Syntagma is True.
             -   ex: 'iiii llllovvveee verrry muuuuch', 'veryyyy verrryy muccchhhh', 'verrrrryyy muchhhhhh'
