@@ -61,8 +61,8 @@ ___
    -  Full Repetitiveness
 
 5. [Functionality](#functionality)
-   - Classes
    - CLI-Functions 
+   - CLI-Options
    - Multiprocessing
    - NLP-Methods
    - InternDataBase-Structure
@@ -80,10 +80,9 @@ ___
 
 8. [Input/Output](#input/output)
    - File Formats
-   - Output Statistics
+   - Columns Explanation in the Output Tables
 
 9. [Citing ZAS-REP-TOOLS](#citing)
-
 
 
 10. [Possible errors and warnings](#errors)
@@ -505,13 +504,422 @@ In the following part you can see a small explanation to each entry point:
 
 <br>
 
+5.2 **CLI-Options**
 
-5.2 **Multiprocessing**
+- *zas-rep-tools configer --help*
+
+        Usage: zas-rep-tools configer [OPTIONS] COMMAND1 COMMAND2
+
+        Options:
+          -m, --mode [error|test|dev|dev+|dev-|prod|free|prod+t|test+s+|test+s-|silent|prod+|prod-|blind]
+                                          Set one of the Tool Modus
+          -ld, --logdir TEXT              Choose the name of the Directory for log
+                                          data.
+          --help                          Show this message and exit.
+
+- *zas-rep-tools corpora --help*
+
+        Usage: zas-rep-tools corpora [OPTIONS] COMMAND1
+
+        Options:
+          -sb, --status_bar BOOLEAN       Enable/Disable the Status Bat
+          -uefm, --use_end_file_marker BOOLEAN
+                                          Enable/Disable usage of endfilemarker to
+                                          change the couter unit from rows to files in
+                                          the status bar
+          -tscc, --tok_split_camel_case BOOLEAN
+                                          Enable/Disable the option for Tokenizer to
+                                          convertion and split of the CamelCase (ex.
+                                          'CamelCase')
+          -backup, --make_backup BOOLEAN  Enable/Disable making BackUp of the whole
+                                          Corpus before the new Insetions
+          -lb, --lazyness_border INTEGER  Set the number of the border, which ensure
+                                          when exactly data collector should save data
+                                          on the disk. If you have a big RAM than
+                                          select the high number, to ensure the hight
+                                          performance.
+          -rw, --rewrite BOOLEAN          Enable/Disable rewrite option, which ensure
+                                          the file replacing/rewriting during the
+                                          export, if the same filename was found in
+                                          the same directory.
+          -uc, --use_cash BOOLEAN         Enable/Disable during the insertion process
+                                          write direct on the disk or first into cash.
+                                          It is a good performance booster, but just
+                                          in the case of the big RAM.
+          -opt, --optimizer TEXT          Enable/Disable DB Optimizer, which makes
+                                          current DB much faster, but less safety.
+          -optps, --optimizer_page_size INTEGER
+                                          Setting for DBOptimizer. See more in the
+                                          Hell-text for  optimizer.
+          -optcs, --optimizer_cache_size INTEGER
+                                          Setting for DBOptimizer. See more in the
+                                          Hell-text for  optimizer.
+          -optlm, --optimizer_locking_mode [normal|exclusive]
+                                          Setting for DBOptimizer. See more in the
+                                          Hell-text for  optimizer.
+          -optsyn, --optimizer_synchronous [1|0|3|2|normal|off|extra|full]
+                                          Setting for DBOptimizer. See more in the
+                                          Hell-text for  optimizer.
+          -optjm, --optimizer_journal_mode [delete|truncate|persist|memory|wal|off]
+                                          Setting for DBOptimizer. See more in the
+                                          Hell-text for  optimizer.
+          -optts, --optimizer_temp_store [1|0|2|file|default|memory]
+                                          Setting for DBOptimizer. See more in the
+                                          Hell-text for  optimizer.
+          -gr, --gready BOOLEAN           If False -> Stop Process immediately if
+                                          error was returned. If True -> Try to
+                                          execute script so long as possible, without
+                                          stopping the main process.
+          -cn, --corp_fname TEXT          File Name of the CorpusDB (with or without
+                                          extention)
+          -lang, --language [test|de|en|False]
+                                          Give language acronym according to standard
+                                          ISO639_2.
+          -vis, --visibility [extern|intern|False]
+                                          Is that an intern or extern Corpus?
+          -platf, --platform_name TEXT
+          -encrkey, --encryption_key TEXT
+                                          For encryption of the current DB please
+                                          given an key. If key is not given, than the
+                                          current DB will be not encrypted.
+          -cname, --corp_intern_dbname TEXT
+                                          Intern Name of the DB, which will be saved
+                                          as tag inside the DB.
+          -src, --source TEXT             Source of the text collection.
+          -lic, --license TEXT            License, under which this corpus will be
+                                          used.
+          -templ, --template_name [blogger|twitter|False]
+                                          Templates are there for initialization of
+                                          the preinitialized Document Table in the DB.
+                                          Every Columns in the DocumentTable should be
+                                          initialized. For this you can use Templates
+                                          (which contain preinitialized Information)
+                                          or initialize manually those columns
+                                          manually with the   '--
+                                          cols_and_types_in_doc'-Option.
+          -ver, --version INTEGER         Version Number of the DB
+          -additcols, --cols_and_types_in_doc TEXT
+                                          Every Columns in the DocumentTable should be
+                                          initialized. Every Document Table has
+                                          already two default columns (id, text) if
+                                          you want to insert also other columns,
+                                          please define them here with the type names.
+                                          The colnames should correspond to the
+                                          colnames in the input text data and be given
+                                          in the following form: 'colname1:coltype1,co
+                                          lname2:coltype2,colname3:coltype3'
+          -optsyn, --corpus_id_to_init TEXT
+                                          Manually given corpid
+          -tok, --tokenizer [somajo|nltk|False|True]
+                                          Select Tokenizer by name
+          -ptager, --pos_tagger [someweta|tweetnlp|False|True]
+                                          Select POS-Tagger by name
+          -sentim, --sentiment_analyzer [textblob|False|True]
+                                          Select Sentiment Analyzer by name
+          -sentspl, --sent_splitter [pystemmer|False|True]
+                                          Select Stemmer by name
+          -preproc, --preprocession BOOLEAN
+                                          Enable/disable Proprocessing of the text
+                                          elements.
+          -langclas, --lang_classification TEXT
+                                          Enable/disable Language Classification
+          -durl, --del_url BOOLEAN        Enable/disable Hiding of all URLs
+          -dpnkt, --del_punkt BOOLEAN     Enable/disable Hiding of all Punctuation
+          -dnum, --del_num BOOLEAN        Enable/disable Hiding of all Numbers
+          -dment, --del_mention BOOLEAN   Enable/disable Hiding of all Mentions
+          -dhash, --del_hashtag BOOLEAN   Enable/disable Hiding of all Hashtags
+          -dhtml, --del_html BOOLEAN      Enable/disable cleaning of all  not needed
+                                          html tags
+          -case, --case_sensitiv BOOLEAN  Enable/disable the case sensitivity in the
+                                          Corpus during initialization.
+          -emojnorm, --emojis_normalization BOOLEAN
+                                          Enable/disable restructure of all Emojis.
+                                          (could cost much time)
+          -texname, --text_field_name TEXT
+                                          If new input data has different name with
+                                          text or id information, than use this
+                                          options to ensure correct use of data.
+          -idname, --id_field_name TEXT   If new input data has different name with
+                                          text or id information, than use this
+                                          options to ensure correct use of data.
+          -heal, --heal_me_if_possible BOOLEAN
+                                          If '--template_name' and  '--
+                                          cols_and_types_in_doc' wasn't selected, than
+                                          with this option ('--heal_me_if_possible')
+                                          DB will try to initialize those information
+                                          automatically. But be careful with this
+                                          option, because it could also return
+                                          unexpected  errors.
+          -ptr, --path_to_read TEXT       Path to folder with text collection, which
+                                          should be collected and transformed into
+                                          CorpusDB.
+          -readtyp, --file_format_to_read [txt|json|xml|csv|False]
+                                          File Format which should be read.
+          -readregextempl, --reader_regex_template [blogger|False]
+                                          Name of the template for Reading of the TXT
+                                          Files.
+          -readregexpattern, --reader_regex_for_fname TEXT
+                                          Regex Pattern for Extraction of the Columns
+                                          from the filenames.
+          -zipread, --read_from_zip BOOLEAN
+                                          Enable/Disable the possibly also to search
+                                          and read automatically from *.zip Achieves.
+          -formatter, --formatter_name [twitterstreamapi|sifter|False]
+                                          Give the name of the predefined Formatters
+                                          and Preprocessors for different text
+                                          collections.
+          -retweetsignr, --reader_ignore_retweets BOOLEAN
+                                          Ignore Retweets, if original JsonTweet was
+                                          given.
+          -minfile, --min_files_pro_stream INTEGER
+                                          The Limit, when Multiprocessing will be
+                                          start to create a new stream.
+          -csvd, --csvdelimiter TEXT      CSV Files has offten different dialects and
+                                          delimiters. With this option, it is
+                                          possible, to set an delimiter, which ensure
+                                          correct processing of the CSV File Data.
+          -enc, --encoding [bz2_codec|cp1140|rot_13|cp932|euc_jisx0213|cp037|hex_codec|cp500|uu_codec|big5hkscs|mbcs|euc_jis_2004|iso2022_jp_3|iso2022_jp_2|iso2022_jp_1|gbk|iso2022_jp_2004|quopri_codec|cp424|iso2022_jp|mac_iceland|hp_roman8|iso2022_kr|euc_kr|cp1254|utf_32_be|gb2312|cp850|shift_jis|cp852|cp855|utf_16_le|cp857|cp775|cp1026|mac_latin2|utf_32|mac_cyrillic|base64_codec|ptcp154|euc_jp|hz|utf_8|utf_32_le|mac_greek|utf_7|mac_turkish|cp949|zlib_codec|big5|iso8859_9|iso8859_8|iso8859_5|iso8859_4|iso8859_7|iso8859_6|iso8859_3|iso8859_2|gb18030|shift_jis_2004|mac_roman|cp950|utf_16|iso8859_15|iso8859_14|tis_620|iso8859_16|iso8859_11|iso8859_10|iso8859_13|ascii|cp869|utf-8|cp860|cp861|cp862|cp863|cp864|cp865|cp866|shift_jisx0213|cp1255|latin_1|cp1257|cp1256|cp1251|cp1250|cp1253|cp1252|cp437|cp1258|tactis|koi8_r|utf_16_be|johab|iso2022_jp_ext|cp858]
+                                          All Text Files are encoded with help of the
+                                          EncodingTables. If you input files are not
+                                          unicode-compatible, please give the encoding
+                                          name, which was used for encoding the input
+                                          data.
+          -docid, --doc_id TEXT           Document ID in the Corpus DB.
+          -attr, --attr_name TEXT         Stats and Corpus DBs has intern Attributes.
+                                          For changing of getting them you need to get
+                                          the name of this attribute.
+          -val, --value TEXT              For setting of the new Value for one
+                                          Attribute.
+          -exptyp, --type_to_export [sqlite|json|xml|csv|False]
+                                          FileType for the export function.
+          -expdir, --export_dir TEXT      Directory where Exports will be saved. If
+                                          False, than they will be saved in the
+                                          default ProjectDirectory.
+          -expname, --export_name TEXT    FileName for ExportData.
+          -rowlim, --rows_limit_in_file INTEGER
+                                          Number of the Rows Max in the Files to
+                                          export.
+          -sn, --stream_number INTEGER    Enable or Disable the Multiprocessing. If
+                                          Number > 1, than tool try to compute every
+                                          thing parallel. This function could bring
+                                          much better performance on the PC with multi
+                                          cores and big Operation Memory.
+          -m, --mode [error|test|dev|dev+|dev-|prod|free|prod+t|test+s+|test+s-|silent|prod+|prod-|blind]
+                                          Set one of the Tool Modus. Modi ensure the
+                                          communication behavior of this Tool.
+          -ld, --logdir TEXT              Choose the name of the Directory for log
+                                          data.
+          --help                          Show this message and exit.
+
+
+- *zas-rep-tools stats --help*
+
+        Usage: zas-rep-tools stats [OPTIONS] COMMAND1
+
+        Options:
+          -sb, --status_bar BOOLEAN       Enable/Disable the Status Bat
+          -uefm, --use_end_file_marker BOOLEAN
+                                          Enable/Disable usage of endfilemarker to
+                                          change the couter unit from rows to files in
+                                          the status bar
+          -backup, --make_backup BOOLEAN  Enable/Disable making BackUp of the whole
+                                          Corpus before the new Insetions
+          -lb, --lazyness_border INTEGER  Set the number of the border, which ensure
+                                          when exactly data collector should save data
+                                          on the disk. If you have a big RAM than
+                                          select the high number, to ensure the hight
+                                          performance.
+          -rw, --rewrite BOOLEAN          Enable/Disable rewrite option, which ensure
+                                          the file replacing/rewriting during the
+                                          export, if the same filename was found in
+                                          the same directory.
+          -uc, --use_cash BOOLEAN         Enable/Disable during the insertion process
+                                          write direct on the disk or first into cash.
+                                          It is a good performance booster, but just
+                                          in the case of the big RAM.
+          -opt, --optimizer TEXT          Enable/Disable DB Optimizer, which makes
+                                          current DB much faster, but less safety. See
+                                          more: https://www.sqlite.org/pragma.html
+          -optps, --optimizer_page_size INTEGER
+                                          Setting for DBOptimizer. See more in the
+                                          Hell-text for  optimizer.
+          -optcs, --optimizer_cache_size INTEGER
+                                          Setting for DBOptimizer. See more in the
+                                          Hell-text for  optimizer.
+          -optlm, --optimizer_locking_mode [normal|exclusive]
+                                          Setting for DBOptimizer. See more in the
+                                          Hell-text for  optimizer.
+          -optsyn, --optimizer_synchronous [1|0|3|2|normal|off|extra|full]
+                                          Setting for DBOptimizer. See more in the
+                                          Hell-text for  optimizer.
+          -optjm, --optimizer_journal_mode [delete|truncate|persist|memory|wal|off]
+                                          Setting for DBOptimizer. See more in the
+                                          Hell-text for  optimizer.
+          -optts, --optimizer_temp_store [1|0|2|file|default|memory]
+                                          Setting for DBOptimizer. See more in the
+                                          Hell-text for  optimizer.
+          -gr, --gready BOOLEAN           If False -> Stop Process immediately if
+                                          error was returned. If True -> Try to
+                                          execute script so long as possible, without
+                                          stopping the main process.
+          -cn, --corp_fname TEXT          File Name of the CorpusDB (with or without
+                                          extention)
+          -sn, --stream_number INTEGER    Enable or Disable the Multiprocessing. If
+                                          Number > 1, than tool try to compute every
+                                          thing parallel. This function could bring
+                                          much better performance on the PC with multi
+                                          cores and big Operation Memory.
+          -crtix, --create_indexes BOOLEAN
+                                          For better performance it is highly
+                                          recommended to create indexes. But their
+                                          creation could also cost time  once during
+                                          their creation and also space.
+          -freeze, --freeze_db BOOLEAN    Freeze current DB and close for all next
+                                          possible insertion of the new data. This
+                                          option also triggers the DB Optimization
+                                          Porcess, which could cost a lost of time,
+                                          but make this DB much space and time
+                                          efficient. Once this process is done, it is
+                                          not possible anymore to decline it.
+          -optlongsyn, --optimized_for_long_syntagmas BOOLEAN
+                                          If you are planing to search in the big
+                                          syntagmas, than set this to True. It will
+                                          optimize DB to be fast with long syntagmas.
+          -minfile, --min_files_pro_stream INTEGER
+                                          The Limit, when Multiprocessing will be
+                                          start to create a new stream.
+          -basdelim, --baseline_delimiter TEXT
+                                          Delimiter for Syntagmas in intern Baseline
+                                          Table. Change here if you really know, that
+                                          you need it.
+          -sfn, --stats_fname TEXT        File Name of the StatsDB.
+          -vis, --visibility [extern|intern|False]
+                                          Is that an intern or extern Corpus?
+          -encrkey, --encryption_key TEXT
+                                          For encryption of the current DB please
+                                          given an key. If key is not given, than the
+                                          current DB will be not encrypted.
+          -ver, --version INTEGER         Version Number of the DB
+          -stats_id, --stats_id TEXT      Possibilty to set StatsId manually.
+                                          Otherwise it will be setted automatically.
+          -cname, --stats_intern_dbname TEXT
+                                          Intern Name of the DB, which will be saved
+                                          as tag inside the DB.
+          -conlen, --context_lenght INTEGER
+                                          This number mean how much tokens left and
+                                          right will be also captured and saved for
+                                          each found re(du)plication. This number
+                                          should be >=3
+          -fullrep, --full_repetativ_syntagma BOOLEAN
+                                          Disable/Enable FullRepetativnes. If it is
+                                          True, than just full repetativ syntagmas
+                                          would be considered.  FullRepetativ syntagma
+                                          is those one, where all words was ongoing
+                                          either replicated or replicated. (ex.:
+                                          FullRepRedu: 'klitze klitze kleine kleine' ,
+                                          FullRepRepl: 'kliiitzeee kleeeinee')
+          -ru, --repl_up INTEGER          Up this number this tool recognize repetativ
+                                          letter as replication.
+          -ignht, --ignore_hashtag BOOLEAN
+                                          Enable/disable Hiding of all Hashtags, if it
+                                          wasn't done during CorpusCreationProcess.
+          -case, --case_sensitiv BOOLEAN  Enable/disable the case sensitivity during
+                                          Stats Computation Process.
+          -ignurl, --ignore_url BOOLEAN   Enable/disable Hiding of all URLS, if it
+                                          wasn't done during CorpusCreationProcess.
+          -ignment, --ignore_mention BOOLEAN
+                                          Enable/disable Hiding of all Mentions, if it
+                                          wasn't done during CorpusCreationProcess.
+          -ignp, --ignore_punkt BOOLEAN   Enable/disable Hiding of all Punctuation, if
+                                          it wasn't done during CorpusCreationProcess.
+          -ignnum, --ignore_num BOOLEAN   Enable/disable Hiding of all Numbers, if it
+                                          wasn't done during CorpusCreationProcess.
+          -bliti, --baseline_insertion_border INTEGER
+                                          Number of the limit, when syntagmas will be
+                                          delete from cash and saved on the disk.
+          -expdir, --export_dir TEXT      Set Path to export dir. If it is not given,
+                                          than all export will be saved into
+                                          ProjectFolder.
+          -exp_fname, --export_name TEXT  Set fname for export files.
+          -syn, --syntagma_for_export TEXT
+                                          Set Syntagmas for search/extract. Default:
+                                          '*'-match all syntagmas. Example: 'very|huge
+                                          |highly,pitty|hard|happy,man|woman|boy|perso
+                                          n' ('|' - as delimiter in paradigm; ',' - as
+                                          delimiter of the syntagmas part.)  Notice:
+                                          Now white space is allow.
+          -repl, --exp_repl BOOLEAN       Disable/Enable Replications Extraction
+          -redu, --exp_redu BOOLEAN       Disable/Enable Reduplications Extraction
+          -styp, --exp_syntagma_typ [pos|lexem]
+                                          Ensure type of the given components in
+                                          Syntagma_to_search. It is possible to search
+                                          in pos-tags or in lexems.
+          -sent, --exp_sentiment [neutral|positive|negative|False]
+                                          Search in Sentiment tagged data.
+          -ftyp, --export_file_type [csv|json|xml]
+          -rowlim, --rows_limit_in_file INTEGER
+                                          Number of the Rows Max in the Files to
+                                          export.
+          -exp_encrkey, --encryption_key_corp TEXT
+                                          For export additional columns
+                                          (--additional_doc_cols) from encrypted
+                                          CorpDB or for compution of the new StatsDb
+                                          from the encrypted CorpDB
+          -ott, --output_table_type [exhausted|sum]
+          -doccols, --additional_doc_cols TEXT
+                                          For export of stats with additional columns
+                                          from document from CorpDB. Don't forget to
+                                          give also the FName of CorpusDB for which
+                                          current statsDB was computed. (--corp_fname)
+                                          Please give it in the following Form:
+                                          'gender,age,' (NO WHITE SPACES ARE ALLOW)
+          -mscope, --max_scope TEXT       Upper Limit of the syntagma length to
+                                          search. Example: if max_scope = 1, than tool
+                                          will search just in those syntagmas, which
+                                          contain just 1 word.
+          -stemm, --stemmed_search BOOLEAN
+                                          Search in lemantisated/stemmed syntagmas. Be
+                                          careful and don't give different
+                                          conjugations of one lemma, if current
+                                          options is True.  Because you could get
+                                          duplicates.
+          -conleft, --context_len_left TEXT
+                                          The length of context In Output Tables.
+                                          Could be also Disabled (False).
+          -conright, --context_len_right TEXT
+                                          The length of context In Output Tables.
+                                          Could be also Disabled (False).
+          -sepsyn, --separator_syn TEXT   Separator inside syntagma in baseline.
+          -wordex, --word_examples_sum_table BOOLEAN
+                                          Enable/disable Word Examples in Exported
+                                          Output. (Just For SumOutputTables)
+          -ignsym, --ignore_symbol TEXT   Enable/disable Symbols in Exported Outputs.
+                                          (Just For SumOutputTables)
+          -recflag, --recompute_flag TEXT
+                                          For 'recompute' command. This command
+                                          recompute the FullRepetativnes in given
+                                          StatsDB. True - full_repetativnes, False -
+                                          no_full_repetativnes/all_syntagmas
+          -attr, --attr_name TEXT         Stats and Corpus DBs has intern Attributes.
+                                          For changing of getting them you need to get
+                                          the name of this attribute.
+          -val, --value TEXT              For setting of the new Value for one
+                                          Attribute.
+          -m, --mode [error|test|dev|dev+|dev-|prod|free|prod+t|test+s+|test+s-|silent|prod+|prod-|blind]
+                                          Set one of the Tool Modus
+          -ld, --logdir TEXT              Choose the name of the Directory for log
+                                          data.
+          --help                          Show this message and exit.
+
+
+<br>
+
+5.3 **Multiprocessing**
     Current Tool support multiprocessing. Just set 'stream_number'-Option to more as 1 to ensure the process to be executed parallel.
 
 <br>
 
-5.3 **NLP-Methods**
+5.4 **NLP-Methods**
 Used NLP-Methods:
 
 - Tokenization 
@@ -523,7 +931,7 @@ Used NLP-Methods:
 
 <br>
 
-5.4 **InternDataBase-Structure** (SQLite)
+5.5 **InternDataBase-Structure** (SQLite)
 
 - **Corpus**
     - Tables: 
@@ -545,7 +953,7 @@ Used NLP-Methods:
 
 <br>
 
-5.5 **Additional Features**
+5.6 **Additional Features**
 
  - **Formatters**
     Are there to help for better reading or the unstructured data.
