@@ -430,7 +430,9 @@ In the following part you can see a small explanation to each entry point:
         - clean
         - location
         - print 
+
 <br>
+
 -           $ zas-rep-tools corpora
 
     - add
