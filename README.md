@@ -34,7 +34,7 @@ ___
 
 ---
 
-**<span style="color:red;">For a quick-start,</span>** first [download and install all dependencies](#dependencies) , then [download and compile the code](#settingup) and afterwards go to the [Tutorials](#tutorials) section to begin.
+**<span style="color:red;">For a quick-start,</span>** first [download and install all dependencies](#dependencies) , then [download and compile the code](#settingup) and afterwards go to the [Workflow](#workflow)   and  [Tutorials](#tutorials) section to begin.
 
 ___
 
@@ -62,7 +62,7 @@ ___
 
 5. [Functionality](#functionality)
    - CLI-Functions 
-   - CLI-Options
+   - CLI-Option Explanations
    - Multiprocessing
    - NLP-Methods
    - InternDataBase-Structure
@@ -82,12 +82,13 @@ ___
    - File Formats
    - Columns Explanation in the Output Tables
 
-9. [Citing ZAS-REP-TOOLS](#citing)
+9. [Restrictions](#restrictions)
 
+10. [Citing ZAS-REP-TOOLS](#citing)
 
-10. [Possible errors and warnings](#errors)
+11. [Possible errors and warnings](#errors)
 
-11. [Acknowledgements](#acknowledgements)
+12. [Acknowledgements](#acknowledgements)
 
 ---
 ---
@@ -504,7 +505,7 @@ In the following part you can see a small explanation to each entry point:
 
 <br>
 
-5.2 **CLI-Options**
+5.2 **CLI-Option Explanations**
 
 - *zas-rep-tools configer --help*
 
@@ -999,12 +1000,25 @@ Step 3: Export of the computed Statistics
 
 ## 7. Tutorials
 
+###Python Package Tutorial
+
+<br/>
+
+###Command line Tutorial
+
+- **Add/Create Corpus**
+   - Certain Sources
+        - Sifter-Twitter-Data (csv)
+        - Blogger Corpus (txt)
+        - Twitter Stream API (json)
 
 
+   - General
+
+- **Compute StatsDB** 
 
 
-
-
+*** explain about full-repetativnes as option for stats-db
 
 <br/>
 
@@ -1119,13 +1133,35 @@ Step 3: Export of the computed Statistics
         - context_infoR{number}
             <sub>Additional Data for the Context Word  right from the current token</sub>
 
+ - **Precomputed Example Tables**
+ 
+    In the Folder 'zas_rep_tools/examples' you could found precomputed examples of the output tables and also the input text collection. 
+
 
 
 
 
 <br/>
 
+---
 
+<br/>
+
+<a name="restrictions"/>
+<p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
+</sub> </p>
+
+## 9. Restrictions
+
+**Input:**
+
+ - TXT:
+        currently this tool-set support just those txt-files, which has all meta-data in the filename, which could be matched with an regex expression. 
+
+
+
+
+<br/>
 
 ---
 
@@ -1135,7 +1171,7 @@ Step 3: Export of the computed Statistics
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
 
-## 9. Citing ZAS-REP-TOOLS
+## 10. Citing ZAS-REP-TOOLS
 
 
 ### How do I Cite AutoVOT in my articles?
@@ -1158,7 +1194,7 @@ Step 3: Export of the computed Statistics
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
 
-## 10. Possible errors and warnings
+## 11. Possible errors and warnings
 
 
 
@@ -1206,7 +1242,7 @@ It means that your Computer dont have enought of the RAM or the Swap is to short
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
 
-## 11. Acknowledgements
+## 12. Acknowledgements
 
 
 #### A big Thank to the following Peoples, who makes this work and current results possible:
