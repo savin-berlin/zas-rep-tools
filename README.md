@@ -628,10 +628,12 @@ Step 3: Export of the computed Statistics
 
 <br/><br/>
 
+
+
+<a name="errors"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
 
-<a name="errors"/>
 ## 10. Possible errors and warnings
 
 
