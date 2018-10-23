@@ -403,25 +403,25 @@ In the following part you can see a small explanation to each entry point:
 
 -           $ zas-rep-tools configer
      - prjdir
-        (current tool search and create all DBs just in the given project folder )
+        <sub>current tool search and create all DBs just in the given project folder </sub>
         - clean
         - set
         - reset
         - print
      - error_track 
-        (current tool support error tracking and report to the developers)
+        <sub>current tool support error tracking and report to the developers</sub>
         - set
         - reset
         - respeak
         - print
      - twitter
-        (This function set twitter credentials for the streamer)
+        <sub>This function set twitter credentials for the streamer</sub>
         - set
         - reset
         - respeak
         - print
      - email 
-        (to get error reports from twitter streamer per email, please give your emails)
+        <sub>to get error reports from twitter streamer per email, please give your emails</sub>
         - set
         - reset
         - respeak
