@@ -63,7 +63,7 @@ supported_commands = {
                     },
         "corpora": ["add", "del", "names", "meta", "basic_stats", "update_attr", "export", "used_tools", "clean_dir","cols", "doc", "ids"],
         "stats": ["compute", "del", "names", "meta", "basic_stats", "update_attr", "export", "clean_dir", "recompute","optimize", "recreate_indexes"],
-
+        'streamer':[]
         }
 
 
