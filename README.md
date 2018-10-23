@@ -591,6 +591,13 @@ Step 3: Export of the computed Statistics
 
 ## 7. Tutorials
 
+
+
+
+
+
+
+
 <br/>
 
 
@@ -604,6 +611,109 @@ Step 3: Export of the computed Statistics
 </sub> </p>
 
 ## 8. Input/Output
+
+### Input
+
+ - **FileTypes:**
+
+    - csv
+    - xml
+    - json
+    - txt
+    - zip
+
+### Output
+
+ - **FileTypes:**
+    - csv
+    - xml
+    - json
+
+ - **Columns in the Output Tables**
+    - **Baseline**
+        - syntagma
+            <sub>Search Syntagma</sub>
+        - stemmed
+             <sub>stemmed syntagma</sub>
+        - occur_syntagma_all
+             <sub>Occurrence Number of the current syntagma in the whole corpus</sub>
+        - occur_repl_uniq
+             <sub>Occurrence Number of the uniq replication in the current syntagma</sub>
+        - occur_repl_exhausted
+             <sub>Occurrence Number of the exhausted replication in the current syntagma</sub>
+        - occur_redu_uniq
+             <sub>Occurrence Number of the uniq reduplication in the current syntagma</sub>
+        - occur_redu_exhausted
+             <sub>Occurrence Number of the exhausted reduplication in the current syntagma</sub>
+        - occur_full_syn_repl
+             <sub>Occurrence Number of the full-repetativ syntagma according replications</sub>
+        - occur_full_syn_redu
+             <sub>Occurrence Number of the full-repetativ syntagma according reduplications</sub>
+
+    - **Document**
+        
+        - doc_id
+             <sub>ID-Number of the current Document</sub>
+        - redufree_len
+             <sub>Length of the current Text Element from the current Document</sub>
+
+    - **Word**
+        
+        - normalized_word
+             <sub>Repetitions-Free word</sub>
+        - rle_word
+             <sub>RunLengthEncoded Word</sub>
+        - stemmed
+             <sub>Stemmed Words</sub>
+        - pos
+             <sub>Part of Speech Tag</sub>
+        - polarity
+             <sub>Polarity/Sentiment of the word context and also word it self.</sub>
+
+    - **Repl**
+        
+        - id
+             <sub>Replications ID Number</sub>
+        - index_in_corpus
+             <sub>Address of the current Word in the corpus.</sub>
+        - index_in_redufree
+              <sub>Address of the current Word in the reduplications free text element.</sub>
+        - repl_letter
+             <sub>Replicated letter</sub>
+        - repl_length
+             <sub>Length of the replication</sub>
+        - index_of_repl
+             <sub>Index of the current replicated letter in the current normalized_word started from 0</sub>
+        - in_redu
+             <sub>If current word, which contain an replication is also a part of one reduplication, than here will be the Address of this reduplication</sub>
+
+    - **Redu**
+        
+        - id
+             <sub>Reduplications ID Number</sub>
+        - index_in_corpus
+             <sub>Address of the current reduplication in the corpus, which </sub>
+        - index_in_redufree
+              <sub>Address of the current reduplications in the reduplications free text element.</sub>
+        - orig_words
+             <sub>rle_words and their occurrence number  contained in the current reduplication </sub>
+        - redu_length
+             <sub>The Length of the current reduplication</sub>
+
+    - **context**
+        
+        - contextL{number}
+             <sub>Context Word left from the current token</sub>
+        - context_infoL{number}
+             <sub>Additional Data for the Context Word  left from the current token</sub>
+        - contextR{number}
+             <sub>Context Word right from the current token</sub>
+        - context_infoR{number}
+            <sub>Additional Data for the Context Word  right from the current token</sub>
+
+
+
+
 
 <br/>
 
