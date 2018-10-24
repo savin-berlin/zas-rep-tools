@@ -1520,12 +1520,12 @@ def stats(command1,
 
 @main.command('streamTwitter')
 @click.argument('path_to_save',type=click.Path())
-@click.option('--language', '-l', default=False, type=click.Choice(list(Streamer.supported_languages)+ [False,"False", "false"]))
+@click.option('--language', '-l', default="False", type=click.Choice(list(Streamer.supported_languages)+ ["False"]))
 @click.option('--stop_words', '-sw', default=False)
 @click.option('--terms', '-t', default=False)
 @click.option('--encoding', '-e', default='utf_8', type=click.Choice(list(Streamer.supported_encodings_types)))
 @click.option('--ignore_rt', '-irt', default=False, type=bool)
-@click.option('--filter_strategie', '-f', default=False, type=click.Choice(list(["t", "t+l", "False", False, "false"])))
+@click.option('--filter_strategie', '-f', default="False", help="Set Filter Strategy. 1) 't'-just search for terms/stop_words; 2) 't+l' - search for stop_words and language (recomended) ",type=click.Choice(list(["t", "t+l", "False", ])))
 @click.option('--save_used_terms', '-sut', default=True, type=bool)
 
 @click.option('--mode', '-m', default="prod" ,help="Set one of the Tool Modus", type=click.Choice(helpers.modi))
@@ -1586,7 +1586,7 @@ def streamTwitter( path_to_save,language,stop_words,terms,encoding,ignore_rt, fi
 
 @main.command('streamerInfo')
 @click.argument('command')
-@click.option('--mode', '-m', default="prod" ,help="Set one of the Tool Modus", type=click.Choice(helpers.modi))
+@click.option('--mode', '-m', default="prod" ,help="Set one of the Tool Modus",  type=click.Choice(helpers.modi))
 @click.option('--logdir', '-ld', default="logs", help="Choose the name of the Directory for log data.")
 #@click.option('--logs_dir', '-l', default="logs")
 def streamerInfo(command,  logdir, mode):

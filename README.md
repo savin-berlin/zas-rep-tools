@@ -61,16 +61,15 @@ ___
    -  Full Repetitiveness
 
 5. [Functionality](#functionality)
-   - CLI-Functions 
-   - CLI-Option Explanations
-   - Multiprocessing
-   - NLP-Methods
-   - InternDataBase-Structure
-     - SQLite
-     - ZODB
-   - Additional Features
-     - Formatters
-     - Templates
+   - [CLI-Commands](#cli-commands)
+   - [CLI-Options](#cli-options)
+   - [CLI-Usage](#cli-usage)
+   - [Multiprocessing](#multiprocessing)
+   - [NLP-Methods](#nlp-methods)
+   - [InternDataBase-Structure](#db)
+   -  [Additional Features](#additional_features)
+        - Formatters
+        - Templates
 
 6. [WorkFlow](#workflow)
 
@@ -389,7 +388,12 @@ following installation commands should be seeing as just an idea how and could b
 </sub> </p>
 
 ## 5. Functionality
-5.1 **CLI-Functions**
+
+<a name="cli-commands"/>
+<p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
+</sub> </p>
+
+### 5.1 CLI-Commands
 Current CommandLineInterface support interaction for following entry points: 
 
 - configer
@@ -497,15 +501,36 @@ In the following part you can see a small explanation to each entry point:
 
  
 -           $ zas-rep-tools streamerInfo
+    - enc
+        <sub> Supported Encodings </sub>
+    - lang
+        <sub> Supported Languages for Streamer </sub>
+    - nltk_lang
+         <sub> Supported Languages for NLTK </sub>
+    - twitter_lang
+        <sub> Supported Languages for TwitterAPI </sub>
+    - classiefier_lang
+        <sub> Supported Languages for Language Classifier </sub>
+    - stop_words
+        <sub> Predefined Stopwords  </sub>
+    - platforms
+        <sub> Supported Platforms </sub>
 
 
 
  
 -           $ zas-rep-tools help
 
+
+
+
 <br>
 
-5.2 **CLI-Option Explanations**
+<a name="cli-options"/>
+<p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
+</sub> </p>
+
+### 5.2 CLI-Options
 
 - *zas-rep-tools configer --help*
 
@@ -913,14 +938,360 @@ In the following part you can see a small explanation to each entry point:
           --help                          Show this message and exit.
 
 
+
+- *zas-rep-tools streamTwitter --help*
+
+        Usage: zas-rep-tools streamTwitter [OPTIONS] PATH_TO_SAVE
+
+        Options:
+          -l, --language [en|it|ar|id|es|ru|nl|pt|no|tr|th|pl|fr|de|da|fa|hi|fi|hu|ja|he|ko|sv|ur|False]
+          -sw, --stop_words TEXT
+          -t, --terms TEXT
+          -e, --encoding [bz2_codec|cp1140|rot_13|cp932|euc_jisx0213|cp037|hex_codec|cp500|uu_codec|big5hkscs|mbcs|euc_jis_2004|iso2022_jp_3|iso2022_jp_2|iso2022_jp_1|gbk|iso2022_jp_2004|quopri_codec|cp424|iso2022_jp|mac_iceland|hp_roman8|iso2022_kr|euc_kr|cp1254|utf_32_be|gb2312|cp850|shift_jis|cp852|cp855|utf_16_le|cp857|cp775|cp1026|mac_latin2|utf_32|mac_cyrillic|base64_codec|ptcp154|euc_jp|hz|utf_8|utf_32_le|mac_greek|utf_7|mac_turkish|cp949|zlib_codec|big5|iso8859_9|iso8859_8|iso8859_5|iso8859_4|iso8859_7|iso8859_6|iso8859_3|iso8859_2|gb18030|shift_jis_2004|mac_roman|cp950|utf_16|iso8859_15|iso8859_14|tis_620|iso8859_16|iso8859_11|iso8859_10|iso8859_13|ascii|cp869|cp860|cp861|cp862|cp863|cp864|cp865|cp866|shift_jisx0213|cp1255|latin_1|cp1257|cp1256|cp1251|cp1250|cp1253|cp1252|cp437|cp1258|tactis|koi8_r|utf_16_be|johab|iso2022_jp_ext|cp858]
+          -irt, --ignore_rt BOOLEAN
+          -f, --filter_strategie [t|t+l|False]
+                                          Set Filter Strategy. 1) 't'-just search for
+                                          terms/stop_words; 2) 't+l' - search for
+                                          stop_words and language (recomended)
+          -sut, --save_used_terms BOOLEAN
+          -m, --mode [error|test|dev|dev+|dev-|prod|free|prod+t|test+s+|test+s-|silent|prod+|prod-|blind]
+                                          Set one of the Tool Modus
+          -ld, --logdir TEXT              Choose the name of the Directory for log
+                                          data.
+          --help                          Show this message and exit.
+
+
+
+
+- *zas-rep-tools streamerInfo --help*
+
+        Usage: zas-rep-tools streamerInfo [OPTIONS] COMMAND
+
+        Options:
+          -m, --mode [error|test|dev|dev+|dev-|prod|free|prod+t|test+s+|test+s-|silent|prod+|prod-|blind]
+                                          Set one of the Tool Modus
+          -ld, --logdir TEXT              Choose the name of the Directory for log
+                                          data.
+          --help                          Show this message and exit.
+
+
 <br>
 
-5.3 **Multiprocessing**
+<a name="cli-usage"/>
+<p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
+</sub> </p>
+
+### 5.3 CLI-Usage
+<sub> Usage examples for each CLI-Command with belonging to it options.
+Notice: this tool is quite user friendly and if something goes wrong this Tool try to predict, what was wrong and try to give the useful information, about how to solve the current problem.  </sub>
+
+#### Necessary Options
+<sub> List of the minimum/necessary options, which needed to run certain command.</sub>
+
+-           $ zas-rep-tools corpora
+
+    - **add**
+        -  *--path_to_read*
+        -  *--file_format_to_read*
+        -  *--corp_intern_dbname*
+        -  *--language*
+        -  *--visibility*
+        -  *--platform_name*
+
+
+    - **del**
+        - *--corp_fname*
+
+    - **names**
+    <sub>None additional option</sub>
+
+    - **meta**
+        - *--corp_fname*
+
+    - **basic_stats**
+        - *--corp_fname*
+    - **update_attr**
+        - *--corp_fname*
+        - *--attr_name*
+        - *--value*
+    - **export**
+        - *--corp_fname*
+        - *--type_to_export*
+    - **used_tools**
+        <sub>None additional option</sub>
+    - **clean_dir**
+        <sub>None additional option</sub>
+    - **cols**
+        - *--corp_fname*
+    - **doc**
+        - *--corp_fname*
+        - *--doc_id*
+    - **ids**
+        - *--corp_fname*
+
+
+ <br>
+
+-           $ zas-rep-tools stats
+
+    - **compute**
+        - *--corp_fname*
+        - *--stats_intern_dbname*
+        - *--visibility*
+
+    - **del**
+        - *--stats_fname*
+    - **names**
+        <sub>None additional option</sub>
+    - **meta**
+        - *--stats_fname*
+    - **basic_stats**
+        - *--stats_fname*
+    - **update_attr**
+        - *--stats_fname*
+        - *--attr_name*
+        - *--value*
+    - **export**
+        - *--stats_fname*
+        - *--export_file_type*
+    - **clean_dir**
+        <sub>None additional option</sub>
+    - **recompute**
+        - *--stats_fname*
+        - *--recompute_flag*
+    - **optimize**
+        - *--stats_fname*
+    - **recreate_indexes**
+        - *--stats_fname*
+
+
+
+-           $ zas-rep-tools streamTwitter
+
+     - *--path_to_save*
+     - *--filter_strategie*
+
+<br>
+<br>
+
+#### Exhausted Options
+<sub> List of the exhausted/additional options, which needed to run certain command. (just for those commands which are different to the category before)</sub>
+
+-           $ zas-rep-tools corpora
+
+    - **add**
+        - *--path_to_read*
+        - *--file_format_to_read*
+        - *--reader_regex_template*
+        - *--reader_regex_for_fname*
+        - *--end_file_marker*
+        - *--use_end_file_marker*
+        - *--stop_process_if_possible*
+        - *--formatter_name*
+        - *--text_field_name*
+        - *--id_field_name*
+        - *--reader_ignore_retweets*
+        - *--mode*
+        - *--status_bar*
+        - *--tok_split_camel_case*
+        - *--make_backup*
+        - *--lazyness_border*
+        - *--rewrite*
+        - *--stop_if_db_already_exist*
+        - *--use_cash*
+        - *--optimizer*
+        - *--optimizer_page_size*
+        - *--optimizer_cache_size*
+        - *--optimizer_locking_mode*
+        - *--optimizer_synchronous*
+        - *--optimizer_journal_mode*
+        - *--optimizer_temp_store*
+        - *--stop_process_if_possible*
+        - *--heal_me_if_possible*
+        - *--corp_intern_dbname*
+        - *--language*
+        - *--visibility*
+        - *--encryption_key*
+        - *--corp_fname*
+        - *--source*
+        - *--license*
+        - *--template_name*
+        - *--version*
+        - *--cols_and_types_in_doc*
+        - *--corpus_id_to_init*
+        - *--tokenizer*
+        - *--pos_tagger*
+        - *--sentiment_analyzer*
+        - *--sent_splitter*
+        - *--preprocession*
+        - *--lang_classification*
+        - *--del_url*
+        - *--del_punkt*
+        - *--del_num*
+        - *--del_mention*
+        - *--del_hashtag*
+        - *--del_html*
+        - *--case_sensitiv*
+        - *--emojis_normalization*
+        - *--stream_number*
+        - *--min_files_pro_stream*
+        - *--csvdelimiter*
+        - *--encoding*
+        - *--del_hashtag*
+        - *--del_html*
+        - *--case_sensitiv*
+
+    - **meta**
+        - *--corp_fname*
+        - *--encryption_key*
+    - **basic_stats**
+        - *--corp_fname*
+        - *--encryption_key*
+    - **update_attr**
+        - *--corp_fname*
+        - *--attr_name*
+        - *--value*
+        - *--encryption_key*
+
+    - **export**
+        - *--corp_fname*
+        - *--type_to_export*
+        - *--encryption_key*
+        - *--export_dir*
+
+    - **cols**
+        - *--corp_fname*
+        - *--encryption_key*
+    - **doc**
+        - *--corp_fname*
+        - *--doc_id*
+        - *--encryption_key*
+    - **ids**
+        - *--corp_fname*
+        - *--encryption_key*
+
+
+ <br>
+
+-           $ zas-rep-tools stats
+
+    - **compute**
+        - *--corp_fname*
+        - *--encryption_key_corp*
+        - *--mode*
+        - *--status_bar*
+        - *--make_backup*
+        - *--lazyness_border*
+        - *--rewrite*
+        - *--stop_if_db_already_exist*
+        - *--use_cash*
+        - *--optimizer*
+        - *--optimizer_page_size*
+        - *--optimizer_cache_size*
+        - *--optimizer_locking_mode*
+        - *--optimizer_synchronous*
+        - *--optimizer_journal_mode*
+        - *--optimizer_temp_store*
+        - *--stats_intern_dbname*
+        - *--visibility*
+        - *--encryption_key*
+        - *--stats_fname*
+        - *--gready*
+        - *--version*
+        - *--context_lenght*
+        - *--full_repetativ_syntagma*
+        - *--repl_up*
+        - *--ignore_hashtag*
+        - *--case_sensitiv*
+        - *--ignore_url*
+        - *--ignore_mention*
+        - *--ignore_punkt*
+        - *--ignore_num*
+        - *--baseline_delimiter*
+        - *--min_files_pro_stream*
+        - *--create_indexes*
+        - *--freeze_db*
+        - *--baseline_insertion_border*
+        - *--optimized_for_long_syntagmas*
+
+
+    - **meta**
+        - *--stats_fname*
+        - *--encryption_key*
+    - **basic_stats**
+        - *--stats_fname*
+        - *--encryption_key*
+    - **update_attr**
+        - *--stats_fname*
+        - *--attr_name*
+        - *--value*
+        - *--encryption_key*
+    - **export**
+        - *--mode*
+        - *--status_bar*
+        - *--stats_fname*
+        - *--encryption_key*
+        - *--export_dir*
+        - *--syntagma_for_export*
+        - *--exp_repl*
+        - *--exp_redu*
+        - *--exp_syntagma_typ*
+        - *--exp_sentiment*
+        - *--encryption_key_corp*
+        - *--output_table_type*
+        - *--additional_doc_cols*
+        - *--path_to_corpdb*
+        - *--max_scope*
+        - *--stemmed_search*
+        - *--context_len_left*
+        - *--context_len_right*
+        - *--separator_syn*
+        - *--word_examples_sum_table*
+        - *--ignore_num*
+        - *--ignore_symbol*
+    - **recompute**
+        - *--stats_fname*
+        - *--recompute_flag*
+        - *--encryption_key*
+    - **optimize**
+        - *--stats_fname*
+        - *--encryption_key*
+    - **recreate_indexes**
+        - *--stats_fname*
+        - *--encryption_key*
+
+
+
+-           $ zas-rep-tools streamTwitter
+
+     - *--path_to_save*
+     - *--language*
+     - *--filter_strategie*
+     - *--stop_words*
+     - *--terms*
+     - *--encoding*
+     - *--ignore_rt*
+     - *--save_used_terms*
+     - *--mode*
+     - *--logdir*
+
+
+
+<br>
+<a name="multiprocessing"/>
+<p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
+</sub> </p>
+
+### 5.4 Multiprocessing
     Current Tool support multiprocessing. Just set 'stream_number'-Option to more as 1 to ensure the process to be executed parallel.
 
 <br>
 
-5.4 **NLP-Methods**
+<a name="nlp-methods"/>
+<p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
+</sub> </p>
+
+### 5.5 NLP-Methods
 Used NLP-Methods:
 
 - Tokenization 
@@ -932,7 +1303,11 @@ Used NLP-Methods:
 
 <br>
 
-5.5 **InternDataBase-Structure** (SQLite)
+<a name="db"/>
+<p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
+</sub> </p>
+
+### 5.6 InternDataBase-Structure (SQLite)
 
 - **Corpus**
     - Tables: 
@@ -954,7 +1329,11 @@ Used NLP-Methods:
 
 <br>
 
-5.6 **Additional Features**
+<a name="additional_features"/>
+<p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
+</sub> </p>
+
+### 5.7 Additional Features
 
  - **Formatters**
     Are there to help for better reading or the unstructured data.
@@ -1007,13 +1386,16 @@ Step 3: Export of the computed Statistics
 ###Command line Tutorial
 
 - **Add/Create Corpus**
-   - Certain Sources
-        - Sifter-Twitter-Data (csv)
-        - Blogger Corpus (txt)
-        - Twitter Stream API (json)
+
+   - From Certain (predefined) Sources
+        - [Sifter-Twitter-Data (csv)](https://sifter.texifter.com)
+        - [Blogger Autorship Corpus (txt)](http://u.cs.biu.ac.il/~koppel/BlogCorpus.htm)
+
+        - [Twitter Stream API (json)](https://developer.twitter.com/en/docs/tweets/filter-realtime/overview.html)
+
+   - From Scratch
 
 
-   - General
 
 - **Compute StatsDB** 
 
@@ -1134,7 +1516,7 @@ Step 3: Export of the computed Statistics
             <sub>Additional Data for the Context Word  right from the current token</sub>
 
  - **Precomputed Example Tables**
- 
+
     In the Folder 'zas_rep_tools/examples' you could found precomputed examples of the output tables and also the input text collection. 
 
 
