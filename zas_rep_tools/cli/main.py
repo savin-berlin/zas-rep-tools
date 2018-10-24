@@ -203,7 +203,7 @@ def configer(command1,command2,  mode,logdir ):
 @click.option('--license', '-lic', default=False, help="License, under which this corpus will be used.")
 @click.option('--template_name', '-templ', default='False', help="Templates are there for initialization of the preinitialized Document Table in the DB. Every Columns in the DocumentTable should be initialized. For this you can use Templates (which contain preinitialized Information)  or initialize manually those columns manually with the   '--cols_and_types_in_doc'-Option.", type=click.Choice(list(DBHandler.templates.keys())+["False"]))
 @click.option('--version', '-ver', default=1, help="Version Number of the DB")
-@click.option('--cols_and_types_in_doc', '-additcols', default=False, help="Every Columns in the DocumentTable should be initialized. Every Document Table has already two default columns (id, text) if you want to insert also other columns, please define them here with the type names. The colnames should correspond to the colnames in the input text data and be given in the following form: 'colname1:coltype1,colname2:coltype2,colname3:coltype3' ")
+@click.option('--cols_and_types_in_doc', '-additcols', default=False, help="Additional Columns from input text Collections. Every Columns in the DocumentTable should be initialized. Every Document Table has already two default columns (id, text) if you want to insert also other columns, please define them here with the type names. The colnames should correspond to the colnames in the input text data and be given in the following form: 'colname1:coltype1,colname2:coltype2,colname3:coltype3' ")
 @click.option('--corpus_id_to_init', '-cid', default=False, help="Manually given corpid")
 @click.option('--tokenizer', '-tok', default='True', help="Select Tokenizer by name", type=click.Choice(list(CorpusData.supported_tokenizer)+["False", "True"]) ) 
 @click.option('--pos_tagger', '-ptager', default='False', help="Select POS-Tagger by name", type=click.Choice(list(CorpusData.supported_pos_tagger)+["False", "True"]))
@@ -349,7 +349,12 @@ def corpora(command1,
                     return False
 
             cols_and_types_in_doc = temp_cols_and_types_in_doc
-
+        #p(cols_and_types_in_doc, "cols_and_types_in_doc")
+        #p(reader_regex_for_fname, "reader_regex_for_fname")
+        try:
+            reader_regex_for_fname = reader_regex_for_fname.strip("'") if reader_regex_for_fname[0] == "'" else reader_regex_for_fname.strip('"')
+        except:
+            pass
 
         ### Main Part of the Script
         reader = Reader(path_to_read, file_format_to_read,  regex_template=reader_regex_template,
@@ -385,6 +390,7 @@ def corpora(command1,
         #csvdelimiter,encoding,
         csvdelimiter = csvdelimiter.strip("'") if csvdelimiter[0] == "'" else csvdelimiter.strip('"')
         status = corp.insert(reader.getlazy(stream_number=stream_number,min_files_pro_stream=min_files_pro_stream,csvdelimiter=csvdelimiter,encoding=encoding),  create_def_indexes=True)
+        
         if not status or corp.corpdb.rownum("documents") == 0:
             corp_fname = corp.corpdb.fname()
             #corp.corpdb.commit()

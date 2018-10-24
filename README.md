@@ -991,43 +991,43 @@ Notice: this tool is quite user friendly and if something goes wrong this Tool t
 -           $ zas-rep-tools corpora
 
     - **add**
-        -  *--path_to_read*
-        -  *--file_format_to_read*
-        -  *--corp_intern_dbname*
-        -  *--language*
-        -  *--visibility*
-        -  *--platform_name*
+        -  *\--path_to_read*
+        -  *\--file_format_to_read*
+        -  *\--corp_intern_dbname*
+        -  *\--language*
+        -  *\--visibility*
+        -  *\--platform_name*
 
 
     - **del**
-        - *--corp_fname*
+        - *\--corp_fname*
 
     - **names**
     <sub>None additional option</sub>
 
     - **meta**
-        - *--corp_fname*
+        - *\--corp_fname*
 
     - **basic_stats**
-        - *--corp_fname*
+        - *\--corp_fname*
     - **update_attr**
-        - *--corp_fname*
-        - *--attr_name*
-        - *--value*
+        - *\--corp_fname*
+        - *\--attr_name*
+        - *\--value*
     - **export**
-        - *--corp_fname*
-        - *--type_to_export*
+        - *\--corp_fname*
+        - *\--type_to_export*
     - **used_tools**
         <sub>None additional option</sub>
     - **clean_dir**
         <sub>None additional option</sub>
     - **cols**
-        - *--corp_fname*
+        - *\--corp_fname*
     - **doc**
-        - *--corp_fname*
-        - *--doc_id*
+        - *\--corp_fname*
+        - *\--doc_id*
     - **ids**
-        - *--corp_fname*
+        - *\--corp_fname*
 
 
  <br>
@@ -1035,41 +1035,41 @@ Notice: this tool is quite user friendly and if something goes wrong this Tool t
 -           $ zas-rep-tools stats
 
     - **compute**
-        - *--corp_fname*
-        - *--stats_intern_dbname*
-        - *--visibility*
+        - *\--corp_fname*
+        - *\--stats_intern_dbname*
+        - *\--visibility*
 
     - **del**
-        - *--stats_fname*
+        - *\--stats_fname*
     - **names**
         <sub>None additional option</sub>
     - **meta**
-        - *--stats_fname*
+        - *\--stats_fname*
     - **basic_stats**
-        - *--stats_fname*
+        - *\--stats_fname*
     - **update_attr**
-        - *--stats_fname*
-        - *--attr_name*
-        - *--value*
+        - *\--stats_fname*
+        - *\--attr_name*
+        - *\--value*
     - **export**
-        - *--stats_fname*
-        - *--export_file_type*
+        - *\--stats_fname*
+        - *\--export_file_type*
     - **clean_dir**
         <sub>None additional option</sub>
     - **recompute**
-        - *--stats_fname*
-        - *--recompute_flag*
+        - *\--stats_fname*
+        - *\--recompute_flag*
     - **optimize**
-        - *--stats_fname*
+        - *\--stats_fname*
     - **recreate_indexes**
-        - *--stats_fname*
+        - *\--stats_fname*
 
 
 
 -           $ zas-rep-tools streamTwitter
 
-     - *--path_to_save*
-     - *--filter_strategie*
+     - *\--path_to_save*
+     - *\--filter_strategie*
 
 <br>
 <br>
@@ -1080,95 +1080,96 @@ Notice: this tool is quite user friendly and if something goes wrong this Tool t
 -           $ zas-rep-tools corpora
 
     - **add**
-        - *--path_to_read*
-        - *--file_format_to_read*
-        - *--reader_regex_template*
-        - *--reader_regex_for_fname*
-        - *--end_file_marker*
-        - *--use_end_file_marker*
-        - *--stop_process_if_possible*
-        - *--formatter_name*
-        - *--text_field_name*
-        - *--id_field_name*
-        - *--reader_ignore_retweets*
-        - *--mode*
-        - *--status_bar*
-        - *--tok_split_camel_case*
-        - *--make_backup*
-        - *--lazyness_border*
-        - *--rewrite*
-        - *--stop_if_db_already_exist*
-        - *--use_cash*
-        - *--optimizer*
-        - *--optimizer_page_size*
-        - *--optimizer_cache_size*
-        - *--optimizer_locking_mode*
-        - *--optimizer_synchronous*
-        - *--optimizer_journal_mode*
-        - *--optimizer_temp_store*
-        - *--stop_process_if_possible*
-        - *--heal_me_if_possible*
-        - *--corp_intern_dbname*
-        - *--language*
-        - *--visibility*
-        - *--encryption_key*
-        - *--corp_fname*
-        - *--source*
-        - *--license*
-        - *--template_name*
-        - *--version*
-        - *--cols_and_types_in_doc*
-        - *--corpus_id_to_init*
-        - *--tokenizer*
-        - *--pos_tagger*
-        - *--sentiment_analyzer*
-        - *--sent_splitter*
-        - *--preprocession*
-        - *--lang_classification*
-        - *--del_url*
-        - *--del_punkt*
-        - *--del_num*
-        - *--del_mention*
-        - *--del_hashtag*
-        - *--del_html*
-        - *--case_sensitiv*
-        - *--emojis_normalization*
-        - *--stream_number*
-        - *--min_files_pro_stream*
-        - *--csvdelimiter*
-        - *--encoding*
-        - *--del_hashtag*
-        - *--del_html*
-        - *--case_sensitiv*
+        - *\--path_to_read*
+        - *\--file_format_to_read*
+        - *\--reader_regex_template*
+        - *\--reader_regex_for_fname*
+        - *\--end_file_marker*
+        - *\--use_end_file_marker*
+        - *\--stop_process_if_possible*
+        - *\--formatter_name*
+        - *\--text_field_name*
+        - *\--id_field_name*
+        - *\--reader_ignore_retweets*
+        - *\--mode*
+        - *\--status_bar*
+        - *\--tok_split_camel_case*
+        - *\--make_backup*
+        - *\--lazyness_border*
+        - *\--rewrite*
+        - *\--stop_if_db_already_exist*
+        - *\--use_cash*
+        - *\--optimizer*
+        - *\--optimizer_page_size*
+        - *\--optimizer_cache_size*
+        - *\--optimizer_locking_mode*
+        - *\--optimizer_synchronous*
+        - *\--optimizer_journal_mode*
+        - *\--optimizer_temp_store*
+        - *\--stop_process_if_possible*
+        - *\--heal_me_if_possible*
+        - *\--corp_intern_dbname*
+        - *\--language*
+        - *\--visibility*
+        - *\--encryption_key*
+        - *\--corp_fname*
+        - *\--source*
+        - *\--license*
+        - *\--template_name*
+        - *\--version*
+        - *\--cols_and_types_in_doc*
+        - *\--corpus_id_to_init*
+        - *\--tokenizer*
+        - *\--pos_tagger*
+        - *\--sentiment_analyzer*
+        - *\--sent_splitter*
+        - *\--preprocession*
+        - *\--lang_classification*
+        - *\--del_url*
+        - *\--del_punkt*
+        - *\--del_num*
+        - *\--del_mention*
+        - *\--del_hashtag*
+        - *\--del_html*
+        - *\--case_sensitiv*
+        - *\--emojis_normalization*
+        - *\--stream_number*
+        - *\--min_files_pro_stream*
+        - *\--csvdelimiter*
+        - *\--encoding*
+        - *\--del_hashtag*
+        - *\--del_html*
+        - *\--case_sensitiv*
+        - *\--read_from_zip*
 
     - **meta**
-        - *--corp_fname*
-        - *--encryption_key*
+        - *\--corp_fname*
+        - *\--encryption_key*
     - **basic_stats**
-        - *--corp_fname*
-        - *--encryption_key*
+        - *\--corp_fname*
+        - *\--encryption_key*
     - **update_attr**
-        - *--corp_fname*
-        - *--attr_name*
-        - *--value*
-        - *--encryption_key*
+        - *\--corp_fname*
+        - *\--attr_name*
+        - *\--value*
+        - *\--encryption_key*
 
     - **export**
-        - *--corp_fname*
-        - *--type_to_export*
-        - *--encryption_key*
-        - *--export_dir*
+        - *\--corp_fname*
+        - *\--type_to_export*
+        - *\--encryption_key*
+        - *\--export_dir*
 
     - **cols**
-        - *--corp_fname*
-        - *--encryption_key*
+        - *\--corp_fname*
+        - *\--encryption_key*
     - **doc**
-        - *--corp_fname*
-        - *--doc_id*
-        - *--encryption_key*
+        - *\--corp_fname*
+        - *\--doc_id*
+        - *\--encryption_key*
     - **ids**
-        - *--corp_fname*
-        - *--encryption_key*
+        - *\--corp_fname*
+        - *\--encryption_key*
 
 
  <br>
@@ -1176,104 +1177,104 @@ Notice: this tool is quite user friendly and if something goes wrong this Tool t
 -           $ zas-rep-tools stats
 
     - **compute**
-        - *--corp_fname*
-        - *--encryption_key_corp*
-        - *--mode*
-        - *--status_bar*
-        - *--make_backup*
-        - *--lazyness_border*
-        - *--rewrite*
-        - *--stop_if_db_already_exist*
-        - *--use_cash*
-        - *--optimizer*
-        - *--optimizer_page_size*
-        - *--optimizer_cache_size*
-        - *--optimizer_locking_mode*
-        - *--optimizer_synchronous*
-        - *--optimizer_journal_mode*
-        - *--optimizer_temp_store*
-        - *--stats_intern_dbname*
-        - *--visibility*
-        - *--encryption_key*
-        - *--stats_fname*
-        - *--gready*
-        - *--version*
-        - *--context_lenght*
-        - *--full_repetativ_syntagma*
-        - *--repl_up*
-        - *--ignore_hashtag*
-        - *--case_sensitiv*
-        - *--ignore_url*
-        - *--ignore_mention*
-        - *--ignore_punkt*
-        - *--ignore_num*
-        - *--baseline_delimiter*
-        - *--min_files_pro_stream*
-        - *--create_indexes*
-        - *--freeze_db*
-        - *--baseline_insertion_border*
-        - *--optimized_for_long_syntagmas*
+        - *\--corp_fname*
+        - *\--encryption_key_corp*
+        - *\--mode*
+        - *\--status_bar*
+        - *\--make_backup*
+        - *\--lazyness_border*
+        - *\--rewrite*
+        - *\--stop_if_db_already_exist*
+        - *\--use_cash*
+        - *\--optimizer*
+        - *\--optimizer_page_size*
+        - *\--optimizer_cache_size*
+        - *\--optimizer_locking_mode*
+        - *\--optimizer_synchronous*
+        - *\--optimizer_journal_mode*
+        - *\--optimizer_temp_store*
+        - *\--stats_intern_dbname*
+        - *\--visibility*
+        - *\--encryption_key*
+        - *\--stats_fname*
+        - *\--gready*
+        - *\--version*
+        - *\--context_lenght*
+        - *\--full_repetativ_syntagma*
+        - *\--repl_up*
+        - *\--ignore_hashtag*
+        - *\--case_sensitiv*
+        - *\--ignore_url*
+        - *\--ignore_mention*
+        - *\--ignore_punkt*
+        - *\--ignore_num*
+        - *\--baseline_delimiter*
+        - *\--min_files_pro_stream*
+        - *\--create_indexes*
+        - *\--freeze_db*
+        - *\--baseline_insertion_border*
+        - *\--optimized_for_long_syntagmas*
 
 
     - **meta**
-        - *--stats_fname*
-        - *--encryption_key*
+        - *\--stats_fname*
+        - *\--encryption_key*
     - **basic_stats**
-        - *--stats_fname*
-        - *--encryption_key*
+        - *\--stats_fname*
+        - *\--encryption_key*
     - **update_attr**
-        - *--stats_fname*
-        - *--attr_name*
-        - *--value*
-        - *--encryption_key*
+        - *\--stats_fname*
+        - *\--attr_name*
+        - *\--value*
+        - *\--encryption_key*
     - **export**
-        - *--mode*
-        - *--status_bar*
-        - *--stats_fname*
-        - *--encryption_key*
-        - *--export_dir*
-        - *--syntagma_for_export*
-        - *--exp_repl*
-        - *--exp_redu*
-        - *--exp_syntagma_typ*
-        - *--exp_sentiment*
-        - *--encryption_key_corp*
-        - *--output_table_type*
-        - *--additional_doc_cols*
-        - *--path_to_corpdb*
-        - *--max_scope*
-        - *--stemmed_search*
-        - *--context_len_left*
-        - *--context_len_right*
-        - *--separator_syn*
-        - *--word_examples_sum_table*
-        - *--ignore_num*
-        - *--ignore_symbol*
+        - *\--mode*
+        - *\--status_bar*
+        - *\--stats_fname*
+        - *\--encryption_key*
+        - *\--export_dir*
+        - *\--syntagma_for_export*
+        - *\--exp_repl*
+        - *\--exp_redu*
+        - *\--exp_syntagma_typ*
+        - *\--exp_sentiment*
+        - *\--encryption_key_corp*
+        - *\--output_table_type*
+        - *\--additional_doc_cols*
+        - *\--path_to_corpdb*
+        - *\--max_scope*
+        - *\--stemmed_search*
+        - *\--context_len_left*
+        - *\--context_len_right*
+        - *\--separator_syn*
+        - *\--word_examples_sum_table*
+        - *\--ignore_num*
+        - *\--ignore_symbol*
     - **recompute**
-        - *--stats_fname*
-        - *--recompute_flag*
-        - *--encryption_key*
+        - *\--stats_fname*
+        - *\--recompute_flag*
+        - *\--encryption_key*
     - **optimize**
-        - *--stats_fname*
-        - *--encryption_key*
+        - *\--stats_fname*
+        - *\--encryption_key*
     - **recreate_indexes**
-        - *--stats_fname*
-        - *--encryption_key*
+        - *\--stats_fname*
+        - *\--encryption_key*
 
 
 
 -           $ zas-rep-tools streamTwitter
 
-     - *--path_to_save*
-     - *--language*
-     - *--filter_strategie*
-     - *--stop_words*
-     - *--terms*
-     - *--encoding*
-     - *--ignore_rt*
-     - *--save_used_terms*
-     - *--mode*
-     - *--logdir*
+     - *\--path_to_save*
+     - *\--language*
+     - *\--filter_strategie*
+     - *\--stop_words*
+     - *\--terms*
+     - *\--encoding*
+     - *\--ignore_rt*
+     - *\--save_used_terms*
+     - *\--mode*
+     - *\--logdir*
 
 
 
@@ -1379,23 +1380,58 @@ Step 3: Export of the computed Statistics
 
 ## 7. Tutorials
 
+**Notice**
+
+    1. Don't use following symbols in the namespaces: '-,;:=)({}¢[];
+    2. All DataBases will be saves into the given ProjectFolders';
+    3. To Stop Executions please use 'Ctrl+C';
+    4. To ensure the fast corpus creation try to use minimum of preprocessing 
+    functions;
+    5. Following command are just example and have as a goal to inspire the user;
+
+
+
 ###Python Package Tutorial
+
+*-work_in_progress-*
 
 <br/>
 
 ###Command line Tutorial
 
+
+
 - **Add/Create Corpus**
+<sub>Following examples ensure corpora creation process from current directory and with maximal preprocessing steps.
+</sub>
 
-   - From Certain (predefined) Sources
-        - [Sifter-Twitter-Data (csv)](https://sifter.texifter.com)
-        - [Blogger Autorship Corpus (txt)](http://u.cs.biu.ac.il/~koppel/BlogCorpus.htm)
+<br/>
 
-        - [Twitter Stream API (json)](https://developer.twitter.com/en/docs/tweets/filter-realtime/overview.html)
+- From Certain (predefined) Sources
+    - [Sifter-Twitter-Data (csv)](https://sifter.texifter.com)
+        -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read csv --corp_intern_dbname sifter_twitter_2014 --language de  --visibility intern --platform_name twitter --read_from_zip True --mode prod --heal_me_if_possible True --formatter_name sifter --sent_splitter True --pos_tagger True  --read_from_zip True   --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
 
-   - From Scratch
+    - [Blogger Autorship Corpus (txt)](http://u.cs.biu.ac.il/~koppel/BlogCorpus.htm)
+        -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read txt --corp_intern_dbname blogger_txt --language en --visibility extern --platform_name blogger --del_html True --reader_regex_template blogger --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source LanguageGoldMine  --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
+
+    - [Twitter Stream API (json)](https://developer.twitter.com/en/docs/tweets/filter-realtime/overview.html)
+        -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read json --corp_intern_dbname twitter_streamed_2019 --language en --visibility extern --platform_name twitter --template_name twitter --stream_number 2 --formatter_name twitterstreamapi --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source TwitterAPI --license Twitter_Developer_Agreement_and_Policy --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
+
+- From Scratch
+    - txt
+        <sub>This tool can just work with those TXT-Text-Collections, which have all meta-data in the filename, which could be matched with an regex.</sub>
+        -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read txt --corp_intern_dbname txt_corp --language en --visibility extern --platform_name blogger --del_html True --reader_regex_for_fname "(?P<id>[\d]*)\.(?P<gender>[\w]*)\.(?P<age>\d*)\.(?P<working_area>.*)\.(?P<star_constellation>[\w]*)" --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source LanguageGoldMine  --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
+
+    - csv/json/json
+        -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read json --corp_intern_dbname twitter_streamed_2019 --language en --visibility extern --platform_name twitter --stream_number 1 --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source TwitterAPI --license Twitter_Developer_Agreement_and_Policy --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False --heal_me_if_possible False --cols_and_types_in_doc 't_created_at:TEXT,t_language:TEXT,t_used_client:TEXT,u_created_at:TEXT,u_description:TEXT,u_favourites:INTEGER,u_followers:INTEGER,u_friends:INTEGER,u_id:INTEGER'
+        
+        <sub>or (let tool extract the columns from input text collection automatically (\--heal_me_if_possible True), but if input data is not consistent and every document have different number of columns, than it could ensure unpredictable errors)</sub> 
+
+        -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read csv --corp_intern_dbname twitter_streamed_2019 --language en --visibility extern --platform_name twitter --stream_number 1 --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source unknown --license Twitter_Developer_Agreement_and_Policy --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False  --heal_me_if_possible True
 
 
+
+<br/>
 
 - **Compute StatsDB** 
 
@@ -1609,6 +1645,14 @@ It means that your Computer dont have enought of the RAM or the Swap is to short
 #### 3. Error: In Windows Environment - to long reaction 
 
     If during the installation process some commands needs more as 5-10 min than try to push "ENTER" Button to ensure the refreshing of the command line 
+
+
+#### 4. UnicodeDecodeError: 'ascii' codec can't decode byte 0xe2 in position 17: ordinal not in range(128)
+    - It could be a Problem with the choiced encoding 
+    - or the input command wasn't recognized in the right way (corrupt syntax). 
+
+
+
 
 
 <br/>

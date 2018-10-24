@@ -91,13 +91,14 @@ class Reader(BaseContent):
         super(type(self), self).__init__(**kwargs)
         #super(BaseContent, self).__init__(**kwargs)
 
-
+        #p((regex_for_fname , regex_template))
         #Input: Encapsulation:
         self._inp_path = inp_path
         self._file_format = file_format.lower()
         #self._columns_source = columns_source
-        self._regex_template =regex_template  if regex_template else "blogger"
         self._regex_for_fname = regex_for_fname 
+        self._regex_template =regex_template 
+        #p((self._regex_for_fname,self._regex_template))
         self._formatter_name = formatter_name.lower() if formatter_name else formatter_name
         self._text_field_name = text_field_name
         self._id_field_name = id_field_name

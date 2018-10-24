@@ -81,6 +81,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                 use_end_file_marker = False, status_bar= True, heal_me_if_possible=False,**kwargs):
         super(type(self), self).__init__(**kwargs)
         
+        #p(heal_me_if_possible, "heal_me_if_possible")
         #Input: Encapsulation:
         self._end_file_marker = end_file_marker
         self._use_end_file_marker = use_end_file_marker
@@ -536,6 +537,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             
             to_update = True
             self._colnames_in_doc_wasnt_checked = True
+            p((self.corpdb.col("documents")))
             for row_as_dict in inp_data:
                 #self._check_termination(thread_name=thread_name) 
                 #p(row_as_dict.keys(), "row_as_dict.keys")
@@ -603,6 +605,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                                             self.corpdb._update_temp_indexesList_in_instance(thread_name=cursor_name)
                                             #self._update_database_pragma_list(thread_name=thread_name)
                                             self.corpdb._update_pragma_table_info(thread_name=cursor_name)
+
                                         else:
                                             #p("2222______")
                                             #return_error = False
@@ -621,6 +624,8 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                                             return False
 
                                         self._colnames_in_doc_wasnt_checked = False
+                                        self.logger.info("Cols from given Text Collections was extracted and the documentsTables was hield.")
+                                        #p((self.corpdb.col("documents")))
 
                                     else:
                                         #p("3333")
