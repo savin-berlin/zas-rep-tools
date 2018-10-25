@@ -35,6 +35,7 @@ from validate_email import validate_email
 import urllib2
 import twitter
 from nltk.tokenize import TweetTokenizer
+from nose.tools import nottest
 
 
 from  zas_rep_tools_data.utils import path_to_data_folder, path_to_models, path_to_someweta_models, path_to_stop_words
@@ -141,6 +142,13 @@ class ToolConfiger(BaseContent,ConfigerData):
     @cached_property
     def path_to_zas_rep_tools(self):
         return copy.deepcopy(self._path_to_zas_rep_tools)
+
+    @nottest
+    @cached_property
+    def path_to_tests(self):
+        #p(self._path_to_zas_rep_tools)
+        return os.path.join(self._path_to_zas_rep_tools, "tests/") 
+
 
     # @cached_property
     # def path_to_testdbs(self):

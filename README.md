@@ -279,22 +279,25 @@ following installation commands should be seeing as just an idea how and could b
 <sub>*Set background color of your terminal to dark (ex. black, dark blue etc.)*</sub>
 
 
-##### Package Installation 
+##### 1. Package Installation 
 
     0. open Terminal
-    1. $ cd <path_to_directory_where_to_locate_package>
-    2. $ git clone https://github.com/savin-berlin/zas-rep-tools.git
-    3. $ git clone https://github.com/savin-berlin/zas-rep-tools-data.git
-    4. $ virtualenv env
-    5. $ . env/bin/activate
-    6. $ sudo python2 -m pip install pysqlcipher 
-    7. $ sudo -H python2 -m pip install zas-rep-tools-data/
-    8. $ sudo -H python2 -m pip install zas-rep-tools/
-    9. $ cd zas-rep-tools/zas_rep_tools/tests
-    10. $ nosetests -s -v --rednose
-    11. $ sudo zas-rep-tools configer
+    2. pip install zas-rep-tools
 
 
+
+##### 2. User Configuration
+<sub> Before you can test and work with this tool you need before to confige it. To make it easy set '.' while setttinh up of the project folder, if you want to user current folder as your project folder.</sub>
+
+        $ cd <path_to_the_project_folder>
+        $ sudo zas-rep-tools configer prjdir print
+
+
+
+###### 3. Package Tests
+<sub>  To be sure if your installation  in the current system could work error free please run tests. Be aware that it could take around 10-20 min.</sub>
+   
+        sudo zas-rep-tools testspath | sudo xargs -I {} nosetests -s -v --rednose {}
 
 
 
@@ -1824,8 +1827,8 @@ It means that your Computer dont have enought of the RAM or the Swap is to short
     - or the input command wasn't recognized in the right way (corrupt syntax). 
 
 
-#### 5. Permission Error
-    - execute the command with  admin rights (with following prefix "sudo")
+#### 5. 'Permission Error' or 'UserConfigDBGetterError:'
+    - execute the command with the admin rights (with following prefix "sudo")
 
 
 <br/>

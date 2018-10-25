@@ -1635,6 +1635,14 @@ def streamerInfo(command,  logdir, mode):
 
 
 
+@main.command('testspath')
+def testspath():
+    #print configer_obj.path_to_tests
+    print configer_obj.path_to_tests
+
+
+
+
 
 if __name__ == "__main__":
     main()

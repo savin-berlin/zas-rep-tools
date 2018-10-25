@@ -149,6 +149,7 @@ class Reader(BaseContent):
         self.logger.low_debug('Input was validated')
 
         # Extract Files from the given File Structure
+        #p(self._inp_path)
         self._extract_all_files_according_given_file_format()
 
 
@@ -1059,13 +1060,17 @@ class Reader(BaseContent):
             output_path_to_file = []
             #self.files_to_read_orig = []
             #self.zips_to_read = []
+            
             for root, dirs, files in os.walk(self._inp_path, topdown=False):
-               for name in files:
+                for name in files:
+                    #p(  name)
                     if "."+self._file_format in name.lower():
                         self.files_to_read_orig.append(os.path.join(root, name))
+                        #print root, name
                     if self._read_from_zip:
                         if ".zip" in name.lower():
                             self.zips_to_read.append(os.path.join(root, name))
+                            #print root, name
 
             if len(self.files_to_read_orig)==0 and len(self.zips_to_read)==0:
                 #p((self._inp_path))
