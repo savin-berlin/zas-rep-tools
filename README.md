@@ -1532,7 +1532,6 @@ Step 3: Export of the computed Statistics
 
 - **Search in certain syntagmas**
     <sub> ('|' = 'or';  ',' = 'delimiter between words in syntagma'; )</sub> 
-<br>
 
      - Stemmed-Search (in lexical basic from) <sub>(syntagma_for_export will be first stemmed)</sub>
 
