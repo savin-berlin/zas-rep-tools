@@ -1302,6 +1302,7 @@ class Stats(BaseContent,BaseDB):
                                 sentiment=sentiment,thread_name=thread_name, max_scope=max_scope, stemmed_search=stemmed_search,send_empty_marker=True,
                                 minimum_columns=False,order_output_by_syntagma_order=False, return_full_tuple=False,delete_duplicates=True,
                                 get_columns_repl=False,get_columns_redu=False,get_columns_baseline=False,if_type_pos_return_lexem_syn=True)
+            #p(len(data), "dd")
             # p((inp_syntagma, repl, redu,baseline, syntagma_type, sentiment, thread_name,max_scope, stemmed_search,), c="r")
             if not data:
                 self.logger.error("Current Generator wasn't initialized. Because No Data was found in the current StatsDB for current settings. Please try to change the settings.")
@@ -1318,6 +1319,7 @@ class Stats(BaseContent,BaseDB):
                 status_bar_start = self._get_new_status_bar(None, self.status_bars_manager.term.center("Exporter (exhausted)") , "", counter_format=self.status_bars_manager.term.bold_white_on_green("{fill}{desc}{fill}"))
                 status_bar_start.refresh()
                 status_bar_current_all = self._get_new_status_bar(self.statsdb.rownum("baseline"), "All:", "syntagma")
+                #p(len(data), "dd")
                 status_bar_current_right = self._get_new_status_bar(len(data), "Qualified:", "syntagma")
                 status_bar_current_all.refresh()
                 status_bar_current_right.refresh()
@@ -1567,15 +1569,15 @@ class Stats(BaseContent,BaseDB):
 
 
             if self._status_bar:
-                #i += 1
-                #print status_bar_current.total, i
-                if status_bar_current_right.total != i:
-                   status_bar_current_right.total = i
-                   status_bar_current_right.refresh()
+                # i += 1
+                # print status_bar_current_right.total, count, i
+                # if status_bar_current_right.total !=  count:
+                #  status_bar_current_right.total = i
+                #  status_bar_current_right.refresh()
 
                 #p((status_bar_current_all.total, status_bar_current_all.count))
                 if status_bar_current_all.total != status_bar_current_all.count:
-                    status_bar_current_all.total = status_bar_current_all.count
+                    status_bar_current_all.count = status_bar_current_all.total #= status_bar_current_all.count
                     status_bar_current_all.refresh()
 
                 status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("Exported: Syntagmas:'{}'; Rows: '{}'; ".format(status_bar_current_right.count,exported_rows_count) ), "",  counter_format=self.status_bars_manager.term.bold_white_on_green('{fill}{desc}{fill}\n'))
