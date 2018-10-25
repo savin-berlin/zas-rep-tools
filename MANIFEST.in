@@ -19,3 +19,9 @@ graft zas_rep_tools/data
 graft zas_rep_tools/src
 #graft zas_rep_tools/tests
 
+graft zas_rep_tools_data/tests
+graft zas_rep_tools_data/cli
+graft zas_rep_tools_data/data
+graft zas_rep_tools_data/src
+graft zas_rep_tools_data/tests
+
