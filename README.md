@@ -1534,21 +1534,21 @@ Step 3: Export of the computed Statistics
     <sub> ('|' = 'or';  ',' = 'delimiter between words in syntagma'; )</sub> 
 <br>
 
-    - Stemmed-Search (in lexical basic from) <sub>(syntagma_for_export will be first stemmed)</sub>
+     - Stemmed-Search (in lexical basic from) <sub>(syntagma_for_export will be first stemmed)</sub>
 
                 $  zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv --exp_repl True --exp_redu True --output_table_type exhausted --syntagma_for_export 'klitze,kleine' --exp_syntagma_typ lexem --stemmed_search True
 
 
-    - POS-search (search in part of speech tags)
+     - POS-search (search in part of speech tags)
             
                 $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv  --exp_repl True --exp_redu True --max_scope 1 --output_table_type exhausted --syntagma_for_export 'EMOIMG|EMOASC,number' --exp_syntagma_typ pos
 
 
-    - Normal-search (search in non-stemmed lexems)
+     - Normal-search (search in non-stemmed lexems)
 
                 $  zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv  --exp_repl True --exp_redu True --output_table_type exhausted --syntagma_for_export 'klitze,kleine' --exp_syntagma_typ lexem
 
-    - Sentiment Search
+     - Sentiment Search
         <sub> Additional to each export command you can use following options to search just in certain sentiment </sub>
 
             '--exp_sentiment'
