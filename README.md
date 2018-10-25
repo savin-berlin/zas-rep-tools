@@ -1887,7 +1887,7 @@ There are  also available following examples:
 - [Dominik Koeppl](mailto:dominik.koeppl@uni-dortmund.de) <sup>*(Combinatorics on Words)*</sup>
 - [Tatjana Scheffler](mailto:tatjana.scheffler@uni-potsdam.de) <sup>*(NLP+Twitter expertise)*</sup>
 - [Stefan Thater](mailto:stth@coli.uni-saarland.de) <sup>*(NLP expertise)*</sup>
-- [Katarzyna Stoltmann](mailto:stoltmann@leibniz-zas.de) <sup>*(Linguistic & NLP)*</sup>
+- [Katarzyna Stoltmann](mailto:stoltmann@leibniz-zas.de) <sup>*(Linguistic & NLP&Organisation)*</sup>
 - [Christina Beckmann](mailto:beckmann@leibniz-zas.de) <sup>*(Bibliographical Expertise)*</sup>
 - [Tomasz Kociumaka](mailto:kociumaka@mimuw.edu.pl) <sup>*(Combinatorics on Words)*</sup>
 - [Frantisek Franek](mailto:franek@mcmaster.ca) <sup>*(Combinatorics on Words)*</sup>
