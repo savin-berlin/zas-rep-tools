@@ -34,7 +34,7 @@ ___
 
 ---
 
-**<span style="color:red;">For a quick-start,</span>** first [download and install all dependencies](#dependencies) , then [download and compile the code](#settingup) and afterwards go to the [Workflow](#workflow)   and  [Tutorials](#tutorials) section to begin.
+**<span style="color:red;">For a quick-start,</span>** first [download and install all dependencies](#dependencies) , then [install the tool](#settingup) and afterwards go to the [Workflow](#workflow)   and  [Tutorials](#tutorials) section to begin.
 
 ___
 
@@ -1574,13 +1574,16 @@ Step 3: Export of the computed Statistics
 
             $  zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv --exp_repl True --output_table_type sum --syntagma_for_export 'klitze,kleine' --exp_syntagma_typ lexem --stemmed_search True
 
+       - Sentiment Search
+            <sub> See before</sub>
+
    - ***Reduplications*** (Words)
      - Normal search 
 
             $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --output_table_type sum --exp_redu True  --word_examples_sum_table True
 
-     - POS-search + Stemmed-Search 
-        Same as before by Replication Search
+     - POS-search + Stemmed-Search + Sentiment Search
+        <sub> See before  </sub>
 
 
 
