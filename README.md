@@ -1306,6 +1306,9 @@ Notice: this tool is quite user friendly and if something goes wrong this Tool t
 
 
 <br>
+
+---
+
 <a name="multiprocessing"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
@@ -1314,6 +1317,8 @@ Notice: this tool is quite user friendly and if something goes wrong this Tool t
     Current Tool support multiprocessing. Just set 'stream_number'-Option to more as 1 to ensure the process to be executed parallel.
 
 <br>
+
+---
 
 <a name="nlp-methods"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
@@ -1330,6 +1335,8 @@ Used NLP-Methods:
 - RLE (run length encoding)
 
 <br>
+
+---
 
 <a name="db"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
@@ -1356,6 +1363,8 @@ Used NLP-Methods:
         (id, corpus_id, name, version, created_at, visibility, typ, db_frozen, context_lenght, language, repl_up, ignore_hashtag, ignore_url, ignore_mention, ignore_punkt, ignore_num, force_cleaning, case_sensitiv, full_repetativ_syntagma, min_scope_for_indexes, locked, pos_tagger, sentiment_analyzer, baseline_delimiter)
 
 <br>
+
+---
 
 <a name="additional_features"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
@@ -1401,6 +1410,16 @@ Step 3: Export of the computed Statistics
 
         $ zas-rep-tools stats export
 
+
+<br/>
+
+
+---
+---
+---
+---
+
+<br/>
 
 <a name="tutorials"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
