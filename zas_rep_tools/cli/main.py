@@ -952,7 +952,7 @@ def corpora(command1,
 @click.option('--stats_id', '-stats_id', default=False, help="Possibilty to set StatsId manually. Otherwise it will be setted automatically.")
 @click.option('--stats_intern_dbname', '-cname', default=False, help="Intern Name of the DB, which will be saved as tag inside the DB.")
 @click.option('--context_lenght', '-conlen', default=5, help="This number mean how much tokens left and right will be also captured and saved for each found re(du)plication. This number should be >=3")
-@click.option('--full_repetativ_syntagma', '-fullrep', default=True,type=bool, help="Disable/Enable FullRepetativnes. If it is True, than just full repetativ syntagmas would be considered.  FullRepetativ syntagma is those one, where all words was ongoing either replicated or replicated. (ex.: FullRepRedu: 'klitze klitze kleine kleine' , FullRepRepl: 'kliiitzeee kleeeinee')  ")
+@click.option('--full_repetativ_syntagma', '-fullrep', default=True,type=bool, help="Disable/Enable FullRepetativnes. If it is True, than just full repetativ syntagmas would be considered.  FullRepetativ syntagma is those one, where all words was ongoing either replicated or replicated. (ex.: FullRepRedu: 'klitze klitze kleine kleine' , FullRepRepl: 'kliiitzeee kleeeinee') (See more about it in Readme -> Definitions) ")
 @click.option('--repl_up', '-ru', default=3, help="Up this number this tool recognize repetativ letter as replication.")
 @click.option('--ignore_hashtag', '-ignht', default=False,type=bool, help="Enable/disable Hiding of all Hashtags, if it wasn't done during CorpusCreationProcess.")
 @click.option('--case_sensitiv','-case', default=False,type=bool,  help="Enable/disable the case sensitivity during Stats Computation Process.")
@@ -1027,6 +1027,7 @@ def stats(command1,
             logger.error("No one syntagma was exctracted. Probably wrong structure was given. Please give syntagma in the following structure 'very|huge|highly,pitty|hard|happy,man|woman|boy|person'")
             return False
         else:
+            #p(temp_syn,"temp_syn")
             syntagma_for_export = list(itertools.product(*temp_syn))
 
 
@@ -1085,17 +1086,17 @@ def stats(command1,
         stop_if_db_already_exist = False if rewrite else True
         stop_process_if_possible = False if gready else True
         stats = Stats(mode=mode, error_tracking=answer_error_tracking, status_bar=status_bar,
-                make_backup=make_backup,  lazyness_border=lazyness_border, thread_safe=True, rewrite=rewrite, stop_if_db_already_exist=stop_if_db_already_exist,
-                use_cash=use_cash, optimizer=optimizer,optimizer_page_size=optimizer_page_size, 
+                make_backup=strtobool(make_backup),  lazyness_border=lazyness_border, thread_safe=True, rewrite=strtobool(rewrite), stop_if_db_already_exist=stop_if_db_already_exist,
+                use_cash=strtobool(use_cash), optimizer=strtobool(optimizer),optimizer_page_size=optimizer_page_size, 
                 optimizer_cache_size=optimizer_cache_size, optimizer_locking_mode=optimizer_locking_mode, optimizer_synchronous=optimizer_synchronous,
                 optimizer_journal_mode=optimizer_journal_mode, optimizer_temp_store=optimizer_temp_store,stop_process_if_possible=stop_process_if_possible)
 
         stats.init(main_folders["stats"], stats_intern_dbname, language,  visibility, corpus_id=corpus_id, 
                         encryption_key=encryption_key,fileName=stats_fname,  version=version, stats_id=stats_id,
-                        context_lenght=context_lenght, full_repetativ_syntagma=full_repetativ_syntagma,
-                        min_scope_for_indexes=2, repl_up=repl_up, ignore_hashtag=ignore_hashtag, force_cleaning=False,
-                        case_sensitiv=case_sensitiv, ignore_url=ignore_url,  ignore_mention=ignore_mention,
-                        ignore_punkt=ignore_punkt, ignore_num=ignore_num,baseline_delimiter=baseline_delimiter,)
+                        context_lenght=context_lenght, full_repetativ_syntagma=strtobool(full_repetativ_syntagma),
+                        min_scope_for_indexes=2, repl_up=repl_up, ignore_hashtag=strtobool(ignore_hashtag), force_cleaning=False,
+                        case_sensitiv=strtobool(case_sensitiv), ignore_url=strtobool(ignore_url),  ignore_mention=strtobool(ignore_mention),
+                        ignore_punkt=strtobool(ignore_punkt), ignore_num=strtobool(ignore_num),baseline_delimiter=baseline_delimiter,)
         #p(stream_number, "stream_number")
         stats.compute(corp, stream_number=stream_number, datatyp="dict", 
                         adjust_to_cpu=True,min_files_pro_stream=min_files_pro_stream,cpu_percent_to_get=50,
@@ -1487,6 +1488,7 @@ def stats(command1,
                         return False
                     additional_doc_cols = additional_doc_cols.strip("'")
                     additional_doc_cols = additional_doc_cols.split(",")
+                    additional_doc_cols = [col.strip(" ") for col in additional_doc_cols]
 
                 if corp_fname:
                     files = get_corp_fname(main_folders)
@@ -1501,6 +1503,7 @@ def stats(command1,
                 path_to_corpdb = os.path.join(main_folders["corp"],corp_fname) if corp_fname else False
                 #p((export_dir, syntagma_for_export, exp_repl, exp_redu,exp_syntagma_typ, exp_sentiment, export_name, export_file_type, rows_limit_in_file, encryption_key_corp, output_table_type, additional_doc_cols,corp_fname, max_scope, stemmed_search,context_len_left, context_len_right, separator_syn,word_examples_sum_table,ignore_num,ignore_symbol), r=True)
                 #p( {'path_to_corpdb': False, 'stemmed_search': False, 'redu': True, 'rewrite': False, 'ignore_num': False, 'additional_doc_cols': False, 'syntagma': u'*', 'baseline': True, 'sentiment': False, 'self': <zas_rep_tools.src.classes.stats.Stats object at 0x105f92b10>, 'encryption_key_for_exported_db': False, 'fname': False, 'word_examples_sum_table': True, 'syntagma_type': 'lexem', 'context_len_right': False, 'repl': True, 'max_scope': u'3', 'output_table_type': 'exhausted', 'path_to_export_dir': '/Users/egoruni/Desktop/BA/Code/zas-rep-tools/zas_rep_tools/tests/prjdir/export', 'encryption_key_corp': False, 'separator_syn': u' || ', 'context_len_left': True, 'rows_limit_in_file': 50000, 'ignore_symbol': False, 'export_file_type': 'csv'}(syntagma_for_export, exp_repl, exp_redu, exp_syntagma_typ))
+                #p(syntagma_for_export,"syntagma")
                 stats.export(   export_dir, syntagma=syntagma_for_export, repl=exp_repl, redu=exp_redu,
                                 baseline=True, syntagma_type=exp_syntagma_typ, sentiment=exp_sentiment,
                                 fname=export_name, export_file_type=export_file_type, rows_limit_in_file=rows_limit_in_file,
@@ -1561,6 +1564,8 @@ def streamTwitter( path_to_save,language,stop_words,terms,encoding,ignore_rt, fi
     except:
         logger.error("TwitterCreditials wasn't found. Please give TwitterCreditials before you can use this Tools.")
         return False
+
+    language = strtobool(language)
     #p(configer_obj._user_data["twitter_creditials"])
     #p(configer_obj._user_data["twitter_creditials"][0])
     configer_obj._user_data["twitter_creditials"][0]

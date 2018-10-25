@@ -87,8 +87,13 @@ ___
 
 11. [Possible errors and warnings](#errors)
 
-12. [Acknowledgements](#acknowledgements)
+12. [Data-Examples](#data)
 
+13. [Acknowledgements](#acknowledgements)
+
+---
+---
+---
 ---
 ---
 
@@ -96,6 +101,9 @@ ___
 
 
 
+---
+---
+---
 ---
 
 <br/>
@@ -119,6 +127,9 @@ ___
 
 
 
+---
+---
+---
 ---
 
 <br/>
@@ -258,6 +269,9 @@ following installation commands should be seeing as just an idea how and could b
 
 
 ---
+---
+---
+---
 
 <br/>
 
@@ -293,6 +307,9 @@ following installation commands should be seeing as just an idea how and could b
 
 
 
+---
+---
+---
 ---
 
 <br/>
@@ -363,6 +380,7 @@ following installation commands should be seeing as just an idea how and could b
         The length of syntagma
         -       ex: 'very much' = 2; 'very'=1;
 
+<a name="full"/>
 
    -  **Full Repetitiveness**
     <sub>(Each syntagma with scope > 1 have an additional attribute - full-repetitiveness.)</sub>
@@ -374,11 +392,16 @@ following installation commands should be seeing as just an idea how and could b
         If every element of an syntagma was reduplicated, than Full-Repetitiveness for this Syntagma is True.
             -   ex: 'very very very much much', "veeeerrryyy veeerryy mmmuuccc muuucch much "
 
+    Current function could be switch on/off in StatsDB with following Options '--full_repetativ_syntagma'. If this option is on, than the just full-repetativ syntagmas will be available/matched with the export function. If it is on, than all syntagmas could be matched/exported, which contain at list one re(du)plication.
+
 
 <br/>
 
 
 
+---
+---
+---
 ---
 
 <br/>
@@ -532,7 +555,7 @@ In the following part you can see a small explanation to each entry point:
 
 ### 5.2 CLI-Options
 
-- *zas-rep-tools configer --help*
+- ***zas-rep-tools configer --help***
 
         Usage: zas-rep-tools configer [OPTIONS] COMMAND1 COMMAND2
 
@@ -543,7 +566,10 @@ In the following part you can see a small explanation to each entry point:
                                           data.
           --help                          Show this message and exit.
 
-- *zas-rep-tools corpora --help*
+
+<br>
+
+- ***zas-rep-tools corpora --help***
 
         Usage: zas-rep-tools corpora [OPTIONS] COMMAND1
 
@@ -625,17 +651,18 @@ In the following part you can see a small explanation to each entry point:
                                           cols_and_types_in_doc'-Option.
           -ver, --version INTEGER         Version Number of the DB
           -additcols, --cols_and_types_in_doc TEXT
-                                          Every Columns in the DocumentTable should be
-                                          initialized. Every Document Table has
-                                          already two default columns (id, text) if
-                                          you want to insert also other columns,
-                                          please define them here with the type names.
-                                          The colnames should correspond to the
-                                          colnames in the input text data and be given
-                                          in the following form: 'colname1:coltype1,co
-                                          lname2:coltype2,colname3:coltype3'
-          -optsyn, --corpus_id_to_init TEXT
-                                          Manually given corpid
+                                          Additional Columns from input text
+                                          Collections. Every Columns in the
+                                          DocumentTable should be initialized. Every
+                                          Document Table has already two default
+                                          columns (id, text) if you want to insert
+                                          also other columns, please define them here
+                                          with the type names. The colnames should
+                                          correspond to the colnames in the input text
+                                          data and be given in the following form: 'co
+                                          lname1:coltype1,colname2:coltype2,colname3:c
+                                          oltype3'
+          -cid, --corpus_id_to_init TEXT  Manually given corpid
           -tok, --tokenizer [somajo|nltk|False|True]
                                           Select Tokenizer by name
           -ptager, --pos_tagger [someweta|tweetnlp|False|True]
@@ -738,7 +765,11 @@ In the following part you can see a small explanation to each entry point:
           --help                          Show this message and exit.
 
 
-- *zas-rep-tools stats --help*
+
+<br>
+
+
+- ***zas-rep-tools stats --help***
 
         Usage: zas-rep-tools stats [OPTIONS] COMMAND1
 
@@ -843,7 +874,8 @@ In the following part you can see a small explanation to each entry point:
                                           is those one, where all words was ongoing
                                           either replicated or replicated. (ex.:
                                           FullRepRedu: 'klitze klitze kleine kleine' ,
-                                          FullRepRepl: 'kliiitzeee kleeeinee')
+                                          FullRepRepl: 'kliiitzeee kleeeinee') (See
+                                          more about it in Readme -> Definitions)
           -ru, --repl_up INTEGER          Up this number this tool recognize repetativ
                                           letter as replication.
           -ignht, --ignore_hashtag BOOLEAN
@@ -938,8 +970,9 @@ In the following part you can see a small explanation to each entry point:
           --help                          Show this message and exit.
 
 
+<br>
 
-- *zas-rep-tools streamTwitter --help*
+- ***zas-rep-tools streamTwitter --help***
 
         Usage: zas-rep-tools streamTwitter [OPTIONS] PATH_TO_SAVE
 
@@ -962,8 +995,7 @@ In the following part you can see a small explanation to each entry point:
 
 
 
-
-- *zas-rep-tools streamerInfo --help*
+- ***zas-rep-tools streamerInfo --help***
 
         Usage: zas-rep-tools streamerInfo [OPTIONS] COMMAND
 
@@ -1263,9 +1295,8 @@ Notice: this tool is quite user friendly and if something goes wrong this Tool t
 
 
 
--           $ zas-rep-tools streamTwitter
+-           $ zas-rep-tools streamTwitter <path_to_save>
 
-     - *\--path_to_save*
      - *\--language*
      - *\--filter_strategie*
      - *\--stop_words*
@@ -1349,8 +1380,9 @@ Used NLP-Methods:
 <br/>
 
 
-
-
+---
+---
+---
 ---
 
 <br/>
@@ -1393,9 +1425,12 @@ Step 3: Export of the computed Statistics
 
 ###Python Package Tutorial
 
-*-work_in_progress-*
+*-work_in_progress-* (API could be found in the tests-folder. If you interested to use this Tool also as Python Package please contact the developer and ask for better API Explanation.)
 
 <br/>
+
+---
+---
 
 ###Command line Tutorial
 
@@ -1405,9 +1440,10 @@ Step 3: Export of the computed Statistics
 <sub>Following examples ensure corpora creation process from current directory and with maximal preprocessing steps.
 </sub>
 
-<br/>
 
-- From Certain (predefined) Sources
+  - From Certain (predefined) Sources
+    <sub>Predifinition is done through following options:'\--formatter_name','\--reader_regex_template', '\--template_name'</sub>
+
     - [Sifter-Twitter-Data (csv)](https://sifter.texifter.com)
         -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read csv --corp_intern_dbname sifter_twitter_2014 --language de  --visibility intern --platform_name twitter --read_from_zip True --mode prod --heal_me_if_possible True --formatter_name sifter --sent_splitter True --pos_tagger True  --read_from_zip True   --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
 
@@ -1417,7 +1453,7 @@ Step 3: Export of the computed Statistics
     - [Twitter Stream API (json)](https://developer.twitter.com/en/docs/tweets/filter-realtime/overview.html)
         -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read json --corp_intern_dbname twitter_streamed_2019 --language en --visibility extern --platform_name twitter --template_name twitter --stream_number 2 --formatter_name twitterstreamapi --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source TwitterAPI --license Twitter_Developer_Agreement_and_Policy --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
 
-- From Scratch
+  - From Scratch
     - txt
         <sub>This tool can just work with those TXT-Text-Collections, which have all meta-data in the filename, which could be matched with an regex.</sub>
         -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read txt --corp_intern_dbname txt_corp --language en --visibility extern --platform_name blogger --del_html True --reader_regex_for_fname "(?P<id>[\d]*)\.(?P<gender>[\w]*)\.(?P<age>\d*)\.(?P<working_area>.*)\.(?P<star_constellation>[\w]*)" --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source LanguageGoldMine  --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
@@ -1429,19 +1465,100 @@ Step 3: Export of the computed Statistics
 
         -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read csv --corp_intern_dbname twitter_streamed_2019 --language en --visibility extern --platform_name twitter --stream_number 1 --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source unknown --license Twitter_Developer_Agreement_and_Policy --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False  --heal_me_if_possible True
 
-
+---
 
 <br/>
 
 - **Compute StatsDB** 
 
+    with Preprocessing
+    -           $ zas-rep-tools stats compute --corp_fname 7728_corpus_twitter_sifter_de_intern_plaintext.db --stats_intern_dbname sifter --visibility intern --full_repetativ_syntagma True --optimizer True --use_cash True --status_bar True --context_lenght 5 --ignore_url True --ignore_punkt True --ignore_num True
 
-*** explain about full-repetativnes as option for stats-db
+    without Preprocessing
+    -           $ zas-rep-tools stats compute --corp_fname 7728_corpus_twitter_sifter_de_intern_plaintext.db --stats_intern_dbname sifter --visibility intern --full_repetativ_syntagma True --optimizer True --use_cash True --status_bar True 
+
+    compute for non-full-repetativ syntagmas (see more in definitions)
+    -           $ zas-rep-tools stats compute --corp_fname 7728_corpus_twitter_sifter_de_intern_plaintext.db --stats_intern_dbname sifter --visibility intern --full_repetativ_syntagma False --optimizer True --use_cash True --status_bar True
+
+
+
+
+---
+
 
 <br/>
 
 
+- **Export Statistics from StatsDB** 
 
+    **Exhausted Output-Tables**
+
+    - for scope = 1 (just those syntagmas which have length/scope = 1)
+       -           $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --output_table_type exhausted --exp_redu True --exp_repl True --max_scope 1
+
+    - for all syntagmas 
+       -           $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --output_table_type exhausted --exp_redu True --exp_repl True
+
+    - with additional columns from CorpusDB
+       -           zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --exp_redu True --exp_repl True --max_scope 1 --additional_doc_cols 'gender,age' --corp_fname 7614_corpus_blogs_bloggerCorpus_test_extern_plaintext.db
+
+    - search certain syntagmas
+        <sub> ('|' = 'or';  ',' = 'delimiter between words in syntagma'; )</sub> 
+<br>
+        - Stemmed-Search (in lexical basic from) <sub>(syntagma_for_export will be first stemmed)</sub>
+             -         $  zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv --exp_repl True --exp_redu True --output_table_type exhausted --syntagma_for_export 'klitze,kleine' --exp_syntagma_typ lexem --stemmed_search True
+
+        - POS-search (search in part of speech tags)
+             -          $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv  --exp_repl True --exp_redu True --max_scope 1 --output_table_type exhausted --syntagma_for_export 'EMOIMG|EMOASC,number' --exp_syntagma_typ pos
+
+
+        - Normal-search (search in non-stemmed lexems)
+             -         $  zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv  --exp_repl True --exp_redu True --output_table_type exhausted --syntagma_for_export 'klitze,kleine' --exp_syntagma_typ lexem
+
+        - Sentiment Search
+            Additional to each export command you can use following options to search just in certain sentiment 
+            - '\--exp_sentiment'
+
+            There was implemented 3 different sentiment polarity:
+            - ["neutral", "positive","negative"]
+
+
+<br>
+
+  **Summary Output-Tables**
+
+   - ***Replications*** (Letters)
+      - Normal search 
+          -           $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --output_table_type sum --exp_repl True --word_examples_sum_table True
+
+      - POS-search 
+             -          $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv --exp_redu False --exp_repl True --max_scope 1 --output_table_type sum --syntagma_for_export 'EMOIMG|EMOASC' --exp_syntagma_typ pos
+
+      - Stemmed-Search 
+             -         $  zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv --exp_repl True --output_table_type sum --syntagma_for_export 'klitze,kleine' --exp_syntagma_typ lexem --stemmed_search True
+
+   - ***Reduplications*** (Words)
+
+      -           $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --output_table_type sum --exp_redu True  --word_examples_sum_table True
+
+
+---
+
+
+<br/>
+
+
+- **Stream Twitter** 
+
+            $ zas-rep-tools streamTwitter .   --language de --filter_strategie "t+l"
+
+
+<br/>
+
+
+---
+---
+---
 ---
 
 <br/>
@@ -1562,6 +1679,9 @@ Step 3: Export of the computed Statistics
 <br/>
 
 ---
+---
+---
+---
 
 <br/>
 
@@ -1581,6 +1701,9 @@ Step 3: Export of the computed Statistics
 
 <br/>
 
+---
+---
+---
 ---
 
 <br/>
@@ -1602,6 +1725,9 @@ Step 3: Export of the computed Statistics
 
 
 
+---
+---
+---
 ---
 
 <br/><br/>
@@ -1647,9 +1773,38 @@ It means that your Computer dont have enought of the RAM or the Swap is to short
     If during the installation process some commands needs more as 5-10 min than try to push "ENTER" Button to ensure the refreshing of the command line 
 
 
-#### 4. UnicodeDecodeError: 'ascii' codec can't decode byte 0xe2 in position 17: ordinal not in range(128)
+#### 4. UnicodeDecodeError: 'ascii' codec can't decode byte  in position : ordinal not in range(128)
     - It could be a Problem with the choiced encoding 
     - or the input command wasn't recognized in the right way (corrupt syntax). 
+
+
+
+<br/>
+
+
+
+---
+---
+---
+---
+
+<br/>
+
+
+<a name="data"/>
+<p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
+</sub> </p>
+
+## 12. Data-Examples
+
+There are  also available following examples:
+
+- ***StatdDBs*** and ***CorpusDBs***
+    <sub> You can copy-paste this data in your project folders and try to work with that. </sub>
+    -       'zas_rep_tools/data/tests_data/testDBs/testFolder'
+
+- ***Output tables*** (csv)
+    -       'zas_rep_tools/examples'
 
 
 
@@ -1660,6 +1815,9 @@ It means that your Computer dont have enought of the RAM or the Swap is to short
 
 
 ---
+---
+---
+---
 
 <br/>
 
@@ -1668,7 +1826,7 @@ It means that your Computer dont have enought of the RAM or the Swap is to short
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
 
-## 12. Acknowledgements
+## 13. Acknowledgements
 
 
 #### A big Thank to the following Peoples, who makes this work and current results possible:
