@@ -1533,6 +1533,7 @@ Step 3: Export of the computed Statistics
 - **Search in certain syntagmas**
     <sub> ('|' = 'or';  ',' = 'delimiter between words in syntagma'; )</sub> 
 <br>
+
     - Stemmed-Search (in lexical basic from) <sub>(syntagma_for_export will be first stemmed)</sub>
 
                 $  zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv --exp_repl True --exp_redu True --output_table_type exhausted --syntagma_for_export 'klitze,kleine' --exp_syntagma_typ lexem --stemmed_search True
