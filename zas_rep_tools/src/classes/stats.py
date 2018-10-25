@@ -1752,7 +1752,7 @@ class Stats(BaseContent,BaseDB):
                     #raise Exception, "PREDICED LEN IS NOT CORRECT IN SUM COMPUTER"
                     status_bar_current.total = i
             if i == 0:
-                self.logger.error("('{}'-sum) Nothing was extracted for '{}'-syntagma. Check if the right 'syntagma_type'-option was setted.".format(reptype,syntagma_to_search))
+                self.logger.error("('{}'-sum) Nothing was extracted for '{}'-syntagma. No Data was found for given settings.".format(reptype,syntagma_to_search))
             return summery
 
 
@@ -1784,7 +1784,7 @@ class Stats(BaseContent,BaseDB):
                     #raise Exception, "PREDICED LEN IS NOT CORRECT IN SUM COMPUTER"
                     status_bar_current.total = i
             if i == 0:
-                self.logger.error("('{}'-sum) Nothing was extracted for '{}'-syntagma. Check if the right 'syntagma_type'-option was setted.".format(reptype,syntagma_to_search))
+                self.logger.error("('{}'-sum) Nothing was extracted for '{}'-syntagma. No Data was found for given settings.".format(reptype,syntagma_to_search))
             return collected_redus_from_corp
             #p(collected_redus_from_corp, "collected_redus_from_corp")
 
@@ -1831,7 +1831,7 @@ class Stats(BaseContent,BaseDB):
         # p("..9999")
         #p(locals())
         if inp_syntagma == "*":
-            # p("..888")
+            #p("..888")
             return self._get_data(inp_syntagma=inp_syntagma,repl=repl, redu=redu, baseline=baseline, syntagma_type=syntagma_type, 
                 sentiment=sentiment,thread_name=thread_name, max_scope=max_scope, stemmed_search=stemmed_search,
                 minimum_columns=minimum_columns,order_output_by_syntagma_order=order_output_by_syntagma_order,send_empty_marker=send_empty_marker, 
@@ -1861,7 +1861,7 @@ class Stats(BaseContent,BaseDB):
 
         # p("..666")
         if extract_type == 1:
-            # p("..555")
+            #p("..555")
             #p(inp_syntagma, "999999inp_syntagma")
             gen =  self._get_data(inp_syntagma=inp_syntagma,repl=repl, redu=redu, baseline=baseline, syntagma_type=syntagma_type, 
                 sentiment=sentiment,thread_name=thread_name, max_scope=max_scope, stemmed_search=stemmed_search,
@@ -1875,20 +1875,28 @@ class Stats(BaseContent,BaseDB):
                 return False
             return gen
         else:
-            # p("..444")
+            #p("..444")
             generators = []
             #p(inp_syntagma, "1999999inp_syntagma")
             #p(inp_syntagma, "2inp_syntagma")
-            for inp_syn in inp_syntagma:
+            not_init_gens = -1
+            for counter,  inp_syn in enumerate(inp_syntagma):
                 gen = self._get_data(inp_syntagma=inp_syn,repl=repl, redu=redu, baseline=baseline, syntagma_type=syntagma_type, 
                 sentiment=sentiment,thread_name=thread_name, max_scope=max_scope, stemmed_search=stemmed_search,send_empty_marker=send_empty_marker,
                 minimum_columns=minimum_columns,order_output_by_syntagma_order=order_output_by_syntagma_order,
                 return_full_tuple=return_full_tuple,delete_duplicates=delete_duplicates, if_type_pos_return_lexem_syn=if_type_pos_return_lexem_syn,
                 get_columns_repl=get_columns_repl,get_columns_redu=get_columns_redu,get_columns_baseline=get_columns_baseline)
                 if not gen:
-                    self.logger.error("Current Generator wasn't created")
-                    return False
-                generators.append(gen)
+                    not_init_gens += 1
+                else:
+                    #self.logger.error("Current Generator wasn't created")
+                    #return False
+                    generators.append(gen)
+
+            if counter == not_init_gens:
+                #p(not_init_gens)
+                self.logger.error("Not one generator was created!")
+                return False
 
             #p(generators, "generators")
             # p("..333")
