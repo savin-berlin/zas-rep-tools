@@ -29,6 +29,7 @@ ___
 
 **ZAS-REP-TOOLS** is a bundle of Tools for automatic extraction and quantification of the repetitions from the unstructured textual Data Collections for different languages with additional Search Engine wrapped around extracted data +  on-board supplied Twitter Streamer to collect real-time tweets. 
 
+<sub> (This ReadMe still to be in the developing process and still has grammatical errors. Please ignore them=) But if you have  any suggestions of improvement please contact [Egor Savin](mailto:work@savin.berlin) ) </sub>
 
 
 
@@ -1881,6 +1882,8 @@ There are  also available following examples:
 - [Aleksandra Ćwiek](mailto:cwiek@leibniz-zas.de) <sup>*(Linguistic)*</sup>
 - [Bodo Winter](mailto:bodo@bodowinter.com) <sup>*(Statistical & linguistic Expertise)*</sup>
 - [Stephanie Solt](mailto:solt@leibniz-zas.de) <sup>*(Semantics&Pragmatics)*</sup>
+- [Cornelia Ebert](mailto:ebert@leibniz-zas.de) <sup>*(Phonology&Semantics&Pragmatics)*</sup>
+- [Manfred Krifka](mailto:krifka@leibniz-zas.de) <sup>*(Semantics&Pragmatics)*</sup>
 - [Dominik Koeppl](mailto:dominik.koeppl@uni-dortmund.de) <sup>*(Combinatorics on Words)*</sup>
 - [Tatjana Scheffler](mailto:tatjana.scheffler@uni-potsdam.de) <sup>*(NLP+Twitter expertise)*</sup>
 - [Stefan Thater](mailto:stth@coli.uni-saarland.de) <sup>*(NLP expertise)*</sup>
