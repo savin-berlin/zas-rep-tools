@@ -1288,6 +1288,7 @@ Notice: this tool is quite user friendly and if something goes wrong this Tool t
         - *\--encryption_key*
 
 
+<br>
 
 -           $ zas-rep-tools streamTwitter <path_to_save>
 
