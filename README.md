@@ -1440,7 +1440,7 @@ Step 3: Export of the computed Statistics
 
 ###Python Package Tutorial
 
-*-work_in_progress-* (API could be found in the tests-folder. If you interested to use this Tool also as Python Package please contact the developer and ask for better API Explanation.)
+***-work_in_progress-*** <sub>(API could be found in the tests-folder. If you interested to use this Tool also as Python Package please contact the developer and ask for better API Explanation.)</sub>
 
 <br/>
 
@@ -1456,29 +1456,32 @@ Step 3: Export of the computed Statistics
 </sub>
 
 
-  - From Certain (predefined) Sources
-    <sub>Predifinition is done through following options:'\--formatter_name','\--reader_regex_template', '\--template_name'</sub>
+   - From Certain (predefined) Sources
+      <sub>Predifinition is done through following options:'\--formatter_name','\--reader_regex_template', '\--template_name'</sub>
 
-    - [Sifter-Twitter-Data (csv)](https://sifter.texifter.com)
-        -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read csv --corp_intern_dbname sifter_twitter_2014 --language de  --visibility intern --platform_name twitter --read_from_zip True --mode prod --heal_me_if_possible True --formatter_name sifter --sent_splitter True --pos_tagger True  --read_from_zip True   --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
+       - [Sifter-Twitter-Data (csv)](https://sifter.texifter.com)
+        
+           -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read csv --corp_intern_dbname sifter_twitter_2014 --language de  --visibility intern --platform_name twitter --read_from_zip True --mode prod --heal_me_if_possible True --formatter_name sifter --sent_splitter True --pos_tagger True  --read_from_zip True   --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
 
-    - [Blogger Autorship Corpus (txt)](http://u.cs.biu.ac.il/~koppel/BlogCorpus.htm)
-        -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read txt --corp_intern_dbname blogger_txt --language en --visibility extern --platform_name blogger --del_html True --reader_regex_template blogger --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source LanguageGoldMine  --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
+      - [Blogger Autorship Corpus (txt)](http://u.cs.biu.ac.il/~koppel/BlogCorpus.htm)
 
-    - [Twitter Stream API (json)](https://developer.twitter.com/en/docs/tweets/filter-realtime/overview.html)
+           -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read txt --corp_intern_dbname blogger_txt --language en --visibility extern --platform_name blogger --del_html True --reader_regex_template blogger --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source LanguageGoldMine  --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
+
+      - [Twitter Stream API (json)](https://developer.twitter.com/en/docs/tweets/filter-realtime/overview.html)
         -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read json --corp_intern_dbname twitter_streamed_2019 --language en --visibility extern --platform_name twitter --template_name twitter --stream_number 2 --formatter_name twitterstreamapi --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source TwitterAPI --license Twitter_Developer_Agreement_and_Policy --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
 
-  - From Scratch
-    - txt
+  
+   - From Scratch
+      - txt
         <sub>This tool can just work with those TXT-Text-Collections, which have all meta-data in the filename, which could be matched with an regex.</sub>
-        -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read txt --corp_intern_dbname txt_corp --language en --visibility extern --platform_name blogger --del_html True --reader_regex_for_fname "(?P<id>[\d]*)\.(?P<gender>[\w]*)\.(?P<age>\d*)\.(?P<working_area>.*)\.(?P<star_constellation>[\w]*)" --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source LanguageGoldMine  --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
+           -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read txt --corp_intern_dbname txt_corp --language en --visibility extern --platform_name blogger --del_html True --reader_regex_for_fname "(?P<id>[\d]*)\.(?P<gender>[\w]*)\.(?P<age>\d*)\.(?P<working_area>.*)\.(?P<star_constellation>[\w]*)" --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source LanguageGoldMine  --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
 
-    - csv/json/json
-        -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read json --corp_intern_dbname twitter_streamed_2019 --language en --visibility extern --platform_name twitter --stream_number 1 --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source TwitterAPI --license Twitter_Developer_Agreement_and_Policy --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False --heal_me_if_possible False --cols_and_types_in_doc 't_created_at:TEXT,t_language:TEXT,t_used_client:TEXT,u_created_at:TEXT,u_description:TEXT,u_favourites:INTEGER,u_followers:INTEGER,u_friends:INTEGER,u_id:INTEGER'
+      - csv/json/json
+           -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read json --corp_intern_dbname twitter_streamed_2019 --language en --visibility extern --platform_name twitter --stream_number 1 --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source TwitterAPI --license Twitter_Developer_Agreement_and_Policy --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False --heal_me_if_possible False --cols_and_types_in_doc 't_created_at:TEXT,t_language:TEXT,t_used_client:TEXT,u_created_at:TEXT,u_description:TEXT,u_favourites:INTEGER,u_followers:INTEGER,u_friends:INTEGER,u_id:INTEGER'
         
-        <sub>or (let tool extract the columns from input text collection automatically (\--heal_me_if_possible True), but if input data is not consistent and every document have different number of columns, than it could ensure unpredictable errors)</sub> 
+          <sub>or (let tool extract the columns from input text collection automatically (\--heal_me_if_possible True), but if input data is not consistent and every document have different number of columns, than it could ensure unpredictable errors)</sub> 
 
-        -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read csv --corp_intern_dbname twitter_streamed_2019 --language en --visibility extern --platform_name twitter --stream_number 1 --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source unknown --license Twitter_Developer_Agreement_and_Policy --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False  --heal_me_if_possible True
+          -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read csv --corp_intern_dbname twitter_streamed_2019 --language en --visibility extern --platform_name twitter --stream_number 1 --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source unknown --license Twitter_Developer_Agreement_and_Policy --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False  --heal_me_if_possible True
 
 ---
 
