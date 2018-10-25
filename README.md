@@ -1438,20 +1438,22 @@ Step 3: Export of the computed Statistics
 
 
 
-###Python Package Tutorial
+## Python Package Tutorial
 
 ***-work_in_progress-*** <sub>(API could be found in the tests-folder. If you interested to use this Tool also as Python Package please contact the developer and ask for better API Explanation.)</sub>
 
+---
+---
+
 <br/>
 
----
----
-
-###Command line Tutorial
 
 
+## Command line Tutorial
 
-- **Add/Create Corpus**
+<br/>
+
+#### Add/Create Corpus
 <sub>Following examples ensure corpora creation process from current directory and with maximal preprocessing steps.
 </sub>
 
@@ -1487,16 +1489,21 @@ Step 3: Export of the computed Statistics
 
 <br/>
 
-- **Compute StatsDB** 
+#### Compute StatsDB 
 
-    with Preprocessing
-    -           $ zas-rep-tools stats compute --corp_fname 7728_corpus_twitter_sifter_de_intern_plaintext.db --stats_intern_dbname sifter --visibility intern --full_repetativ_syntagma True --optimizer True --use_cash True --status_bar True --context_lenght 5 --ignore_url True --ignore_punkt True --ignore_num True
+- with Preprocessing
 
-    without Preprocessing
-    -           $ zas-rep-tools stats compute --corp_fname 7728_corpus_twitter_sifter_de_intern_plaintext.db --stats_intern_dbname sifter --visibility intern --full_repetativ_syntagma True --optimizer True --use_cash True --status_bar True 
+                    $ zas-rep-tools stats compute --corp_fname 7728_corpus_twitter_sifter_de_intern_plaintext.db --stats_intern_dbname sifter --visibility intern --full_repetativ_syntagma True --optimizer True --use_cash True --status_bar True --context_lenght 5 --ignore_url True --ignore_punkt True --ignore_num True
 
-    compute for non-full-repetativ syntagmas (see more in definitions)
-    -           $ zas-rep-tools stats compute --corp_fname 7728_corpus_twitter_sifter_de_intern_plaintext.db --stats_intern_dbname sifter --visibility intern --full_repetativ_syntagma False --optimizer True --use_cash True --status_bar True
+
+- without Preprocessing
+
+                    $ zas-rep-tools stats compute --corp_fname 7728_corpus_twitter_sifter_de_intern_plaintext.db --stats_intern_dbname sifter --visibility intern --full_repetativ_syntagma True --optimizer True --use_cash True --status_bar True 
+
+
+- compute for non-full-repetativ syntagmas (see more in definitions)
+
+                    $ zas-rep-tools stats compute --corp_fname 7728_corpus_twitter_sifter_de_intern_plaintext.db --stats_intern_dbname sifter --visibility intern --full_repetativ_syntagma False --optimizer True --use_cash True --status_bar True
 
 
 
@@ -1507,57 +1514,74 @@ Step 3: Export of the computed Statistics
 <br/>
 
 
-- **Export Statistics from StatsDB** 
+#### Export Statistics from StatsDB
 
-    **Exhausted Output-Tables**
+**Exhausted Output-Tables**
 
-    - for scope = 1 (just those syntagmas which have length/scope = 1)
-       -           $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --output_table_type exhausted --exp_redu True --exp_repl True --max_scope 1
+- **For scope = 1** (just those syntagmas which have length/scope = 1)
 
-    - for all syntagmas 
-       -           $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --output_table_type exhausted --exp_redu True --exp_repl True
+        $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --output_table_type exhausted --exp_redu True --exp_repl True --max_scope 1
 
-    - with additional columns from CorpusDB
-       -           zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --exp_redu True --exp_repl True --max_scope 1 --additional_doc_cols 'gender,age' --corp_fname 7614_corpus_blogs_bloggerCorpus_test_extern_plaintext.db
+- **For all syntagmas**
 
-    - search certain syntagmas
-        <sub> ('|' = 'or';  ',' = 'delimiter between words in syntagma'; )</sub> 
+        $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --output_table_type exhausted --exp_redu True --exp_repl True
+
+- **With additional columns from CorpusDB**
+
+        $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --exp_redu True --exp_repl True --max_scope 1 --additional_doc_cols 'gender,age' --corp_fname 7614_corpus_blogs_bloggerCorpus_test_extern_plaintext.db
+
+- **Search in certain syntagmas**
+    <sub> ('|' = 'or';  ',' = 'delimiter between words in syntagma'; )</sub> 
 <br>
-        - Stemmed-Search (in lexical basic from) <sub>(syntagma_for_export will be first stemmed)</sub>
-             -         $  zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv --exp_repl True --exp_redu True --output_table_type exhausted --syntagma_for_export 'klitze,kleine' --exp_syntagma_typ lexem --stemmed_search True
+    - Stemmed-Search (in lexical basic from) <sub>(syntagma_for_export will be first stemmed)</sub>
 
-        - POS-search (search in part of speech tags)
-             -          $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv  --exp_repl True --exp_redu True --max_scope 1 --output_table_type exhausted --syntagma_for_export 'EMOIMG|EMOASC,number' --exp_syntagma_typ pos
+                $  zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv --exp_repl True --exp_redu True --output_table_type exhausted --syntagma_for_export 'klitze,kleine' --exp_syntagma_typ lexem --stemmed_search True
 
 
-        - Normal-search (search in non-stemmed lexems)
-             -         $  zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv  --exp_repl True --exp_redu True --output_table_type exhausted --syntagma_for_export 'klitze,kleine' --exp_syntagma_typ lexem
+    - POS-search (search in part of speech tags)
+            
+                $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv  --exp_repl True --exp_redu True --max_scope 1 --output_table_type exhausted --syntagma_for_export 'EMOIMG|EMOASC,number' --exp_syntagma_typ pos
 
-        - Sentiment Search
-            Additional to each export command you can use following options to search just in certain sentiment 
-            - '\--exp_sentiment'
 
-            There was implemented 3 different sentiment polarity:
-            - ["neutral", "positive","negative"]
+    - Normal-search (search in non-stemmed lexems)
+
+                $  zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv  --exp_repl True --exp_redu True --output_table_type exhausted --syntagma_for_export 'klitze,kleine' --exp_syntagma_typ lexem
+
+    - Sentiment Search
+        <sub> Additional to each export command you can use following options to search just in certain sentiment </sub>
+
+            '--exp_sentiment'
+
+        There was implemented 3 different sentiment polarity:
+
+            ["neutral", "positive","negative"]
 
 
 <br>
 
-  **Summary Output-Tables**
+**Summary Output-Tables**
 
    - ***Replications*** (Letters)
       - Normal search 
-          -           $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --output_table_type sum --exp_repl True --word_examples_sum_table True
+
+            $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --output_table_type sum --exp_repl True --word_examples_sum_table True
 
       - POS-search 
-             -          $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv --exp_redu False --exp_repl True --max_scope 1 --output_table_type sum --syntagma_for_export 'EMOIMG|EMOASC' --exp_syntagma_typ pos
+
+            $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv --exp_redu False --exp_repl True --max_scope 1 --output_table_type sum --syntagma_for_export 'EMOIMG|EMOASC' --exp_syntagma_typ pos
 
       - Stemmed-Search 
-             -         $  zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv --exp_repl True --output_table_type sum --syntagma_for_export 'klitze,kleine' --exp_syntagma_typ lexem --stemmed_search True
+
+            $  zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_de_extern_plaintext.db --export_file_type csv --exp_repl True --output_table_type sum --syntagma_for_export 'klitze,kleine' --exp_syntagma_typ lexem --stemmed_search True
 
    - ***Reduplications*** (Words)
+     - Normal search 
 
-      -           $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --output_table_type sum --exp_redu True  --word_examples_sum_table True
+            $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --output_table_type sum --exp_redu True  --word_examples_sum_table True
+
+     - POS-search + Stemmed-Search 
+        Same as before by Replication Search
+
 
 
 ---
@@ -1566,7 +1590,7 @@ Step 3: Export of the computed Statistics
 <br/>
 
 
-- **Stream Twitter** 
+#### Stream Twitter
 
             $ zas-rep-tools streamTwitter .   --language de --filter_strategie "t+l"
 
