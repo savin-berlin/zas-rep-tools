@@ -538,7 +538,7 @@ In the following part you can see a small explanation to each entry point:
  
 -           $ zas-rep-tools help
 
-
+---
 
 
 <br>
@@ -1001,6 +1001,7 @@ In the following part you can see a small explanation to each entry point:
           --help                          Show this message and exit.
 
 
+---
 <br>
 
 <a name="cli-usage"/>
