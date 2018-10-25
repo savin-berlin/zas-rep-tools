@@ -1468,10 +1468,10 @@ Step 3: Export of the computed Statistics
 
       - [Blogger Autorship Corpus (txt)](http://u.cs.biu.ac.il/~koppel/BlogCorpus.htm)
 
-           -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read txt --corp_intern_dbname blogger_txt --language en --visibility extern --platform_name blogger --del_html True --reader_regex_template blogger --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source LanguageGoldMine  --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
+           -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read txt --corp_intern_dbname blogger_txt --language en --visibility extern --platform_name blogger  --reader_regex_template blogger --sent_splitter True --pos_tagger True --del_html True --mode prod+ --read_from_zip True  --source LanguageGoldMine  --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
 
       - [Twitter Stream API (json)](https://developer.twitter.com/en/docs/tweets/filter-realtime/overview.html)
-        -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read json --corp_intern_dbname twitter_streamed_2019 --language en --visibility extern --platform_name twitter --template_name twitter --stream_number 2 --formatter_name twitterstreamapi --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source TwitterAPI --license Twitter_Developer_Agreement_and_Policy --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
+        -        $ zas-rep-tools corpora add --path_to_read . --file_format_to_read json --corp_intern_dbname twitter_streamed_2019 --language en --visibility extern --platform_name twitter --template_name twitter --stream_number 1 --formatter_name twitterstreamapi --sent_splitter True --pos_tagger True --mode prod+ --read_from_zip True  --source TwitterAPI --license Twitter_Developer_Agreement_and_Policy --version 1 --sentiment_analyzer True --del_url True --del_punkt True --del_num True --del_html True --case_sensitiv False
 
   
    - From Scratch
@@ -1521,7 +1521,7 @@ Step 3: Export of the computed Statistics
 
 - **For scope = 1** (just those syntagmas which have length/scope = 1)
 
-        $ zas-rep-tools stats export --stats_fname 7614_3497_stats_bloggerCorpus_en_extern_plaintext.db  --export_file_type csv --output_table_type exhausted --exp_redu True --exp_repl True --max_scope 1
+        $ git s
 
 - **For all syntagmas**
 
