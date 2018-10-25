@@ -537,7 +537,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             
             to_update = True
             self._colnames_in_doc_wasnt_checked = True
-            p((self.corpdb.col("documents")))
+            #p((self.corpdb.col("documents")))
             for row_as_dict in inp_data:
                 #self._check_termination(thread_name=thread_name) 
                 #p(row_as_dict.keys(), "row_as_dict.keys")
