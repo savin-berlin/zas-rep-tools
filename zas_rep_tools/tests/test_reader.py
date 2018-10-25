@@ -541,7 +541,7 @@ class TestZASreaderReader(BaseTester,unittest.TestCase):
         # Test 1: Check if number of getted files is correct
         end_file_marker = -1
         #p(self.mode, c="r")
-        reader = Reader(os.path.join(self.tempdir_blogger_corp), "txt",  mode=self.mode, read_from_zip=True, end_file_marker=end_file_marker, send_end_file_marker=True)
+        reader = Reader(os.path.join(self.tempdir_blogger_corp), "txt",  mode=self.mode, read_from_zip=True, end_file_marker=end_file_marker, send_end_file_marker=True, regex_template="blogger")
         number_of_found_files = reader._get_number_of_left_over_files()
         if number_of_found_files < 3:
             assert False
