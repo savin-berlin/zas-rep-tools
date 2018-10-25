@@ -1824,6 +1824,9 @@ It means that your Computer dont have enought of the RAM or the Swap is to short
     - or the input command wasn't recognized in the right way (corrupt syntax). 
 
 
+#### 5. Permission Error
+    - execute the command with  admin rights (with following prefix "sudo")
+
 
 <br/>
 
