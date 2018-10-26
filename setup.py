@@ -1,7 +1,7 @@
 from setuptools import setup,find_packages
 
 setup(name='zas-rep-tools',
-      version='0.1',
+      version='0.2',
       description='This Tool-set helps to make the repetition search in text much comfortable and faster.',
       url='https://github.com/savin-berlin/zas-rep-tools',
       git_url='https://github.com/savin-berlin/zas-rep-tools.git',

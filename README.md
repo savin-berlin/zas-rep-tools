@@ -179,6 +179,7 @@ following installation commands should be seeing as just an idea how and could b
             $ sudo -H pip3 install --upgrade pip setuptools
                 --- ensure to have python3.6 http://ubuntuhandbook.org/index.php/2017/07/install-python-3-6-1-in-ubuntu-16-04-lts/
             $ alias python3=python3.6
+            $ alias pip=pip2
 
         -> Additional Python3 packages, which will not be installed automatically 
             $ sudo -H python3 -m pip install somajo someweta
@@ -241,10 +242,10 @@ following installation commands should be seeing as just an idea how and could b
             $ brew unlink python3
             $ brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/f2a764ef944b1080be64bd88dca9a1d80130c558/Formula/python.rb
             $ brew link python3
-
             $ pip2 install --upgrade pip setuptools wheel 
             $ pip3 install --upgrade pip setuptools wheel
-            $ pip2 install virtualenv
+            $ alias pip=pip2
+
         -> Additional python packages (for Python3)
             (which will not be installed automatically)  
             $ sudo python3 -m pip install somajo someweta
@@ -253,7 +254,7 @@ following installation commands should be seeing as just an idea how and could b
     3. Sqlite + Pysqlcipher + Git LFS
             $ brew install sqlite openssl sqlcipher git-lfs
             $ sudo -H python2 -m pip install pysqlcipher --install-option="--bundled"
-            $ git lfs install
+            
             
      4. Last Java Version (for TweetNLP Tokenizer and POS Tagger)
             $ brew cask install java
@@ -282,7 +283,7 @@ following installation commands should be seeing as just an idea how and could b
 ##### 1. Package Installation 
 
     0. open Terminal
-    2. pip install zas-rep-tools
+    2. sudo python2 -m pip install zas-rep-tools
 
 
 
@@ -297,7 +298,7 @@ following installation commands should be seeing as just an idea how and could b
 ###### 3. Package Tests
 <sub>  To be sure if your installation  in the current system could work error free please run tests. Be aware that it could take around 10-20 min.</sub>
    
-        sudo zas-rep-tools testspath | sudo xargs -I {} nosetests -s -v --rednose {}
+        sudo zas-rep-tools testspath | sudo xargs -I {} sudo python2 -m  nose -s -v --rednose {}
 
 
 
