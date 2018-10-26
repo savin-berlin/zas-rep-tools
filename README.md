@@ -248,7 +248,7 @@ following installation commands should be seeing as just an idea how and could b
 
         -> Additional python packages (for Python3)
             (which will not be installed automatically)  
-            
+
             $ sudo python3 -m pip install somajo someweta
 
 
@@ -286,8 +286,8 @@ following installation commands should be seeing as just an idea how and could b
 
 ##### 1. Package Installation 
 
-    0. open Terminal
-    2. sudo python2 -m pip install zas-rep-tools
+    1. open Terminal
+    2. $ sudo python2 -m pip install zas-rep-tools
 
 
 
@@ -302,7 +302,7 @@ following installation commands should be seeing as just an idea how and could b
 ###### 3. Package Tests
 <sub>  To be sure if your installation  in the current system could work error free please run tests. Be aware that it could take around 10-20 min.</sub>
    
-        sudo zas-rep-tools testspath | sudo xargs -I {} sudo python2 -m  nose -s -v --rednose {}
+       $ sudo zas-rep-tools testspath | sudo xargs -I {} sudo python2 -m  nose -s -v --rednose {}
 
 
 
