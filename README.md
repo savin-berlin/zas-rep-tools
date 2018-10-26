@@ -176,7 +176,7 @@ following installation commands should be seeing as just an idea how and could b
 4. Python Installation
 
         -> python + pip 
-            $ sudo apt install python2.7 python-pip python3.6 python3-pip  virtualenv curl
+            $ sudo apt install python2.7 python-pip python3.6 python3-pip 
             $ sudo -H pip2 install --upgrade pip setuptools
             $ sudo -H pip3 install --upgrade pip setuptools
                 --- ensure to have python3.6 http://ubuntuhandbook.org/index.php/2017/07/install-python-3-6-1-in-ubuntu-16-04-lts/
