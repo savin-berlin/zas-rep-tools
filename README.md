@@ -156,24 +156,26 @@ following installation commands should be seeing as just an idea how and could b
 <sub>*$ - symbol ensure the begin of the command, which should be copy-pasted into the terminal window.*</sub>
 
 ##### On Linux (UbuntuOS 16.04.5 LTS)
-    0. open Terminal/Bash/Shell
+0. open Terminal/Bash/Shell
 
-    1. Add other repositories
-        $  sudo add-apt-repository "deb http://archive.canonical.com/ubuntu saucy partner"
-        $ sudo add-apt-repository "deb http://us.archive.ubuntu.com/ubuntu/ saucy universe multiverse"
-        $ sudo add-apt-repository "deb http://us.archive.ubuntu.com/ubuntu/ saucy-updates universe multiverse"
+1. Add other repositories
 
-    2. Upgrade default linux tools
+        $ sudo add-apt-repository ppa:jonathonf/python-3.6
+        $ sudo add-apt-repository ppa:linuxuprising/java
+        $ sudo add-apt-repository ppa:git-core/ppa
+
+2. Upgrade default linux tools
+
         $ sudo apt-get update
         $ sudo apt-get upgrade
 
-    3. Install additional SW
+3. Install additional SW
+
         $ sudo apt-get install python-setuptools python-dev  build-essential autoconf libtiff5-dev libjpeg8-dev zlib1g-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.6-dev tk8.6-dev python-tk  libtool pkg-config python-opengl python-pyrex python-pyside.qtopengl idle-python2.7 qt4-dev-tools qt4-designer libqtgui4 libqtcore4 libqt4-xml libqt4-test libqt4-script libqt4-network libqt4-dbus python-qt4 python-qt4-gl libgle3 python-dev libssl-dev g++ openssl git
 
-    2. Python Installation
+4. Python Installation
+
         -> python + pip 
-            $ sudo add-apt-repository ppa:jonathonf/python-3.6
-            $ sudo apt-get update
             $ sudo apt install python2.7 python-pip python3.6 python3-pip  virtualenv curl
             $ sudo -H pip2 install --upgrade pip setuptools
             $ sudo -H pip3 install --upgrade pip setuptools
@@ -185,23 +187,16 @@ following installation commands should be seeing as just an idea how and could b
             $ sudo -H python3 -m pip install somajo someweta
 
         
-    4. Sqlite + Pysqlcipher
+5. Sqlite + Pysqlcipher
+
         $ sudo apt-get install sqlite3 sqlcipher
         $ sudo -H python2 -m pip install pysqlcipher --install-option="--bundled"
         
 
-    5. JAVA 
-        $ sudo add-apt-repository ppa:linuxuprising/java
-        $ sudo apt-get update
+6. JAVA 
+
         $ sudo apt-get install oracle-java11-installer 
-            
-    6. GIT LFS
-        $ sudo apt-get install software-properties-common
-        $ sudo add-apt-repository ppa:git-core/ppa
-        $ apt-get update
-        $ curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
-        $ sudo apt-get install git-lfs
-        $ git lfs install
+
 
 
 
@@ -229,16 +224,21 @@ following installation commands should be seeing as just an idea how and could b
 <br/>
 
 ##### On macOS (10.13.6)
-    0. open Terminal
-    1. Install brew
+0. open Terminal
+1. Install brew
+
         $ /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-    2. Install Python
+
+2. Install Python
+
         -> python ( pip (2+3)
+
             $ brew install python2 python3
             $ sudo python2 -m ensurepip
             $ sudo python3 -m ensurepip
 
          Ensure to have Python3.6 and not later version:
+
             $ brew unlink python3
             $ brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/f2a764ef944b1080be64bd88dca9a1d80130c558/Formula/python.rb
             $ brew link python3
@@ -248,15 +248,19 @@ following installation commands should be seeing as just an idea how and could b
 
         -> Additional python packages (for Python3)
             (which will not be installed automatically)  
+            
             $ sudo python3 -m pip install somajo someweta
 
 
-    3. Sqlite + Pysqlcipher + Git LFS
+    
+3. Sqlite + Pysqlcipher
+
             $ brew install sqlite openssl sqlcipher git-lfs
             $ sudo -H python2 -m pip install pysqlcipher --install-option="--bundled"
             
             
-     4. Last Java Version (for TweetNLP Tokenizer and POS Tagger)
+4. Last Java Version (for TweetNLP Tokenizer and POS Tagger)
+
             $ brew cask install java
 
 
@@ -1830,6 +1834,11 @@ It means that your Computer dont have enought of the RAM or the Swap is to short
 
 #### 5. 'Permission Error' or 'UserConfigDBGetterError:'
     - execute the command with the admin rights (with following prefix "sudo")
+
+
+#### 6. "E: Could not get lock /var/lib/dpkg/lock - open (11: Resource temporarily unavailable)"
+
+    See here: https://askubuntu.com/questions/15433/unable-to-lock-the-administration-directory-var-lib-dpkg-is-another-process
 
 
 <br/>
