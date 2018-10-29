@@ -292,15 +292,15 @@ following installation commands should be seeing as just an idea how and could b
 
 
 ##### 2. User Configuration
-<sub> Before you can test and work with this tool you need before to confige it. To make it easy set '.' while setttinh up of the project folder, if you want to user current folder as your project folder.</sub>
+<sub> Before you can test and work with zas-rep-tools,  you need  to configure  it. To set current directory as your project folder, please set '.' during the setting up process.</sub>
 
         $ cd <path_to_the_project_folder>
         $ sudo zas-rep-tools configer prjdir print
 
 
 
-###### 3. Package Tests
-<sub>  To be sure if your installation  in the current system could work error free please run tests. Be aware that it could take around 10-20 min.</sub>
+###### 3. Package Tester
+<sub>  To be sure if your installation  in the current system could work error-free ->  please run tests  with the following command. Be aware that it could take around 10-20 min.</sub>
    
        $ sudo zas-rep-tools testspath | sudo xargs -I {} sudo python2 -m  nose -s -v --rednose {}
 
