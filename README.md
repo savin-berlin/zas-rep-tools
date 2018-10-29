@@ -1109,7 +1109,7 @@ Notice: this tool is quite user friendly and if something goes wrong this Tool t
 <br>
 
 #### Exhausted Options
-<sub> List of the exhausted/additional options, which needed to run certain command. (just for those commands which are different to the category before)</sub>
+<sub> List of the exhausted/additional options, which could be used to run certain command. (If some don't have any additional options, then they are noted in the section before and not here.)</sub>
 
 -           $ zas-rep-tools corpora
 
