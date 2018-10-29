@@ -58,8 +58,6 @@ ___
 3. [Setting up](#settingup)
 
 4. [Definitions](#definitions)
-   -  Repetition
-   -  Full Repetitiveness
 
 5. [Functionality](#functionality)
    - [CLI-Commands](#cli-commands)
