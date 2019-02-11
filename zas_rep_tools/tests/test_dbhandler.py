@@ -1811,7 +1811,7 @@ class TestZAScorpusDBHandlerDBHandler(BaseTester,unittest.TestCase):
 
 
     @attr(status='stable')
-    #@wipd
+    @wipd
     def test_insert_dict_with_many_values_with_cashed_lazyinsert_569(self):
         self.prj_folder()
         self.test_dbs()
@@ -1829,7 +1829,7 @@ class TestZAScorpusDBHandlerDBHandler(BaseTester,unittest.TestCase):
             assert True
         db.commit()
 
-
+        #p(db._cashed_dict)
         for commit_num, commit_data in db._cashed_dict.iteritems():
             for thread_name, thread_data in commit_data.iteritems():
                 for dbname, dbdata in thread_data.iteritems():
@@ -1839,6 +1839,7 @@ class TestZAScorpusDBHandlerDBHandler(BaseTester,unittest.TestCase):
         
 
         #p((num_of_insertions, db.rownum("documents")))
+
         if num_of_insertions != db.rownum("documents"):
             assert False
         

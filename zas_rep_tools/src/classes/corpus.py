@@ -696,13 +696,16 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                     try:
                         preproc = self._preprocessing(row_as_dict[self._text_field_name],thread_name=thread_name, log_ignored=log_ignored, row=row_as_dict)
                         if preproc:
-                            if preproc == "terminated":
-                                self.logger.critical("{} got an  Termination Command!! and was terminated.".format(thread_name))
-                                self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
-                                self._terminated = True
-                                return False
-
-                            text_preprocessed = json.dumps(preproc)
+                            try:
+                                if preproc[0] == "terminated":
+                                    self.logger.critical("{} got an  Termination Command!! and was terminated. Reason: '{}'. ".format(thread_name,preproc[0]))
+                                    self.threads_status_bucket.put({"name":thread_name, "status":"terminated", "desc":preproc[0]})
+                                    self._terminated = True
+                                    return False
+                                else:
+                                    text_preprocessed = json.dumps(preproc)
+                            except:
+                                    text_preprocessed = json.dumps(preproc)
                         else:
                             text_preprocessed = preproc
                         #p(text_preprocessed, "text_preprocessed")
@@ -739,6 +742,8 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                 self._check_termination(thread_name=thread_name)
                 insertion_status = self.corpdb.lazyinsert( tablename, row_as_dict, thread_name=thread_name, dict_to_list=dict_to_list)
 
+                #p(insertion_status["out_obj"],"insertion_status[out_obj]")
+                #p(self.inserted_insertion_status_general[thread_name],'self.inserted_insertion_status_general[thread_name]')
 
                 if insertion_status["status"]: 
                     self.inserted_insertion_status_general[thread_name] += insertion_status["out_obj"]
@@ -864,41 +869,58 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                     self.main_status_bar_of_insertions = self._get_new_status_bar(0, "AllThreadsTotalInsertions", unit)
                     self.main_status_bar_of_insertions.refresh()
                     #self.main_status_bar_of_insertions.total = 0
+            #p(self._sentiment_analyzer, "self._sentiment_analyzer")
+            if self._threads_num >1:
+                for gen in inp_data:
+                    #p(gen, "gen")
+                    #self.logger.critical(("3", type(gen), gen ))
+                    if not self._isrighttype(gen):
+                        self.logger.error("InsertionError: Given InpData not from right type. Please given an list or an generator.", exc_info=self._logger_traceback)
+                        return False
 
+                    thread_name = "Thread{}".format(i)
+                    processThread = MyThread(target=self._insert, args=(gen, tablename,  thread_name, log_ignored, dict_to_list), name=thread_name)
+                    #processThread = mp.Process(target=self._insert, args=(gen, tablename,  thread_name, log_ignored, dict_to_list), name=thread_name )
+                    
+                    #processThread.setDaemon(True)
+                    processThread.start()
+                    self.active_threads.append(processThread)
+                    if self._status_bar:
+                        status_bar_threads_init.update(incr=1)
+                    i+=1
+                    time.sleep(1)
 
-            for gen in inp_data:
-                #p(gen, "gen")
-                #self.logger.critical(("3", type(gen), gen ))
+                    #p("All Threads was initialized", "insertparallel")  
+                    self.logger.info("'{}'-thread(s) was started. ".format(len(self.active_threads)))
+
+                    time.sleep(3)
+
+                    if not self._wait_till_all_threads_are_completed("Insert"):
+                        return False
+            else:
+                if self._status_bar:
+                    status_bar_threads_init.update(incr=1)
+                gen = inp_data[0]
                 if not self._isrighttype(gen):
                     self.logger.error("InsertionError: Given InpData not from right type. Please given an list or an generator.", exc_info=self._logger_traceback)
                     return False
+                #thread_name = "MainThread"
+                if not self._insert(gen, tablename,  thread_name, log_ignored, dict_to_list):
+                    self.logger.info("Something wrong was happens during _insertion process!!!")
 
-                thread_name = "Thread{}".format(i)
-                processThread = MyThread(target=self._insert, args=(gen, tablename,  thread_name, log_ignored, dict_to_list), name=thread_name)
-                #processThread = mp.Process(target=self._insert, args=(gen, tablename,  thread_name, log_ignored, dict_to_list), name=thread_name )
-                
-                #processThread.setDaemon(True)
-                processThread.start()
-                self.active_threads.append(processThread)
-                if self._status_bar:
-                    status_bar_threads_init.update(incr=1)
-                i+=1
-                time.sleep(1)
 
-            #p("All Threads was initialized", "insertparallel")  
-            self.logger.info("'{}'-thread(s) was started. ".format(len(self.active_threads)))
-
-            time.sleep(3)
-
-            if not self._wait_till_all_threads_are_completed("Insert"):
-                return False
-
-            status = self.corpdb._write_cashed_insertion_to_disc(with_commit=True)
+            status = self.corpdb._write_cashed_insertion_to_disc()
+            #p()
+            #p(self.inserted_insertion_status_general[thread_name],c="r")
+            #p(status["out_obj"],c="m")
             if status["status"]:
                 self.inserted_insertion_status_general[thread_name] += status["out_obj"]
                 self.outsorted_insertion_status_general[thread_name] += status["outsort"]
             else:
                 return status
+            #p(self.inserted_insertion_status_general[thread_name],c="r")
+
+            self.corpdb._commit(write_all_cash=True)
 
             ## save attributes from the main counter
             if self._status_bar:
@@ -914,7 +936,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             self.opened_gateways.terminate()
             del self.opened_gateways
             gc.collect()
-            #self.corpdb.commit()
+            self.corpdb.commit()
             
             if self._status_bar:
                 was_inserted = sum(self.inserted_insertion_status_general.values()) 
@@ -925,7 +947,8 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                 status_bar_total_summary.refresh()
                 self.status_bars_manager.stop()
 
-            self.corpdb._commit()
+            self.corpdb._commit(write_all_cash=True)
+            #self._commit(write_all_cash=False)
             rownum = self.corpdb.rownum("documents")
             if rownum >0:
                 self.logger.info("Current CorpusDB has '{}' rows in the Documents Table.".format(rownum))
@@ -936,7 +959,7 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
             if create_def_indexes:
                 self.corpdb.init_default_indexes(thread_name=thread_name)
-                self.corpdb._commit()
+                self.corpdb._commit(write_all_cash=True)
 
 
             self._last_insertion_was_successfull = True
@@ -946,11 +969,11 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
             if len(self.threads_unsuccess_exit) >0:
                 self.logger.error("Insertion process is failed. (some thread end with error)")
-                raise ProcessError, "'{}'-Threads end with an Error.".format(len(self.threads_unsuccess_exit))
+                raise ProcessError, "'{}'-Threads (number) end with an Error. See answers: {}".format(len(self.threads_unsuccess_exit), self.threads_unsuccess_exit)
                 return False
             else:
                 self.logger.info("Insertion process end successful!!!")
-                self.corpdb._commit()
+                self.corpdb._commit(write_all_cash=True)
                 return True
             
 
@@ -959,8 +982,8 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             self.terminate_all("KeyboardInterrupt", thread_name=thread_name)
             #self.logger.critical("KeyboardInterrupt: All Instances was successful aborted!!!")
             #sys.exit()
-        except Exception, e:
-            self.logger.error(" See Exception: '{}'. ".format(e),  exc_info=self._logger_traceback)
+        except Exception as e:
+            self.logger.error("Insert:  See Exception: '{}'. ".format(repr(e)),  exc_info=self._logger_traceback)
             return False
 
 
@@ -1380,13 +1403,19 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             #sys.exit()
 
 
-    def _print_summary_status(self):
-        for thread in self.active_threads:
-            thread_name = thread.getName()
+    def _print_summary_status(self,thread_name="Thread0"):
+        if self._threads_num >1:
+            for thread in self.active_threads:
+                thread_name = thread.getName()
+                #p(self.inserted_insertion_status_general[thread_name],c="r")
+                self.total_inserted_during_last_insert +=  self.inserted_insertion_status_general[thread_name]
+                self.total_outsorted_insertion_during_last_insertion_process +=  self.outsorted_insertion_status_general[thread_name]
+                self.total_error_insertion_during_last_insertion_process += self.error_insertion_status_general[thread_name]
+        else:
             self.total_inserted_during_last_insert +=  self.inserted_insertion_status_general[thread_name]
             self.total_outsorted_insertion_during_last_insertion_process +=  self.outsorted_insertion_status_general[thread_name]
             self.total_error_insertion_during_last_insertion_process += self.error_insertion_status_general[thread_name]
-        
+
         self.total_ignored_last_insertion += (self.total_outsorted_insertion_during_last_insertion_process+self.total_error_insertion_during_last_insertion_process)
         #self.logger.info("Summary for {}:\n Total inserted: {} rows; Total ignored: {} rows, from that was {} was error insertions and {} was out-sorted insertions (exp:  cleaned tweets/texts, ignored retweets, etc.).".format(thread_name, self.inserted_insertion_status_general[thread_name], self.error_insertion_status_general[thread_name]+ self.outsorted_insertion_status_general[thread_name], self.error_insertion_status_general[thread_name], self.outsorted_insertion_status_general[thread_name]))
         self.logger.info(">>>Summary<<< Total inserted: {} rows; Total ignored: {} rows, from that  {} was error insertions and {} was out-sorted insertions (exp:  cleaned tweets/texts, ignored retweets, ignored files with wrong structure etc.). If you want to see all ignored data than set 'mode'-option  to 'prod+' and consult logs which contain following pattern '*outsorted*'. ".format(self.total_inserted_during_last_insert, self.total_ignored_last_insertion, self.total_error_insertion_during_last_insertion_process, self.total_outsorted_insertion_during_last_insertion_process))
@@ -1773,6 +1802,10 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
         ### convert to unicode, if needed!!!=) 
         ## it is important, fo right works of further preprocessing steps 
+
+        if not inp_str:
+            return False
+
         try: 
             output = inp_str.decode("utf-8")
         except:
@@ -1869,6 +1902,19 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             #p(output, "emojis_normalization")
 
 
+        if not output:
+            try:
+                msg = u"_preprocessingError(1): Current State of the output is: '{}'.  Given inp_str: '{}'. Was outsorted.".format(output,inp_str)
+                #self.logger.error(msg)
+            except:
+                try:
+                    msg = "_preprocessingError(1): Current State of the output is: '{}'.  Given inp_str: '{}'. Was outsorted.".format(output,inp_str.encode("utf-8"))
+
+                except:
+                    msg = "_preprocessingError(1): Current State of the output is: '{}'. Given inp_str: '<CAN NOT BE ENCODED>' ".format(output)
+                    #self.logger.error(msg)
+            self.logger.outsorted_corpus(msg)
+            return False
 
         #############Step 6 ########################
         #Step 6:  Segmentation
@@ -1877,7 +1923,9 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             #p(output, c="r")
             #if output
             if not output:
-                return "terminated"
+                return False
+                #if not isinstance(output, (list,tuple)):
+                #    return ("terminated","SentSplitter returned '{}'. ".format(output))
             #p((len(sentences),sentences), "sentences", c="r")
             #p(len(output), "splitted")
             #p(output, "splitted")
@@ -1889,7 +1937,19 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         #    self.logger.critical(("sent_splitter",output))
         #p(output, "sent_splitted")
 
+        if not output:
+            try:
+                msg = u"_preprocessingError(2): Current State of the output is: '{}'.  Given inp_str: '{}'. Was outsorted.".format(output,inp_str)
+                #self.logger.error(msg)
+            except:
+                try:
+                    msg = "_preprocessingError(2): Current State of the output is: '{}'.  Given inp_str: '{}'. Was outsorted.".format(output,inp_str.encode("utf-8"))
 
+                except:
+                    msg = "_preprocessingError(2): Current State of the output is: '{}'. Given inp_str: '<CAN NOT BE ENCODED>' ".format(output)
+                    #self.logger.error(msg)
+            self.logger.outsorted_corpus(msg)
+            return False
 
 
         #############Step 8 ########################
@@ -1901,7 +1961,12 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             #p(non_regular_tokens, "non_regular_tokens")
             output = [self.tag_pos([token[0] for token in sent ], thread_name=thread_name) for sent in output]
             if not output[0]:
-                return "terminated"
+                try:
+                    msg = u"_preprocessingError(3): Current State of the output is: '{}'.  Given inp_str: '{}'. Was outsorted.".format(output,inp_str)
+                except:
+                    msg = "_preprocessingError(3): Current State of the output is: '{}'.  Given inp_str: '<CAN NOT BE ENCODED>'. Was outsorted.".format(output)
+                self.logger.outsorted_corpus(msg)
+                return False
             output = self._rebuild_non_regular_tokens(non_regular_tokens, output)
             #p(output, "tagged")
         #if was_found:
@@ -2162,7 +2227,6 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
     def split_sentences(self,inp_list, thread_name="Thread0"):
         try:
-        
             #self.logger.low_debug("'{}'-SentSplitter: SentSplitter was called from '{}'-Thread.".format(self._sent_splitter, thread_name))
             if self._sent_splitter == "somajo":
                 return self._split_sentences_with_somajo(inp_list,thread_name=thread_name)
@@ -2172,8 +2236,8 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             self._terminated = True
             #self.terminate_all("KeyboardInterrupt")
             return False  
-        except Exception, e:
-            self.logger.error("SentSplitterError:  in '{}'-Thread. See Exception '{}'.".format(thread_name,e))
+        except Exception as e:
+            self.logger.error("SentSplitterError:  in '{}'-Thread. See Exception '{}'.".format(thread_name,repr(e)))
             self.terminate = True
             #return [[("",""),("","")],[("",""),("","")]]
             #sys.exit()
@@ -2195,7 +2259,18 @@ class Corpus(BaseContent,BaseDB,CorpusData):
     def _split_sentences_with_somajo(self,inp_list, thread_name="Thread0"):
         #self.logger.low_debug("SoMaJo-SentSpliter: Start splitting into sentences.")
         self.preprocessors[thread_name]["sent_splitter"].send(inp_list)
-        return self.preprocessors[thread_name]["sent_splitter"].receive()
+        splitted =  self.preprocessors[thread_name]["sent_splitter"].receive()
+
+        #if not splitted:
+        #    if not isinstance(splitted, (list, tuple)):
+        #        msg = "SentSplitterSomajoError: Got '{}' as  Answer. Given inp_list: '{}'.".format(splitted,inp_list)
+        #        #self.logger.error(msg)
+        #        self.logger.outsorted_corpus(msg)
+        #        return False
+                #self.threads_status_bucket.put({"name":thread_name, "status":"failed", "desc":msg})
+                #self.terminate = True
+
+        return splitted
 
 
     def _get_somajo_sent_splitter(self, is_tuple=True, thread_name="Thread0"):
@@ -2224,9 +2299,10 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                 self.logger.low_debug("ChannelReady: Channel for SentSplitter ('{}') is open and ready. ".format(thread_name))
                 return channel
             else:
-                self.logger.error("SomajoSentSplitterGetterError: Channel wasn't opended properly. Got following answer: '{}'. and was aborted!!! ".format(answer))
+                msg = "SomajoSentSplitterGetterError: Channel wasn't opended properly. Got following answer: '{}'. and was aborted!!! ".format(answer)
+                self.logger.error(msg)
                 self._terminated = True
-                self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
+                self.threads_status_bucket.put({"name":thread_name, "status":"failed", "desc":msg})
                 return False
 
 
@@ -2250,7 +2326,6 @@ class Corpus(BaseContent,BaseDB,CorpusData):
 
     def tag_pos(self,inp_list, thread_name="Thread0"):
         try:
-        
             #self.logger.low_debug("'{}'-POSTagger: POS-tagger was called from '{}'-Thread.".format(self._sent_splitter, thread_name))
             if self._pos_tagger == "someweta":
                 #p("someweta")
@@ -2264,9 +2339,10 @@ class Corpus(BaseContent,BaseDB,CorpusData):
             self._terminated = True
             #self.terminate_all("KeyboardInterrupt")
             return False         
-        except Exception, e:
+        except Exception as  e:
             #p((inp_list,self._pos_tagger, self.preprocessors[thread_name]["pos-tagger"]))
             self.logger.error("POSTaggerError: in '{}'-Thread. See Exception '{}'.".format(thread_name,e))
+            self.threads_status_bucket.put({"name":thread_name, "status":"terminated", "desc":repr(e)})
             self.terminate = True
             #return [[("",""),("","")],[("",""),("","")]]
             #sys.exit()
@@ -2298,8 +2374,9 @@ class Corpus(BaseContent,BaseDB,CorpusData):
                     self.logger.error("TweetNLP Java-Script File wasn't found", exc_info=self._logger_traceback)
                     return False
             except Exception as e:
-                self.logger.error("TweetNLP_tagger wasn't initialized. Please check if JAVA was installed on your PC. Exception: '{}'.".format(repr(e)) )
-                self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
+                msg = "TweetNLP_tagger wasn't initialized. Please check if JAVA was installed on your PC. Exception: '{}'.".format(repr(e))
+                self.logger.error( msg)
+                self.threads_status_bucket.put({"name":thread_name, "status":"failed", "desc":msg})
                 self.terminate = True
                 return False
             pos_tagger_obj = None
@@ -2312,6 +2389,14 @@ class Corpus(BaseContent,BaseDB,CorpusData):
         self.preprocessors[thread_name]["pos-tagger"].send(inp_list)
         tagged = self.preprocessors[thread_name]["pos-tagger"].receive()
         #p(tagged, "tagged_with_someweta")
+        # if not tagged:
+        #     if not isinstance(tagged, (list,tuple)):
+        #         msg = "POSTaggerSemewetaError: Got '{}' as  Answer. Given inp_list: '{}'.".format(tagged,inp_list)
+        #         self.logger.outsorted_corpus(msg)
+        #         return False
+        #         #self.threads_status_bucket.put({"name":thread_name, "status":"failed", "desc":msg})
+        #         #self.terminate = True
+
         return tagged
 
     def _tag_pos_with_tweetnlp(self,inp_list):

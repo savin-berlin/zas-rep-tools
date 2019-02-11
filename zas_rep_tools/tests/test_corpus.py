@@ -532,7 +532,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
 
 
     @attr(status='stable')
-    #@wipd
+    @wipd
     def test_insert_one_thread_on_example_of_blogger_corp_554(self):
         self.prj_folder()
         self.blogger_corpus()
@@ -574,7 +574,7 @@ class TestZAScorpusCorpus(BaseTester,unittest.TestCase):
                     del_hashtag=del_hashtag, del_html=del_html, case_sensitiv=case_sensitiv,)
         corp.insert(reader.getlazy(stream_number=1, min_files_pro_stream=1))
         number_to_insert = len(reader.getlazy(stream_number=1, min_files_pro_stream=1))
-        
+        #p(corp.total_inserted_during_last_insert)
         assert corp.total_inserted_during_last_insert == number_to_insert
         assert corp.total_error_insertion_during_last_insertion_process == 0
         assert corp.total_ignored_last_insertion == 0

@@ -244,7 +244,7 @@ def configer(command1,command2,  mode,logdir ):
 @click.option('--export_dir', '-expdir', default=False, help="Directory where Exports will be saved. If False, than they will be saved in the default ProjectDirectory.")
 @click.option('--export_name', '-expname', default=False, help="FileName for ExportData." )
 @click.option('--rows_limit_in_file', '-rowlim', default=50000, help="Number of the Rows Max in the Files to export." )
-
+@click.option('--delete_failed_corp', '-dfc', default=True, help="If corpus Computing is failed, then delete failed corpus DB." ,type=bool)
 
 @click.option('--stream_number', '-sn', default=1, help="Enable or Disable the Multiprocessing. If Number > 1, than tool try to compute every thing parallel. This function could bring much better performance on the PC with multi cores and big Operation Memory.")
 @click.option('--mode', '-m', default="prod" ,help="Set one of the Tool Modus. Modi ensure the communication behavior of this Tool.", type=click.Choice(helpers.modi))
@@ -264,7 +264,7 @@ def corpora(command1,
             formatter_name, reader_ignore_retweets,min_files_pro_stream, csvdelimiter,encoding,
 
             stream_number, value, attr_name,type_to_export, export_dir, export_name,doc_id,rows_limit_in_file,
-
+            delete_failed_corp,
             mode,logdir ):
     # $ zas-vot-tools strat1 sets/train_set sets/eval_set  segments voiceless voiced vlwindow vcwindow experiments
     
@@ -291,6 +291,7 @@ def corpora(command1,
     doc_id = strtobool(doc_id)
     status_bar = strtobool(status_bar)
 
+    #p(sentiment_analyzer, "sentiment_analyzer")
 
     try:
         doc_id = doc_id.strip("'") if doc_id and doc_id[0] == ["'"] else doc_id.strip('"')
@@ -397,8 +398,11 @@ def corpora(command1,
             #import shutil
             
             corp._close()
-            os.remove(os.path.join(main_folders["corp"],corp_fname))
-            logger.info("InsertionProecess into '{}'-CorpDB is failed. Corpus was deleted.".format(corp_fname))
+            if strtobool(delete_failed_corp):
+                os.remove(os.path.join(main_folders["corp"],corp_fname))
+                logger.info("InsertionProecess into '{}'-CorpDB is failed. Corpus was deleted.".format(corp_fname))
+            else:
+                logger.info("InsertionProecess into '{}'-CorpDB is failed. BUT Corpus wasn't deleted.".format(corp_fname))
         else:
             corp.corpdb.commit()
             corp.close()
@@ -939,7 +943,7 @@ def corpora(command1,
 @click.option('--corp_fname', '-cn', default=False, help="File Name of the CorpusDB (with or without extention)")
 @click.option('--stream_number','-sn', default=1, help="Enable or Disable the Multiprocessing. If Number > 1, than tool try to compute every thing parallel. This function could bring much better performance on the PC with multi cores and big Operation Memory.")
 @click.option('--create_indexes', '-crtix', default=True,type=bool, help="For better performance it is highly recommended to create indexes. But their creation could also cost time  once during their creation and also space.")
-@click.option('--freeze_db', '-freeze', default=True,type=bool, help="Freeze current DB and close for all next possible insertion of the new data. This option also triggers the DB Optimization Porcess, which could cost a lost of time, but make this DB much space and time efficient. Once this process is done, it is not possible anymore to decline it.")
+@click.option('--freeze_db', '-freeze', default=False,type=bool, help="Freeze current DB and close for all next possible insertion of the new data. This option also triggers the DB Optimization Porcess, which could cost a lost of time, but make this DB much space and time efficient. Once this process is done, it is not possible anymore to decline it.")
 @click.option('--optimized_for_long_syntagmas', '-optlongsyn', default=True,type=bool, help="If you are planing to search in the big syntagmas, than set this to True. It will optimize DB to be fast with long syntagmas.")
 @click.option('--min_files_pro_stream', '-minfile', default=1000, help="The Limit, when Multiprocessing will be start to create a new stream.")
 @click.option('--baseline_delimiter', '-basdelim', default="|+|", help="Delimiter for Syntagmas in intern Baseline Table. Change here if you really know, that you need it.")

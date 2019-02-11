@@ -86,9 +86,11 @@ ___
 
 11. [Possible errors and warnings](#errors)
 
-12. [Data-Examples](#data)
+12. [Bugs](#bugs)
 
-13. [Acknowledgements](#acknowledgements)
+13. [Data-Examples](#data)
+
+14. [Acknowledgements](#acknowledgements)
 
 
 
@@ -1830,7 +1832,7 @@ It means that your Computer dont have enought of the RAM or the Swap is to short
     - or the input command wasn't recognized in the right way (corrupt syntax). 
 
 
-#### 5. 'Permission Error' or 'UserConfigDBGetterError:'
+#### 5. 'Permission Error' or 'UserConfigDBGetterError:', or  'OSError: [Errno 13] Permission denied:'
     - execute the command with the admin rights (with following prefix "sudo")
 
 
@@ -1851,11 +1853,36 @@ It means that your Computer dont have enought of the RAM or the Swap is to short
 <br/>
 
 
+<a name="bugs"/>
+<p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
+</sub> </p>
+
+## 13. Bugs
+
+
+#### 1. CashedWriterError: Given CommitNumber'8' is not exist. It wasn't possible to write cashed Insertion into DB.
+    Than set Option "--use_cash" to False
+
+#### 2. Status Bar doesn't work properly, if CSV was given, as input
+
+
+<br/>
+
+
+
+---
+---
+---
+---
+
+<br/>
+
+
 <a name="data"/>
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
 
-## 12. Data-Examples
+## 13. Data-Examples
 
 There are  also available following examples:
 
@@ -1886,7 +1913,7 @@ There are  also available following examples:
 <p style='text-align: right;'>  <sub> <a href="#toc">Back to top</a>
 </sub> </p>
 
-## 13. Acknowledgements
+## 14. Acknowledgements
 
 
 #### A big Thank to the following Peoples, who makes this work and current results possible:

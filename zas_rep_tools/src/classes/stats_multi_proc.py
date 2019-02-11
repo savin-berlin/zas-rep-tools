@@ -19,7 +19,7 @@ import os
 import sys
 from raven import Client
 import types
-import Queue
+#import Queue
 import enlighten
 import json
 from collections import defaultdict,Counter,OrderedDict
@@ -29,10 +29,14 @@ import time
 from itertools import izip
 import re
 import Stemmer
+import multiprocessing as mp
+from multiprocessing import Value, Process, Manager,Pipe,Queue#, BaseManager, DictProxy
+from ctypes import c_bool
+import gc
 
+#from multiprocessing import Queue
 
-
-from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, path_to_zas_rep_tools, Rle, categorize_token_list, get_categories, instance_info, SharedCounterExtern, SharedCounterIntern, Status,function_name,statusesTstring, ngrams,nextLowest, get_number_of_streams_adjust_cpu,LenGen,DefaultOrderedDict, from_ISO639_2, to_ISO639_2,MyThread
+from zas_rep_tools.src.utils.helpers import intern_sender,DeepDict,MyMultiManager,set_class_mode, print_mode_name, path_to_zas_rep_tools, Rle, categorize_token_list, get_categories, instance_info, SharedCounterExtern, SharedCounterIntern, Status,function_name,statusesTstring, ngrams,nextLowest, get_number_of_streams_adjust_cpu,LenGen,DefaultOrderedDict, from_ISO639_2, to_ISO639_2,MyThread
 from zas_rep_tools.src.classes.dbhandler import DBHandler
 from zas_rep_tools.src.classes.reader import Reader
 from zas_rep_tools.src.classes.corpus import Corpus
@@ -115,12 +119,22 @@ class Stats(BaseContent,BaseDB):
         self.corpdb_defaultname = "corpus"
         self.attached_corpdb_name = False
         self._doc_id_tag =  db_helper.doc_id_tag
+
+
         #self._baseline_delimiter = baseline_delimiter
 
         #self._init_compution_variables()
 
-        self.preprocessors = defaultdict(dict)
-        self._init_preprocessors(thread_name="Thread0")
+        #self.preprocessors =  self.mgr.defaultdict(lambda: self.mgr.defaultdict(dict) 
+        #self.preprocessors =  self.mgr.DeepDict( self.mgr.CallableDict() ) 
+
+               #self.x = self.manager.list()
+        #self.mgr = MyMultiManager()
+        #self.mgr.start()
+        #self._init_preprocessors(thread_name="Thread0")
+
+        self._init_main_variables()
+        
 
         self.logger.debug('Intern InstanceAttributes was initialized')
 
@@ -157,17 +171,35 @@ class Stats(BaseContent,BaseDB):
 ####################################################################################
 ####################################################################################
 
+
+    def _init_main_variables(self):
+        self.mgr = MyMultiManager()
+        self.mgr.start()
+        self.preprocessors =  self.mgr.DeepDict( self.mgr.CallableDict() )
+        self._init_preprocessors(thread_name="Thread0")
+
+
     def _init_compution_variables(self):
-        self.threads_error_bucket = Queue.Queue()
-        self.threads_status_bucket = Queue.Queue()
+        self._init_main_variables()
+
+        self.mgr = MyMultiManager()
+        self.mgr.start()
+        #p("-11")
+        self.threads_error_bucket = Queue()
+        self.threads_status_bucket = Queue()
         self.threads_success_exit = []
         self.threads_unsuccess_exit = []
         self._threads_num = 0
+        #p("-222")
         self.status_bars_manager =  self._get_status_bars_manager()
-        self.preprocessors = defaultdict(dict)
+        #p("-333")
+        
+        #p("-555")
         #self.baseline_replication = defaultdict(lambda:defaultdict(lambda: 0) )
         #self.baseline_reduplication = defaultdict(lambda:defaultdict(lambda: 0) )
-        self._terminated = False
+        self._terminated = Value(c_bool, False)
+        self._close_db_writer =  Value(c_bool, False)
+        #p("-666")
         #self.baseline_ngramm_lenght = self._context_left + 1 +self._context_lenght
         self.temporized_baseline = defaultdict(int)
         self.active_threads = []
@@ -184,7 +216,7 @@ class Stats(BaseContent,BaseDB):
 
         self._text_field_name = "text"
         self._id_field_name =  "id"
-
+        #p("-999")
         self.temporized_repl = defaultdict(list)
         self.temporized_redu = defaultdict(list)
         self._repls_cols = self.statsdb.col("replications")
@@ -197,6 +229,7 @@ class Stats(BaseContent,BaseDB):
                                 "mention":":mention:",
                                 "hashtag":":hashtag:",
                             }
+        #p("-10000")
 
 
 
@@ -550,6 +583,8 @@ class Stats(BaseContent,BaseDB):
     #     return streams
 
 
+    #def 
+
     def get_streams_from_corpus(self,inp_corp,stream_number,datatyp="dict", size_to_fetch=1000):
         row_num = inp_corp.corpdb.rownum("documents")
         rows_pro_stream = row_num/stream_number
@@ -567,22 +602,61 @@ class Stats(BaseContent,BaseDB):
                 for row in  res:
                     #yield {self._id_field_name:row[0], self._text_field_name:row[1]}
                     yield row
+
+
+        # def intern_sender(pipe, gen, length, chunk_size= 10000):
+        #     #result = pipe.recv()
+        #     #sended_num = 0
+        #     #was_close = False
+        #     while True:
+        #         command = pipe.recv()
+        #         if command == "+":
+        #             i = 0
+        #             while i <= chunk_size:
+        #                 try:
+        #                     g = next(gen)
+        #                 except StopIteration:
+        #                     pipe.send(None)
+        #                     break
+
+        #                 #p(g, "SENDER", c="r")
+        #                 #pipe.send(next(gen))
+        #                 pipe.send(g)
+        #                 i += 1
+        #             #sended_num += i
+        #             pipe.send(False)
+        #         else:
+        #             #was_close = True
+        #             #pipe.close()
+        #             break
+        #             pipe.send(None)
+        #     pipe.send(None)
+
         #p(num_of_getted_items,"num_of_getted_items")
         for i in range(stream_number):
             thread_name = "Thread{}".format(i)
+            parent, child = Pipe()
             if i < (stream_number-1): # for gens in between     
                 #gen = inp_corp.corpdb.lazyget("documents",limit=rows_pro_stream, offset=num_of_getted_items,thread_name=thread_name, output=datatyp)
                 #gen = inp_corp.corpdb.lazyget("documents",limit=rows_pro_stream, offset=num_of_getted_items,thread_name=thread_name, output=datatyp)
                 
                 
                 #p((rows_pro_stream, num_of_getted_items))
-                streams.append((thread_name,LenGen(intern_gen(rows_pro_stream, num_of_getted_items), rows_pro_stream)))
+
+                #sender = intern_sender(parent, intern_gen(rows_pro_stream, num_of_getted_items), rows_pro_stream, chunk_size= 10000)
+                # = LenGen(intern_gen(rows_pro_stream, num_of_getted_items), rows_pro_stream)
+                sender = Process(target=intern_sender, args=(parent, intern_gen(rows_pro_stream, num_of_getted_items), rows_pro_stream, 10000))
+                sender.start()
+                streams.append((thread_name,rows_pro_stream,child,sender))
                 num_of_getted_items += rows_pro_stream
                 #print num_of_getted_items, rows_pro_stream
             else: # for the last generator
                 #gen = inp_corp.corpdb.lazyget("documents",limit=-1, offset=num_of_getted_items,thread_name=thread_name, output=datatyp)
                 #p((-1, num_of_getted_items))
-                streams.append((thread_name,LenGen(intern_gen(-1, num_of_getted_items), row_num-num_of_getted_items)))
+                sender = Process(target=intern_sender, args=(parent, intern_gen(-1, num_of_getted_items), row_num-num_of_getted_items, 10000))
+                sender.start()
+                #streams.append((thread_name,LenGen(intern_gen(-1, num_of_getted_items), row_num-num_of_getted_items)))
+                streams.append((thread_name,row_num-num_of_getted_items,child,sender))
                 num_of_getted_items += rows_pro_stream
         
         return streams
@@ -1844,7 +1918,7 @@ class Stats(BaseContent,BaseDB):
                 if not self._init_preprocessors(thread_name=thread_name):
                     self.logger.error("Error during Preprocessors initialization. Thread '{}' was stopped.".format(thread_name), exc_info=self._logger_traceback)
                     self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":"Error during Preprocessors initialization"})
-                    self._terminated = True
+                    self._terminated.value = True
                     return False
             # p("..7777")
             try:
@@ -2008,6 +2082,7 @@ class Stats(BaseContent,BaseDB):
             #p(num, "num")
             def intern_gen_all():
                 # p("---555")
+                #p(locals())
                 for baseline_container in self._baseline("*",max_scope=max_scope):
                     #inp_syntagma =  self._preprocess_syntagma(inp_syntagma,thread_name=thread_name, syntagma_type=syntagma_type)
                     # p(max_scope, "max_scope")
@@ -2979,305 +3054,514 @@ class Stats(BaseContent,BaseDB):
             return False
 
         #self._baseline_intime_insertion_till = baseline_intime_insertion_till
-        try:
-            if not isinstance(inp_corp, Corpus):
-                self.logger.error("Given InpObject is not from Corpus type. Insert was aborted!")
+        #try:
+        if not isinstance(inp_corp, Corpus):
+            self.logger.error("Given InpObject is not from Corpus type. Insert was aborted!")
+            return False
+
+        if self.statsdb.get_attr("locked"):
+            self.logger.error("Current DB is still be locked. Possibly it in ht now fr in-useom other process or la thest computation process is failed.")
+            return False
+        self.statsdb.update_attr("locked", True)
+        self._init_compution_variables()
+        if  self._db_frozen: ## insert "db_frozen" as attribute to the StatsDB!!!
+           msg = "Current StatsDB is closed for new Insertions because it  was already SizeOptimized and all temporary Data was deleted"
+           self.logger.error(msg)
+           self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
+           self._terminated.value = True
+           return False
+
+        if drop_indexes:
+            self._drop_created_indexes()
+
+        self._init_compution_variables()
+
+        self.corp = inp_corp
+        self._corp_info  = self.corp.info()
+        self._text_field_name = self._corp_info["text_field_name"]
+        self._id_field_name =  self._corp_info["id_field_name"]
+
+        self.statsdb.update_attr("pos_tagger",self._corp_info["pos_tagger"])
+        self.statsdb.update_attr("sentiment_analyzer",self._corp_info["sentiment_analyzer"])
+        self._pos_tagger = self._corp_info["pos_tagger"]
+        self._sentiment_analyzer = self._corp_info["sentiment_analyzer"]
+
+
+        self._compute_cleaning_flags()
+        #p(self.force_cleaning_flags, "self.force_cleaning_flags")
+        #p(self._force_cleaning, "self._force_cleaning")
+        if not self._check_settings_for_force_cleaning():
+            return False
+        #p(self._force_cleaning, "self._force_cleaning")
+
+
+        if not self._language:
+            self.statsdb.update_attr("language",self._corp_info["language"])
+        else:
+            if self._language != self._corp_info["language"]:
+                self.logger.error("StatsDB language ('{}') is not equal to the inserting CorpDB ('{}'). Those meta data should be equal for staring the insertion process. Please select other corpus, which you want to insert to the current statsDB or initialize a new StatsDB with right language.".format(self._language, self._corp_info["language"]))
                 return False
 
-            if self.statsdb.get_attr("locked"):
-                self.logger.error("Current DB is still be locked. Possibly it in ht now fr in-useom other process or la thest computation process is failed.")
-                return False
-            self.statsdb.update_attr("locked", True)
-            self._init_compution_variables()
-            if  self._db_frozen: ## insert "db_frozen" as attribute to the StatsDB!!!
-               msg = "Current StatsDB is closed for new Insertions because it  was already SizeOptimized and all temporary Data was deleted"
-               self.logger.error(msg)
-               self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
-               self._terminated = True
-               return False
+        #p(self._corpus_id, "self._corpus_id")
+        if not self._corpus_id:
+            self.statsdb.update_attr("corpus_id", self._corp_info["id"])
+            self.set_all_intern_attributes_from_db()
 
-            if drop_indexes:
-                self._drop_created_indexes()
+        else:
+            if self._corpus_id != self._corp_info["id"]:
+                self.logger.error("Current StatdDb was already computed/initialized for Corpus with id '{}'. Now you try to insert Corpus with id '{}' and it is not allow.".format(self._corpus_id,self._corp_info["id"]))
+        #p(self._corpus_id, "self._corpus_id")
 
-            self._init_compution_variables()
+        self._init_stemmer(self._corp_info["language"])
+        
+        #self.status_bars_manager =  self._get_status_bars_manager()
 
-            self.corp = inp_corp
-            self._corp_info  = self.corp.info()
-            self._text_field_name = self._corp_info["text_field_name"]
-            self._id_field_name =  self._corp_info["id_field_name"]
-
-            self.statsdb.update_attr("pos_tagger",self._corp_info["pos_tagger"])
-            self.statsdb.update_attr("sentiment_analyzer",self._corp_info["sentiment_analyzer"])
-            self._pos_tagger = self._corp_info["pos_tagger"]
-            self._sentiment_analyzer = self._corp_info["sentiment_analyzer"]
-
-
-            self._compute_cleaning_flags()
-            #p(self.force_cleaning_flags, "self.force_cleaning_flags")
-            #p(self._force_cleaning, "self._force_cleaning")
-            if not self._check_settings_for_force_cleaning():
-                return False
-            #p(self._force_cleaning, "self._force_cleaning")
-
-
-            if not self._language:
-                self.statsdb.update_attr("language",self._corp_info["language"])
+        ##### Status-Bar - Name of the processed DB
+        if self._status_bar:
+            # print "\n"
+            if self._in_memory:
+                dbname = ":::IN-MEMORY-DB:::"
             else:
-                if self._language != self._corp_info["language"]:
-                    self.logger.error("StatsDB language ('{}') is not equal to the inserting CorpDB ('{}'). Those meta data should be equal for staring the insertion process. Please select other corpus, which you want to insert to the current statsDB or initialize a new StatsDB with right language.".format(self._language, self._corp_info["language"]))
-                    return False
+                dbname = '{}'.format(self.statsdb.fname())
+            status_bar_starting_corpus_insertion = self._get_new_status_bar(None, self.status_bars_manager.term.center( dbname) , "", counter_format=self.status_bars_manager.term.bold_white_on_blue("{fill}{desc}{fill}"))
+            status_bar_starting_corpus_insertion.refresh()
 
-            #p(self._corpus_id, "self._corpus_id")
-            if not self._corpus_id:
-                self.statsdb.update_attr("corpus_id", self._corp_info["id"])
-                self.set_all_intern_attributes_from_db()
 
+
+        if adjust_to_cpu:
+            stream_number= get_number_of_streams_adjust_cpu( min_files_pro_stream, inp_corp.corpdb.rownum("documents"), stream_number, cpu_percent_to_get=cpu_percent_to_get)
+            if stream_number is None or stream_number==0:
+                #p((self._get_number_of_left_over_files(),self.counter_lazy_getted),"self._get_number_of_left_over_files()")
+                self.logger.error("Number of input files is 0. Not generators could be returned.", exc_info=self._logger_traceback)
+                return []
+
+        streams= self.get_streams_from_corpus(inp_corp, stream_number, datatyp=datatyp)
+        #p(streams, "streams")
+        ## threads
+        if self._status_bar:
+            status_bar_threads_init = self._get_new_status_bar(len(streams), "ThreadsStarted", "threads")
+        
+        #p((stream_number, len(streams)))
+        #i=1
+        self._threads_num = len(streams)
+        if self._threads_num>1:
+            if self._status_bar:
+                unit = "rows"
+                self.main_status_bar_of_insertions = self._get_new_status_bar(0, "AllThreadsTotalInsertions", unit)
+                self.main_status_bar_of_insertions.refresh()
+                #self.main_status_bar_of_insertions.total = 0
+        else: 
+            self.main_status_bar_of_insertions = False
+
+        #parent, child = Pipe()
+        db_writer_queue = Queue()
+        db_writer = threading.Thread(target=self._db_multiproc_writer, args=(db_writer_queue, stream_number), name=thread_name)
+        #db_writer = mp.Process(target=self._db_multiproc_writer, args=(db_writer_queue, stream_number), name=thread_name)
+        db_writer.setDaemon(True)
+        db_writer.start()
+
+        for stream in streams:
+            reciever = stream[2]
+            sender = stream[3]
+            thread_name = stream[0]
+            length = stream[1]
+            status_bar_insertion_in_the_current_thread = self._init_status_bar_for_current_thread( length,  thread_name=thread_name, ) if self._status_bar else False
+            #processThread = threading.Thread(target=self._compute, args=(gen,status_bar_insertion_in_the_current_thread,datatyp,  thread_name,baseline_insertion_border), name=thread_name)
+            #processThread = mp.Process(target=self._compute, args=(reciever,sender,db_writer_queue,status_bar_insertion_in_the_current_thread,datatyp,  thread_name,baseline_insertion_border), name=thread_name)
+            processThread = threading.Thread(target=self._compute, args=(reciever,sender,db_writer_queue,status_bar_insertion_in_the_current_thread,datatyp,  thread_name,baseline_insertion_border), name=thread_name)
+            processThread.daemon = True
+            processThread.start()
+            self.active_threads.append(processThread)
+            if self._status_bar:
+                status_bar_threads_init.update(incr=1)
+            #i+=1
+            time.sleep(1)
+
+        self.logger.info("'{}'-thread(s) was started. ".format(len(self.active_threads)))
+
+        time.sleep(3)
+
+        if not self._wait_till_all_threads_are_completed("Compute"):
+            return False
+
+
+        self._close_db_writer.value = True
+
+
+
+        db_writer.join()
+        #p("+++1111",c="m")
+        #p(self.statsdb._cashed_dict, "self.statsdb._cashed_dict")
+        self.statsdb._write_cashed_insertion_to_disc()
+        self.statsdb._commit(write_all_cash = True)
+
+        self.len_active_threads = len(self.active_threads)
+        del self.active_threads
+        self.active_threads = []
+
+        #db_writer.terminate()
+        del db_writer
+        gc.collect()
+        ## save attributes from the main counter
+        if self._status_bar:
+            if self.main_status_bar_of_insertions:
+                self.counters_attrs["compute"]["start"] = self.main_status_bar_of_insertions.start
+                self.counters_attrs["compute"]["end"] = self.main_status_bar_of_insertions.last_update
+                self.counters_attrs["compute"]["total"] = self.main_status_bar_of_insertions.total
+                self.counters_attrs["compute"]["desc"] = self.main_status_bar_of_insertions.desc
             else:
-                if self._corpus_id != self._corp_info["id"]:
-                    self.logger.error("Current StatdDb was already computed/initialized for Corpus with id '{}'. Now you try to insert Corpus with id '{}' and it is not allow.".format(self._corpus_id,self._corp_info["id"]))
-            #p(self._corpus_id, "self._corpus_id")
+                self.counters_attrs["compute"] = False
 
-            self._init_stemmer(self._corp_info["language"])
-            
-            #self.status_bars_manager =  self._get_status_bars_manager()
+        #p("2222",c="m")
+        #self._print_summary_status()
 
-            ##### Status-Bar - Name of the processed DB
-            if self._status_bar:
-                # print "\n"
-                if self._in_memory:
-                    dbname = ":::IN-MEMORY-DB:::"
-                else:
-                    dbname = '{}'.format(self.statsdb.fname())
-                status_bar_starting_corpus_insertion = self._get_new_status_bar(None, self.status_bars_manager.term.center( dbname) , "", counter_format=self.status_bars_manager.term.bold_white_on_blue("{fill}{desc}{fill}"))
-                status_bar_starting_corpus_insertion.refresh()
+        inserted_repl = self.statsdb.rownum("replications")
+        inserted_redu = self.statsdb.rownum("reduplications")
+        uniq_syntagma_in_baseline = self.statsdb.rownum("baseline")
 
+        if self._status_bar:
+            status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("Repl:'{}'; Redu:'{}'; UniqSyntagmaBaseline: '{}'.".format(inserted_repl, inserted_redu,uniq_syntagma_in_baseline ) ), "",  counter_format=self.status_bars_manager.term.bold_white_on_blue('{fill}{desc}{fill}\n'))
+            status_bar_total_summary.refresh()
+            self.status_bars_manager.stop()
+            #print "\n"
 
-
-            if adjust_to_cpu:
-                stream_number= get_number_of_streams_adjust_cpu( min_files_pro_stream, inp_corp.corpdb.rownum("documents"), stream_number, cpu_percent_to_get=cpu_percent_to_get)
-                if stream_number is None or stream_number==0:
-                    #p((self._get_number_of_left_over_files(),self.counter_lazy_getted),"self._get_number_of_left_over_files()")
-                    self.logger.error("Number of input files is 0. Not generators could be returned.", exc_info=self._logger_traceback)
-                    return []
-
-            streams= self.get_streams_from_corpus(inp_corp, stream_number, datatyp=datatyp)
-            #p(streams, "streams")
-            ## threads
-            if self._status_bar:
-                status_bar_threads_init = self._get_new_status_bar(len(streams), "ThreadsStarted", "threads")
-            
-            #p((stream_number, len(streams)))
-            #i=1
-            self._threads_num = len(streams)
-            if self._threads_num>1:
-                if self._status_bar:
-                    unit = "rows"
-                    self.main_status_bar_of_insertions = self._get_new_status_bar(0, "AllThreadsTotalInsertions", unit)
-                    self.main_status_bar_of_insertions.refresh()
-                    #self.main_status_bar_of_insertions.total = 0
-            else: 
-                self.main_status_bar_of_insertions = False
+        if not self._status_bar:
+            self.logger.info("Current StatsDB has '{}' rows in the Replications Table; '{}' rows in the Reduplications Table;'{}' rows in the Baseline Table; ".format(inserted_repl,inserted_redu,uniq_syntagma_in_baseline))
+        else:
+            self.logger.debug("Current StatsDB has '{}' rows in the Replications Table; '{}' rows in the Reduplications Table;'{}' rows in the Baseline Table; ".format(inserted_repl,inserted_redu,uniq_syntagma_in_baseline))
+        #self.logger.info("Current StatsDB has '{}' rows in the Reduplications Table.".format(inserted_redu))
+        #self.logger.info("Current StatsDB has '{}' rows in the Baseline Table.".format(uniq_syntagma_in_baseline))
 
 
-            for stream in streams:
-                gen = stream[1]
-                if not self._isrighttype(gen):
-                    self.logger.error("StatsComputationalError: Given InpData not from right type. Please give an list or an generator.", exc_info=self._logger_traceback)
-                    return False
-                #p(gen)
-
-                thread_name = stream[0]
-                processThread = threading.Thread(target=self._compute, args=(gen,datatyp,  thread_name,baseline_insertion_border), name=thread_name)
-                processThread.setDaemon(True)
-                processThread.start()
-                self.active_threads.append(processThread)
-                if self._status_bar:
-                    status_bar_threads_init.update(incr=1)
-                #i+=1
-                time.sleep(1)
-
-            self.logger.info("'{}'-thread(s) was started. ".format(len(self.active_threads)))
-
-            time.sleep(3)
-
-            if not self._wait_till_all_threads_are_completed("Compute"):
-                return False
+        self._last_insertion_was_successfull = True
+        self._end_time_of_the_last_insertion = time.time()
 
 
-            self.statsdb._write_cashed_insertion_to_disc(with_commit=True)
+        #p("333",c="m")
 
-
-
-            ## save attributes from the main counter
-            if self._status_bar:
-                if self.main_status_bar_of_insertions:
-                    self.counters_attrs["compute"]["start"] = self.main_status_bar_of_insertions.start
-                    self.counters_attrs["compute"]["end"] = self.main_status_bar_of_insertions.last_update
-                    self.counters_attrs["compute"]["total"] = self.main_status_bar_of_insertions.total
-                    self.counters_attrs["compute"]["desc"] = self.main_status_bar_of_insertions.desc
-                else:
-                    self.counters_attrs["compute"] = False
-
-
-            #self._print_summary_status()
-
-            inserted_repl = self.statsdb.rownum("replications")
-            inserted_redu = self.statsdb.rownum("reduplications")
-            uniq_syntagma_in_baseline = self.statsdb.rownum("baseline")
-
-            if self._status_bar:
-                status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("Repl:'{}'; Redu:'{}'; UniqSyntagmaBaseline: '{}'.".format(inserted_repl, inserted_redu,uniq_syntagma_in_baseline ) ), "",  counter_format=self.status_bars_manager.term.bold_white_on_blue('{fill}{desc}{fill}\n'))
-                status_bar_total_summary.refresh()
-                self.status_bars_manager.stop()
-                #print "\n"
-
-            if not self._status_bar:
-                self.logger.info("Current StatsDB has '{}' rows in the Replications Table; '{}' rows in the Reduplications Table;'{}' rows in the Baseline Table; ".format(inserted_repl,inserted_redu,uniq_syntagma_in_baseline))
-            else:
-                self.logger.debug("Current StatsDB has '{}' rows in the Replications Table; '{}' rows in the Reduplications Table;'{}' rows in the Baseline Table; ".format(inserted_repl,inserted_redu,uniq_syntagma_in_baseline))
-            #self.logger.info("Current StatsDB has '{}' rows in the Reduplications Table.".format(inserted_redu))
-            #self.logger.info("Current StatsDB has '{}' rows in the Baseline Table.".format(uniq_syntagma_in_baseline))
-
-
-            self._last_insertion_was_successfull = True
-            self._end_time_of_the_last_insertion = time.time()
-
-
-
+        self.statsdb._commit(write_all_cash=True)
+        if create_indexes:
+            self.statsdb.init_default_indexes(thread_name=thread_name)
+            self.create_additional_indexes(optimized_for_long_syntagmas=optimized_for_long_syntagmas)
             self.statsdb._commit(write_all_cash=True)
-            if create_indexes:
-                self.statsdb.init_default_indexes(thread_name=thread_name)
-                self.create_additional_indexes(optimized_for_long_syntagmas=optimized_for_long_syntagmas)
-                self.statsdb._commit()
 
-            if not self._check_baseline_consistency():
-                self.logger.error("StatsDBCorrupt: Current StatsDB is inconsistent.")
-                return False
+        if not self._check_baseline_consistency():
+            self.logger.error("StatsDBCorrupt: Current StatsDB is inconsistent.")
+            return False
 
-            if freeze_db:
-                self.optimize_db(stream_number=stream_number, min_row_pro_sream=min_files_pro_stream)
+        if freeze_db:
+            self.optimize_db(stream_number=stream_number, min_row_pro_sream=min_files_pro_stream)
 
-            #self.statsdb._commit()
+        self.statsdb._commit(write_all_cash=True)
+        self._compute_baseline_sum()
+
+        if not self._check_statsdb_consistency():
+            self.logger.error("StatsDBCorrupt: Current StatsDB is inconsistent.")
+            return False
+
+        #p("DONE---")
+        
+        if len(self.threads_unsuccess_exit) >0:
+            self.logger.error("StatsComputational process is failed. (some thread end with error)")
+            raise ProcessError, "'{}'-Threads end with an Error.".format(len(self.threads_unsuccess_exit))
+            #self.statsdb.update_attr("locked", False)
+            return False
+        else:
+            self.logger.info("StatsComputational process end successful!!!")
+            self.statsdb.update_attr("locked", False)
             self.statsdb._commit(write_all_cash=True)
-            self._compute_baseline_sum()
+            return True
 
-            if not self._check_statsdb_consistency():
-                self.logger.error("StatsDBCorrupt: Current StatsDB is inconsistent.")
-                return False
-            
-            if len(self.threads_unsuccess_exit) >0:
-                self.logger.error("StatsComputational process is failed. (some thread end with error)")
-                raise ProcessError, "'{}'-Threads end with an Error.".format(len(self.threads_unsuccess_exit))
-                #self.statsdb.update_attr("locked", False)
-                return False
-            else:
-                self.logger.info("StatsComputational process end successful!!!")
-                self.statsdb.update_attr("locked", False)
-                self.statsdb._commit()
-                return True
-
-        except Exception, e:
-            print_exc_plus() if self._ext_tb else ""
-            self.logger.error("ComputeError: See Exception: '{}'. ".format(e), exc_info=self._logger_traceback)
-            self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
-        except KeyboardInterrupt:
-            self.logger.warning("KeyboardInterrupt: Process was stopped from User. Some inconsistence in the current DB may situated.")
-            sys.exit()
+        # except Exception as e:
+        #     print_exc_plus() if self._ext_tb else ""
+        #     self.logger.error("ComputeError: See Exception: '{}'. ".format(repr(e)), exc_info=self._logger_traceback)
+        #     self.threads_status_bucket.put({"name":thread_name, "status":"failed"})
+        # except KeyboardInterrupt:
+        #     self.logger.warning("KeyboardInterrupt: Process was stopped from User. Some inconsistence in the current DB may situated.")
+        #     sys.exit()
            
 
 
-    def _compute(self, inp_data, datatyp="dict",  thread_name="Thread0",  baseline_insertion_border=1000000,add_also_repeted_redu_to_baseline=True):
-        try:
-            if not self._check_corp_should_exist():
-                self._terminated = True
-                msg = "StatsObj wasn't found."
-                self.logger.error(msg)
-                self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
-                return False
 
-            if not self._corp_info:
-                self._terminated = True
-                msg = "CorpInfo wasn't found."
-                self.logger.error(msg)
-                self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
-                return False 
-
-            status_bar_insertion_in_the_current_thread = self._initialisation_computation_process( inp_data,  thread_name=thread_name, )
-            
-            if self._status_bar:
-                if not  status_bar_insertion_in_the_current_thread: return False
-
-            self.logger.debug("_ComputationalProcess: Was started for '{}'-Thread. ".format(thread_name))
-            i = 0
-            for doc_elem in inp_data:
-                self._check_termination(thread_name=thread_name)
-                i+= 1
-                if self._status_bar:
-                    status_bar_insertion_in_the_current_thread.update(incr=1)
-                    if self.main_status_bar_of_insertions:
-                        self.main_status_bar_of_insertions.update(incr=1)
-
-                text_elem = json.loads(doc_elem[1])
-                #p((sum([len(s[0]) for s in  text_elem]), "doc_elem"))
-                if self._force_cleaning:
-                    text_elem  = self._preprocess(text_elem,thread_name=thread_name)
-                #p(text_elem, c="m")
-
-                ### Extraction 
-                extracted_repl_in_text_container, repl_free_text_container, rle_for_repl_in_text_container = self.extract_replications(text_elem, thread_name=thread_name)
-                #p((extracted_repl_in_text_container, repl_free_text_container, rle_for_repl_in_text_container), "REPLS")
-                
-                extracted_redu_in_text_container, redu_free_text_container, mapping_redu = self.extract_reduplications(repl_free_text_container, rle_for_repl_in_text_container, thread_name=thread_name)
-                #p((extracted_redu_in_text_container, redu_free_text_container, mapping_redu), "REDUS")
-                
-                computed_baseline = self.compute_baseline(redu_free_text_container,extracted_redu_in_text_container)
-                stemmed_text_container = [[self.stemm(token) for token in sent] for sent in redu_free_text_container]
-                
-                #p(stemmed_text_container, "stemmed_text_container")
-                ### Insertion
-
-                self.insert_repl_into_db(doc_elem,text_elem,extracted_repl_in_text_container, repl_free_text_container,rle_for_repl_in_text_container,redu_free_text_container,mapping_redu,stemmed_text_container, thread_name=thread_name)
-                self.insert_redu_into_db(doc_elem,text_elem,extracted_redu_in_text_container, redu_free_text_container, rle_for_repl_in_text_container, repl_free_text_container, mapping_redu,stemmed_text_container,thread_name=thread_name)
-
-                #if "@ronetejaye" in [t for sent in redu_free_text_container for t in sent]:
-                #    p((doc_elem,redu_free_text_container,repl_free_text_container), "doc_elem")
-                
-                with self.locker:
-                    self.baseline_lazyinsertion_into_db(computed_baseline,extracted_redu_in_text_container,baseline_insertion_border=baseline_insertion_border,thread_name=thread_name)
-
-            self._write_repl_into_db(thread_name=thread_name)
-            self._write_redu_into_db(thread_name=thread_name)        
-
-            with self.locker:
-                self.baseline_insert_left_over_data(thread_name=thread_name)
-
-
-            if self._status_bar:
-                status_bar_insertion_in_the_current_thread.refresh()
-                self.counters_attrs["_compute"][thread_name]["start"] = status_bar_insertion_in_the_current_thread.start
-                self.counters_attrs["_compute"][thread_name]["end"] = status_bar_insertion_in_the_current_thread.last_update
-                self.counters_attrs["_compute"][thread_name]["total"] = status_bar_insertion_in_the_current_thread.total
-                self.counters_attrs["_compute"][thread_name]["desc"] = status_bar_insertion_in_the_current_thread.desc
-                status_bar_insertion_in_the_current_thread.close(clear=False)
-
-
-            self.threads_status_bucket.put({"name":thread_name, "status":"done"})
-            self.logger.debug("_Compute: '{}'-Thread is done and was stopped.".format(thread_name))
-            return True
-
-
-        except Exception, e:
-            print_exc_plus() if self._ext_tb else ""
-            msg = "_ComputeError: See Exception: '{}'. ".format(e)
-            self.logger.error(msg, exc_info=self._logger_traceback)
+    def _compute(self, pipe_reciever, sender,db_writer,status_bar_insertion_in_the_current_thread,datatyp="dict",  thread_name="Thread0",  baseline_insertion_border=1000000,add_also_repeted_redu_to_baseline=True):
+        #try:
+        if not self._check_corp_should_exist():
+            self._terminated.value = True
+            msg = "StatsObj wasn't found."
+            self.logger.error(msg)
             self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
-            self.statsdb.rollback()
+            return False
+
+        if not self._corp_info:
+            self._terminated.value = True
+            msg = "CorpInfo wasn't found."
+            self.logger.error(msg)
+            self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
+            return False 
+
+        self._initialisation_computation_process(thread_name=thread_name)
+        
+        
+        #_init_status_bar_for_current_thread(pipe_reciever, thread_name="Thread0"):
+        #if self._status_bar:
+        #    if not  status_bar_insertion_in_the_current_thread: return False
+
+        self.logger.debug("_ComputationalProcess: Was started for '{}'-Thread. ".format(thread_name))
+        i = 0
+        #for doc_elem in pipe_reciever:
+        pipe_reciever.send("+")
+        while True:
+            #try:
+            #doc_elems = pipe_reciever.recv()
+            doc_elem = pipe_reciever.recv()
+            #p(doc_elem, "RECIEVER"+thread_name, )
+            #except IOError:
+            #    break
+            if not doc_elem:
+                if doc_elem is False:
+                    pipe_reciever.send("+")
+                    continue
+                elif doc_elem is None:
+                    sender.terminate()
+                    del sender
+                    pipe_reciever.close()
+                    break
+                    #doc_elem = pipe_reciever.recv()
+                else:
+                    continue
+            #for doc_elem in doc_elems:
+            #for doc_elem in pipe_reciever:
+            self._check_termination(thread_name=thread_name)
+            i+= 1
+            #p(self._status_bar, "self._status_bar")
+            #p("INCR","STATUSBAR"+thread_name)
+            if self._status_bar:
+                status_bar_insertion_in_the_current_thread.update(incr=1)
+                status_bar_insertion_in_the_current_thread.refresh()
+                if self.main_status_bar_of_insertions:
+                    self.main_status_bar_of_insertions.update(incr=1)
+                    #self.main_status_bar_of_insertions.refresh()
+
+
+            text_elem = json.loads(doc_elem[1])
+            #p((sum([len(s[0]) for s in  text_elem]), "doc_elem"))
+            if self._force_cleaning:
+                text_elem  = self._preprocess(text_elem,thread_name=thread_name)
+            #p(text_elem, c="m")
+
+            ### Extraction 
+            extracted_repl_in_text_container, repl_free_text_container, rle_for_repl_in_text_container = self.extract_replications(text_elem, thread_name=thread_name)
+            #p((extracted_repl_in_text_container, repl_free_text_container, rle_for_repl_in_text_container), "REPLS")
+            
+            extracted_redu_in_text_container, redu_free_text_container, mapping_redu = self.extract_reduplications(repl_free_text_container, rle_for_repl_in_text_container, thread_name=thread_name)
+            #p((extracted_redu_in_text_container, redu_free_text_container, mapping_redu), "REDUS")
+            
+            computed_baseline = self.compute_baseline(redu_free_text_container,extracted_redu_in_text_container)
+            stemmed_text_container = [[self.stemm(token) for token in sent] for sent in redu_free_text_container]
+            
+            #p(stemmed_text_container, "stemmed_text_container")
+            ### Insertion
+
+            self.insert_repl_into_db(db_writer,doc_elem,text_elem,extracted_repl_in_text_container, repl_free_text_container,rle_for_repl_in_text_container,redu_free_text_container,mapping_redu,stemmed_text_container, thread_name=thread_name)
+            self.insert_redu_into_db(db_writer,doc_elem,text_elem,extracted_redu_in_text_container, redu_free_text_container, rle_for_repl_in_text_container, repl_free_text_container, mapping_redu,stemmed_text_container,thread_name=thread_name)
+
+            #if "@ronetejaye" in [t for sent in redu_free_text_container for t in sent]:
+            #    p((doc_elem,redu_free_text_container,repl_free_text_container), "doc_elem")
+            
+            #with self.locker:
+            self.baseline_lazyinsertion_into_db(db_writer,computed_baseline,extracted_redu_in_text_container,baseline_insertion_border=baseline_insertion_border,thread_name=thread_name)
+
+        self._send_data_to_dbwriter(db_writer,"replications",thread_name,NULL=True)
+        self._send_data_to_dbwriter(db_writer,"reduplications",thread_name,NULL=True)     
+        self._send_data_to_dbwriter(db_writer,"baseline", thread_name,NULL=True)
+
+
+        if self._status_bar:
+            status_bar_insertion_in_the_current_thread.refresh()
+            self.counters_attrs["_compute"][thread_name]["start"] = status_bar_insertion_in_the_current_thread.start
+            self.counters_attrs["_compute"][thread_name]["end"] = status_bar_insertion_in_the_current_thread.last_update
+            self.counters_attrs["_compute"][thread_name]["total"] = status_bar_insertion_in_the_current_thread.total
+            self.counters_attrs["_compute"][thread_name]["desc"] = status_bar_insertion_in_the_current_thread.desc
+            status_bar_insertion_in_the_current_thread.close(clear=False)
+
+        #p("STOP", thread_name,c="r")
+
+        self.threads_status_bucket.put({"name":thread_name, "status":"done"})
+        #p("STOP", thread_name,c="r")
+        #self.threads_status_bucket.put("JUHUHUHU")
+        self.logger.debug("_Compute: '{}'-Thread is done and was stopped.".format(thread_name))
+        return True
+
+
+        # except Exception as e:
+        #     print_exc_plus() if self._ext_tb else ""
+        #     msg = "_ComputeError: See Exception: '{}'. ".format(repr(e))
+        #     self.logger.error(msg, exc_info=self._logger_traceback)
+        #     self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
+        #     self.statsdb.rollback()
+        #     return False
+
+
+
+    def _send_data_to_dbwriter(self,db_writer, table_name,thread_name,NULL=False):
+        if table_name == "reduplications":
+            db_writer.put(("reduplications",self.temporized_redu[thread_name] ,thread_name))
+            if NULL:
+                db_writer.put(("reduplications",None ,thread_name))
+            del self.temporized_redu[thread_name]
+            self.temporized_redu[thread_name] = []
+
+
+        elif table_name == "replications":
+            db_writer.put(("replications",self.temporized_repl[thread_name] ,thread_name))
+            if NULL:
+                db_writer.put(("replications",None ,thread_name))
+            del self.temporized_repl[thread_name]
+            self.temporized_repl[thread_name] = []
+
+        else:
+            db_writer.put(("baseline", self.temporized_baseline,thread_name))
+            if NULL:
+                db_writer.put(("baseline", None,thread_name))
+            del self.temporized_baseline
+            self.temporized_baseline= defaultdict(int)
+    
+        #del data_to_send
+        gc.collect()
+
+    def _check_termination(self, thread_name="Thread0"):
+        if self._terminated.value:
+            self.logger.critical("'{}'-Thread was terminated.".format(thread_name))
+            self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
+            sys.exit()
+
+
+
+     
+
+    def _db_multiproc_writer(self, active_queue,stream_number):
+        counter_closed = defaultdict(int)
+        #c = 0
+        #c1 = 0
+        while True:
+
+            if self._terminated.value:
+                break
+                #sys.exit()
+            #result = pipe.recv()
+            if active_queue.empty():
+                time.sleep(0.1)
+                if self._close_db_writer.value:
+                    break
+                continue
+
+            result = active_queue.get()
+            #if sum(counter_closed.values())/float(3) == float(stream_number):
+            #    p(sum(counter_closed.values())/float(3))
+            #    active_queue.close()
+            #    break
+
+            data_to_write = result[1]
+            
+            table_name = result[0]
+            thread_name = result[2]
+            #p((table_name, thread_name), "data_to_write",c="m")
+            if not data_to_write:
+                del result
+                #c1 += 1
+                counter_closed[table_name] += 1
+                #p(counter_closed, "counter_closed",c="r")
+                continue
+            
+            if table_name == "replications":
+                #c+= 1
+                self._write_repl_into_db(data_to_write,thread_name=thread_name)
+
+            elif table_name == "reduplications":
+                #c+= 1
+                self._write_redu_into_db(data_to_write,thread_name=thread_name)
+
+            else:
+                #c+= 1
+                self._baseline_insert_temporized_data(data_to_write,thread_name=thread_name)
+
+            del result
+            del data_to_write
+            gc.collect()
+
+            #p((c,c1), "CCCC", c="r")
+
+            #p(counter_closed, "counter_closed",c="r")
+        sys.exit()
+            
+
+
+
+
+
+
+    def _write_repl_into_db(self,data_to_write,thread_name="Thread0"):
+        #thread_name = 
+        placeholders = ', '.join('?'*len(self._repls_cols))
+        query = "INSERT or IGNORE INTO main.replications VALUES ({});".format(placeholders)
+        #p((query,placeholders),"query")
+        #p(self.temporized_repl[thread_name][0])
+        #p(len(self.temporized_repl[thread_name][0]))
+        self.statsdb._threads_cursors[thread_name].executemany(query,data_to_write )
+        self.temporized_repl[thread_name] = []
+
+
+
+    def _write_redu_into_db(self,data_to_write,thread_name="Thread0"):
+        #thread_name = 
+        placeholders = ', '.join('?'*len(self._redus_cols))
+        query = "INSERT or IGNORE INTO main.reduplications VALUES ({});".format(placeholders)
+        #p((query,placeholders),"query")
+        #p(self.temporized_redu[thread_name][0])
+        #p(len(self.temporized_redu[thread_name][0]))
+        self.statsdb._threads_cursors[thread_name].executemany(query,data_to_write )
+        self.temporized_redu[thread_name] = []
+
+
+
+    def _baseline_insert_temporized_data(self,temporized_baseline,thread_name="Thread0"):
+        try:
+            #self.logger.low_debug("Insertion Process of temporized Baseline was started")
+            qeary = """
+                    INSERT OR REPLACE INTO baseline VALUES (
+                        :0,
+                        :1,
+                        :2,
+                        COALESCE((SELECT occur_syntagma_all FROM baseline WHERE syntagma=:0), 0) + :3,
+                        NULL,NULL,NULL,NULL,NULL,NULL
+                    );"""
+
+            cursor = self.statsdb._db.cursor()
+
+            def intern_gen():
+                for syntag, count in temporized_baseline.iteritems():
+                    #print syntag
+                    #self.logger.error("{}".format(syntag))
+                    #sys.exit()
+                    yield (
+                            self._baseline_delimiter.join(syntag).strip(),
+                            self._baseline_delimiter.join([self.stemm(w) for w in syntag]).strip(),
+                            len(syntag), 
+                            count,  
+                         )
+
+            cursor.executemany(qeary, intern_gen() )
+            self.logger.low_debug("Temporized Baseline was inserted into DB.")
+            return True
+        except Exception as e:
+            self.logger.error("INsertionError: {}".format(repr(e)),  exc_info=self._logger_traceback)
+            self.terminated = True
             return False
 
 
 
     def _check_termination(self, thread_name="Thread0"):
-        if self._terminated:
+        if self._terminated.value:
             self.logger.critical("'{}'-Thread was terminated.".format(thread_name))
             self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
             sys.exit()
@@ -3432,10 +3716,10 @@ class Stats(BaseContent,BaseDB):
         #             yield row
         ### create_temp_table
         #self.statsdb._threads_cursors["baseline_creater"].execute("CREATE TABLE 'temp_baseline' AS SELECT sql FROM sqlite_master WHERE type='table' AND name='baseline'" ).fetchall()
-        self.statsdb._commit()
+        self.statsdb._commit(write_all_cash=True)
         self._temp_baseline_name = "_baseline"
         status = self.statsdb.addtable(self._temp_baseline_name, db_helper.default_columns_and_types_for_stats_baseline ,constraints= db_helper.default_constraints_for_stats_baseline)
-        self.statsdb._commit()
+        self.statsdb._commit(write_all_cash=True)
 
 
         for i, baseline_container in enumerate(self.statsdb.lazyget("baseline", thread_name="baseline_sum")):
@@ -3545,9 +3829,9 @@ class Stats(BaseContent,BaseDB):
 
 
         self.statsdb._threads_cursors["baseline_creater"].execute("DROP  TABLE {};".format("baseline") )
-        self.statsdb._commit()
+        self.statsdb._commit(write_all_cash=True)
         self.statsdb._threads_cursors["baseline_creater"].execute("ALTER TABLE {} RENAME TO baseline;".format(self._temp_baseline_name) )  #  #
-        self.statsdb._commit()
+        self.statsdb._commit(write_all_cash=True)
         self.statsdb._update_temp_indexesList_in_instance(thread_name=thread_name)
         #self.statsdb._update_database_pragma_list(thread_name=thread_name)
         self.statsdb._update_pragma_table_info(thread_name=thread_name)
@@ -3574,11 +3858,16 @@ class Stats(BaseContent,BaseDB):
     def _set_rle(self,  thread_name="Thread0"):
         try:
             self.logger.debug("INIT-RLE: Start the initialization of Run_length_encoder for '{}'-Thread.".format(thread_name))
-            self.preprocessors[thread_name]["rle"] = Rle(self.logger)
+            self.preprocessors[thread_name]["rle"] = self.mgr.Rle()
+            #p(type(self.preprocessors[thread_name]["rle"]))
+            #p(self.preprocessors[thread_name]["rle"])
+            #p(repr(self.preprocessors[thread_name]["rle"]))
+            #p(self.preprocessors[thread_name]["rle"].del_rep("ggggklölkrtuiiiggjk"))
+            #p(self.preprocessors)
             self.logger.debug("INIT-RLE: Run_length_encoder for '{}'-Thread was initialized.".format(thread_name))
             return True
-        except Exception, e:
-            self.logger.error("Exception was encountered: '{}'. ".format(e), exc_info=self._logger_traceback)
+        except Exception as e:
+            self.logger.error("Exception was encountered: '{}'. ".format(repr(e)), exc_info=self._logger_traceback)
             return False
 
     def _init_preprocessors(self, thread_name="Thread0"):
@@ -3687,7 +3976,7 @@ class Stats(BaseContent,BaseDB):
             new_text_elem.append((temp_sent, sentiment))
             #p((temp_sent), "temp_sent", c="r")
 
-        self.logger.debug("Text-Cleaning for current text_elem is done.")
+        #self.logger.debug("Text-Cleaning for current text_elem is done.")
         #p(new_text_elem, "new_text_elem",c="r")
         #sys.exit()
         return new_text_elem
@@ -3769,7 +4058,7 @@ class Stats(BaseContent,BaseDB):
                 sentiment = sent_container[1]
             except Exception as e:
                 #p(sent_container, "sent_container")
-                self._terminated = True
+                self._terminated.value = True
                 msg = "Given SentContainer has wrong structure! SentContainer: '{}'; Exception: '{}'.".format(sent_container,e)
                 self.logger.error(msg)
                 self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
@@ -3788,7 +4077,7 @@ class Stats(BaseContent,BaseDB):
                     #nr_of_token_in_sent = token_index
                 except Exception, e:
                     #p(sent_container, "sent_container")
-                    self._terminated = True
+                    self._terminated.value = True
                     msg = "Given TokenContainer has wrong structure! '{}'.".format(token_container)
                     self.logger.error(msg)
                     self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
@@ -3856,42 +4145,6 @@ class Stats(BaseContent,BaseDB):
 
 
 
-
-    def baseline_insert_temporized_data(self,temporized_baseline,thread_name="Thread0"):
-        try:
-            #self.logger.low_debug("Insertion Process of temporized Baseline was started")
-            qeary = """
-                    INSERT OR REPLACE INTO baseline VALUES (
-                        :0,
-                        :1,
-                        :2,
-                        COALESCE((SELECT occur_syntagma_all FROM baseline WHERE syntagma=:0), 0) + :3,
-                        NULL,NULL,NULL,NULL,NULL,NULL
-                    );"""
-
-            cursor = self.statsdb._db.cursor()
-
-            def intern_gen():
-                for syntag, count in temporized_baseline.iteritems():
-                    #print syntag
-                    #self.logger.error("{}".format(syntag))
-                    #sys.exit()
-                    yield (
-                            self._baseline_delimiter.join(syntag).strip(),
-                            self._baseline_delimiter.join([self.stemm(w) for w in syntag]).strip(),
-                            len(syntag), 
-                            count,  
-                         )
-
-            cursor.executemany(qeary, intern_gen() )
-            self.logger.low_debug("Temporized Baseline was inserted into DB.")
-            return True
-        except Exception as e:
-            self.logger.error("INsertionError: {}".format(repr(e)),  exc_info=self._logger_traceback)
-            self.terminated = True
-            return False
-
-
     # def baseline_intime_insertion_into_db(self,thread_name="Thread0"):
     #     temporized_baseline_to_insert = self.temporized_baseline
     #     self.temporized_baseline = defaultdict(int)
@@ -3947,6 +4200,37 @@ class Stats(BaseContent,BaseDB):
     #     #p("5555")
     #     self.baseline_insert_temporized_data(self.temporized_baseline,thread_name=thread_name)
 
+
+
+
+
+
+
+
+    # def baseline_intime_insertion_into_db(self,thread_name="Thread0"):
+    #     thread_name = "baseline_insrt"
+    #     self.baseline_insert_temporized_data(self.temporized_baseline,thread_name=thread_name)
+    #     self.temporized_baseline= defaultdict(int)
+
+    # def baseline_insert_left_over_data(self,thread_name="Thread0"):
+    #     thread_name = "baseline_insrt"
+    #     self.baseline_insert_temporized_data(self.temporized_baseline,thread_name=thread_name)
+    #     self.temporized_baseline= defaultdict(int)
+
+
+
+    def baseline_lazyinsertion_into_db(self,db_writer,computed_baseline,extracted_redu_in_text_container, baseline_insertion_border=100000,thread_name="Thread0", ):
+        #l = len(self.temporized_baseline)
+        #p((l, baseline_insertion_border))
+        if len(self.temporized_baseline) > baseline_insertion_border:
+            self.temporize_baseline(computed_baseline, extracted_redu_in_text_container)
+            #self.baseline_intime_insertion_into_db()
+            self._send_data_to_dbwriter(db_writer,"baseline", thread_name)
+        else:
+            self.temporize_baseline(computed_baseline,extracted_redu_in_text_container)
+        #self.insert_temporized_baseline_into_db()
+
+
     def temporize_baseline(self, computed_baseline,extracted_redu_in_text_container):
         #self.temporized_baseline = defaultdict(int)
         #p(computed_baseline, "computed_baseline")
@@ -3968,31 +4252,8 @@ class Stats(BaseContent,BaseDB):
         self.logger.low_debug("BaselineStats for current text-element was temporized.")
 
 
-    def baseline_intime_insertion_into_db(self,thread_name="Thread0"):
-        thread_name = "baseline_insrt"
-        self.baseline_insert_temporized_data(self.temporized_baseline,thread_name=thread_name)
-        self.temporized_baseline= defaultdict(int)
 
-    def baseline_insert_left_over_data(self,thread_name="Thread0"):
-        thread_name = "baseline_insrt"
-        self.baseline_insert_temporized_data(self.temporized_baseline,thread_name=thread_name)
-        self.temporized_baseline= defaultdict(int)
-
-
-
-    def baseline_lazyinsertion_into_db(self,computed_baseline,extracted_redu_in_text_container, baseline_insertion_border=100000,thread_name="Thread0", ):
-        #l = len(self.temporized_baseline)
-        #p((l, baseline_insertion_border))
-        if len(self.temporized_baseline) > baseline_insertion_border:
-            self.temporize_baseline(computed_baseline, extracted_redu_in_text_container)
-            self.baseline_intime_insertion_into_db()
-        else:
-            self.temporize_baseline(computed_baseline,extracted_redu_in_text_container)
-        #self.insert_temporized_baseline_into_db()
-
-
-
-    def insert_repl_into_db(self,doc_elem,text_elem,extracted_repl_in_text_container, repl_free_text_container,rle_for_repl_in_text_container, redu_free_text_container,mapping_redu,stemmed_text_container, thread_name="Thread0"):
+    def insert_repl_into_db(self,db_writer,doc_elem,text_elem,extracted_repl_in_text_container, repl_free_text_container,rle_for_repl_in_text_container, redu_free_text_container,mapping_redu,stemmed_text_container, thread_name="Thread0"):
         #self.logger.low_debug("Insertion of current ReplsIntoDB was started")
         sent_index = -1
         redufree_len = tuple(len(sent) for sent in redu_free_text_container)
@@ -4036,7 +4297,7 @@ class Stats(BaseContent,BaseDB):
                                             }
                             except Exception as e:
                                 #p(sent_container, "sent_container")
-                                self._terminated = True
+                                self._terminated.value = True
                                 msg = "Given ReplContainer has wrong structure! '{}'. ('{}')".format(repl_container, repr(e))
                                 self.logger.error(msg)
                                 self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
@@ -4048,17 +4309,20 @@ class Stats(BaseContent,BaseDB):
                             self._get_context_left_for_repl(input_dict, text_elem, token_index_in_redu_free, mapping_redu, redu_free_text_container, sent_index,stemmed_text_container,)
                             #input_dict = 
                             self._get_context_right_for_repl(input_dict, text_elem, token_index_in_redu_free, mapping_redu, redu_free_text_container, sent_index,stemmed_text_container,)
-                            self._repl_inserter(input_dict, thread_name=thread_name)
+                            self._repl_inserter(db_writer,input_dict, thread_name=thread_name)
                             #p(input_dict, "input_dict")
                             #self.statsdb.lazyinsert("replications", input_dict, thread_name=thread_name)
 
         #self.logger.low_debug("Insertion of current ReplsIntoDB was finished")
 
 
-    def _repl_inserter(self, inp_dict, thread_name="Thread0"):
+
+
+
+    def _repl_inserter(self,db_writer, inp_dict, thread_name="Thread0"):
         if len(self.temporized_repl[thread_name]) > self._lazyness_border:
             self._temporize_repl(inp_dict, thread_name=thread_name)
-            self._write_repl_into_db(thread_name=thread_name)
+            self._send_data_to_dbwriter(db_writer,"replications",thread_name)
         else:
             self._temporize_repl(inp_dict, thread_name=thread_name)
 
@@ -4069,24 +4333,13 @@ class Stats(BaseContent,BaseDB):
             #temp_list.append()
         self.temporized_repl[thread_name].append(db_helper.values_to_list(temp_list, "one"))
 
-    def _write_repl_into_db(self,thread_name="Thread0"):
-        #thread_name = 
-        placeholders = ', '.join('?'*len(self._repls_cols))
-        query = "INSERT or IGNORE INTO main.replications VALUES ({});".format(placeholders)
-        #p((query,placeholders),"query")
-        #p(self.temporized_repl[thread_name][0])
-        #p(len(self.temporized_repl[thread_name][0]))
-        self.statsdb._threads_cursors[thread_name].executemany(query,self.temporized_repl[thread_name] )
-        self.temporized_repl[thread_name] = []
 
 
 
-
-
-    def _redu_inserter(self, inp_dict, thread_name="Thread0"):
+    def _redu_inserter(self,db_writer, inp_dict, thread_name="Thread0"):
         if len(self.temporized_redu[thread_name]) > self._lazyness_border:
             self._temporize_redu(inp_dict, thread_name=thread_name)
-            self._write_redu_into_db(thread_name=thread_name)
+            self._send_data_to_dbwriter(db_writer,"reduplications",thread_name)
         else:
             self._temporize_redu(inp_dict, thread_name=thread_name)
 
@@ -4097,15 +4350,6 @@ class Stats(BaseContent,BaseDB):
             #temp_list.append()
         self.temporized_redu[thread_name].append(db_helper.values_to_list(temp_list, "one"))
 
-    def _write_redu_into_db(self,thread_name="Thread0"):
-        #thread_name = 
-        placeholders = ', '.join('?'*len(self._redus_cols))
-        query = "INSERT or IGNORE INTO main.reduplications VALUES ({});".format(placeholders)
-        #p((query,placeholders),"query")
-        #p(self.temporized_redu[thread_name][0])
-        #p(len(self.temporized_redu[thread_name][0]))
-        self.statsdb._threads_cursors[thread_name].executemany(query,self.temporized_redu[thread_name] )
-        self.temporized_redu[thread_name] = []
 
 
 
@@ -4113,7 +4357,12 @@ class Stats(BaseContent,BaseDB):
 
 
 
-    def insert_redu_into_db(self,doc_elem,text_elem,extracted_redu_in_text_container, redu_free_text_container, rle_for_repl_in_text_container, repl_free_text_container, mapping_redu,stemmed_text_container,thread_name="Thread0"):
+
+
+
+
+
+    def insert_redu_into_db(self,db_writer,doc_elem,text_elem,extracted_redu_in_text_container, redu_free_text_container, rle_for_repl_in_text_container, repl_free_text_container, mapping_redu,stemmed_text_container,thread_name="Thread0"):
         #self.logger.low_debug("Insertion of current RedusIntoDB was started")
         sent_index = -1
         #p(extracted_redu_in_text_container, "extracted_redu_in_text_container")
@@ -4150,7 +4399,7 @@ class Stats(BaseContent,BaseDB):
                     
                 except Exception as e:
                     #p(sent_container, "sent_container")
-                    self._terminated = True
+                    self._terminated.value = True
                     msg = "Given ReduContainer has wrong structure! '{}'. ('{}')".format(redu, e)
                     self.logger.error(msg)
                     self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
@@ -4168,7 +4417,7 @@ class Stats(BaseContent,BaseDB):
 
                 #p("RIGHT STOP ---------------------\n", c="c")
                 #self.statsdb.lazyinsert("reduplications", input_dict, thread_name=thread_name)
-                self._redu_inserter(input_dict, thread_name=thread_name)
+                self._redu_inserter(db_writer,input_dict, thread_name=thread_name)
                 #p(input_dict, "input_dict")
 
         #self.logger.low_debug("Insertion of current RedusIntoDB was finished")
@@ -4509,44 +4758,128 @@ class Stats(BaseContent,BaseDB):
     ###################Optimizators########################
 
 
+    # def get_streams_from_baseline(self,stream_number, max_scope=False,size_to_fetch=1,  split_syntagma=False):
+    #     row_num = self.statsdb.rownum("baseline")
+    #     rows_pro_stream = row_num/stream_number
+    #     streams = []
+    #     num_of_getted_items = 0
+    #     for i in range(stream_number):
+    #         thread_name = "BSThread{}".format(i)
+    #         # p((i,thread_name ), "get_streams_from_baseline")
+    #         if i < (stream_number-1): # for gens in between 
+    #             gen = self._baseline("*",max_scope=False,thread_name=thread_name,limit=rows_pro_stream, offset=num_of_getted_items,size_to_fetch=size_to_fetch, split_syntagma=split_syntagma)
+                
+    #             num_of_getted_items += rows_pro_stream
+    #             streams.append((thread_name,LenGen(gen, rows_pro_stream)))
+    #         else: # for the last generator
+    #             gen = self._baseline("*",max_scope=False,thread_name=thread_name,limit=-1, offset=num_of_getted_items,size_to_fetch=size_to_fetch, split_syntagma=split_syntagma)
+                
+    #             streams.append((thread_name,LenGen(gen, row_num-num_of_getted_items)))
+    #     return streams
+
+
+
     def get_streams_from_baseline(self,stream_number, max_scope=False,size_to_fetch=1,  split_syntagma=False):
         row_num = self.statsdb.rownum("baseline")
         rows_pro_stream = row_num/stream_number
         streams = []
         num_of_getted_items = 0
+
+
+        def intern_sender(pipe, gen, length, chunk_size= 10000):
+            #result = pipe.recv()
+            #sended_num = 0
+            #was_close = False
+            while True:
+                command = pipe.recv()
+                if command == "+":
+                    i = 0
+                    while i <= chunk_size:
+                        try:
+                            g = next(gen)
+                        except StopIteration:
+                            pipe.send(None)
+                            break
+
+                        #p(g, "SENDER", c="r")
+                        #pipe.send(next(gen))
+                        pipe.send(g)
+                        i += 1
+                    #sended_num += i
+                    pipe.send(False)
+                else:
+                    #was_close = True
+                    #pipe.close()
+                    break
+                    pipe.send(None)
+            pipe.send(None)
+
         for i in range(stream_number):
             thread_name = "BSThread{}".format(i)
+            parent, child = Pipe()
             # p((i,thread_name ), "get_streams_from_baseline")
             if i < (stream_number-1): # for gens in between 
+
                 gen = self._baseline("*",max_scope=False,thread_name=thread_name,limit=rows_pro_stream, offset=num_of_getted_items,size_to_fetch=size_to_fetch, split_syntagma=split_syntagma)
-                
+
+                sender = Process(target=intern_sender, args=(parent, gen, rows_pro_stream, 10000))
+                sender.start()
+                streams.append((thread_name,rows_pro_stream,child,sender))
+
+                #streams.append((thread_name,LenGen(gen, rows_pro_stream)))
                 num_of_getted_items += rows_pro_stream
-                streams.append((thread_name,LenGen(gen, rows_pro_stream)))
             else: # for the last generator
                 gen = self._baseline("*",max_scope=False,thread_name=thread_name,limit=-1, offset=num_of_getted_items,size_to_fetch=size_to_fetch, split_syntagma=split_syntagma)
-                
-                streams.append((thread_name,LenGen(gen, row_num-num_of_getted_items)))
+                #streams.append((thread_name,LenGen(gen, row_num-num_of_getted_items)))
+
+                sender = Process(target=intern_sender, args=(parent, gen, row_num-num_of_getted_items, 10000))
+                sender.start()
+                #streams.append((thread_name,LenGen(intern_gen(-1, num_of_getted_items), row_num-num_of_getted_items)))
+                streams.append((thread_name,row_num-num_of_getted_items,child,sender))
+
         return streams
 
 
+
     def _check_termination(self, thread_name="Thread0"):
-        if self._terminated:
+        if self._terminated.value:
             self.logger.critical("'{}'-Thread was terminated.".format(thread_name))
             self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
             sys.exit()
 
+
+
+    def convert_queue_to_list(self,inp_queue):
+        output_list = []
+        while True:
+            if  inp_queue.empty():
+                break
+            else:
+                output_list.append(inp_queue.get())
+
+        #del inp_queue
+        #gc.collect()
+        return output_list
+
     def clean_baseline_table(self,stream_number=1, min_row_pro_sream=1000, cpu_percent_to_get=50, adjust_to_cpu=True):
         #p(self.statsdb.rownum("baseline"))
+        #print(self.statsdb.rownum("baseline"),"self.statsdb.rownum(baseline)")
+        #min_row_pro_sream= 10
         if adjust_to_cpu:
             stream_number= get_number_of_streams_adjust_cpu( min_row_pro_sream, self.statsdb.rownum("baseline"), stream_number, cpu_percent_to_get=cpu_percent_to_get)
             if stream_number is None or stream_number==0:
                 #p((self._get_number_of_left_over_files(),self.counter_lazy_getted),"self._get_number_of_left_over_files()")
                 self.logger.error("StreamNumber is 0. Not generators could be returned.", exc_info=self._logger_traceback)
                 return []
+        #p(stream_number,"stream_number")
 
+        #print("111")
         self._init_compution_variables()
+        #print("222")
         streams= self.get_streams_from_baseline(stream_number, split_syntagma=False)
-        self._terminated = False
+        #p(len(streams),"streams")
+        #self._terminated.value = False
+        #print("333")
         if self._status_bar:
             try:
                 if not self.status_bars_manager.enabled:
@@ -4566,24 +4899,28 @@ class Stats(BaseContent,BaseDB):
         row_num_bevore = self.statsdb.rownum("baseline")
         if self._threads_num>1:
             if self._status_bar:
-                unit = "rows"
+                unit = "syntagma"
                 self.main_status_bar = self._get_new_status_bar(row_num_bevore, "AllThreadsTotalInsertions", unit)
                 self.main_status_bar.refresh()
         else:
             self.main_status_bar = False
 
 
-        syntagmas_to_delete = []
-        #p(len(syntagmas_to_delete), "syntagmas_to_delete")
+        syntagmas_to_delete_queue = Queue()
+        #p(len(syntagmas_to_delete_queue), "syntagmas_to_delete_queue")
         for stream in streams:
-            gen = stream[1]
-            if not self._isrighttype(gen):
-                self.logger.error("StatsBaselineCleanError: Given InpData not from right type. Please give an list or an generator.", exc_info=self._logger_traceback)
-                return False
-            #p(gen)
-
+            reciever = stream[2]
+            sender = stream[3]
             thread_name = stream[0]
-            processThread = threading.Thread(target=self._clean_baseline_table, args=(gen,syntagmas_to_delete, thread_name), name=thread_name)
+            length = stream[1]
+            #if not self._isrighttype(gen):
+            #    self.logger.error("StatsBaselineCleanError: Given InpData not from right type. Please give an list or an generator.", exc_info=self._logger_traceback)
+            #    return False
+            #p(gen)
+            #if self._status_bar:
+            thread_name = stream[0]
+            status_bar_current = self._get_new_status_bar(length, "{}:".format(thread_name), "syntagma") if self._status_bar  else False
+            processThread = threading.Thread(target=self._clean_baseline_table, args=(reciever,sender,syntagmas_to_delete_queue, status_bar_current,thread_name), name=thread_name)
             processThread.setDaemon(True)
             processThread.start()
             self.active_threads.append(processThread)
@@ -4592,16 +4929,33 @@ class Stats(BaseContent,BaseDB):
             #i+=1
             time.sleep(1)
 
+        #for _t in self.active_threads:
+        #    _t.join()
 
         if not self._wait_till_all_threads_are_completed("Compute"):
             return False
 
+        del self.active_threads
+        self.active_threads = []
+        gc.collect()
+
         #row_num_bevore = self.statsdb.rownum("baseline")
         ##### delete syntagmas from baseline-table
         qeary = "DELETE FROM baseline WHERE syntagma = ?;"
-        #p(len(syntagmas_to_delete), "syntagmas_to_delete")
-        if syntagmas_to_delete:
-            self.statsdb.executemany(qeary,syntagmas_to_delete)
+        #p(len(syntagmas_to_delete_queue), "syntagmas_to_delete_queue")
+
+        syntagmas_to_delete_list = self.convert_queue_to_list(syntagmas_to_delete_queue)
+        del syntagmas_to_delete_queue
+        gc.collect()
+
+
+        #syntagmas_to_delete_queue = [ for _s in syntagmas_to_delete_queue if syntagmas_to_delete_queue.]
+        if syntagmas_to_delete_list:
+            self.statsdb.executemany(qeary,syntagmas_to_delete_list)
+        len_syntagmas_to_delete_list = len(syntagmas_to_delete_list)
+        del syntagmas_to_delete_list
+        gc.collect()
+
         row_num_after = self.statsdb.rownum("baseline")
 
         self.statsdb._commit(write_all_cash=True)
@@ -4609,9 +4963,9 @@ class Stats(BaseContent,BaseDB):
             status_bar_total_summary = self._get_new_status_bar(None, self.status_bars_manager.term.center("Syntagmas: Bevore:'{}'; After:'{}'; Removed: '{}'.".format(row_num_bevore, row_num_after, row_num_bevore-row_num_after ) ), "",  counter_format=self.status_bars_manager.term.bold_white_on_cyan('{fill}{desc}{fill}\n'))
             status_bar_total_summary.refresh()
             self.status_bars_manager.stop()
-        #p(len(syntagmas_to_delete), "syntagmas_to_delete")
-        #syntagmas_to_delete = []
-        if (row_num_bevore-row_num_after) == len(syntagmas_to_delete):
+        #p(len(syntagmas_to_delete_list), "syntagmas_to_delete_list")
+        #syntagmas_to_delete_list = []
+        if (row_num_bevore-row_num_after) == len_syntagmas_to_delete_list:
             if self._status_bar:
                 self.logger.info("Baseline-Table was cleaned.")
             else:
@@ -4621,20 +4975,41 @@ class Stats(BaseContent,BaseDB):
             False
 
 
-    def _clean_baseline_table(self, gen,syntagmas_to_delete, thread_name="Thread0"):
+    def _clean_baseline_table(self, pipe_reciever, sender,syntagmas_to_delete_queue,status_bar_current, thread_name="Thread0"):
+
         try:
             if not self._check_stats_db_should_exist():
                 return False
                 #return
             ### compute syntagmas to delete
-            if self._status_bar:
-                status_bar_current = self._get_new_status_bar(len(gen), "{}:".format(thread_name), "syntagma")
 
             minimum_columns = False
             indexes = self.col_index_min if minimum_columns else self.col_index_orig
             #indexes = self.col_index_min
             case = "" if self._case_sensitiv else " COLLATE NOCASE "
-            for baseline_container in gen:
+            #for baseline_container in gen:
+            pipe_reciever.send("+")
+            while True:
+                #try:
+                baseline_container = pipe_reciever.recv()
+                #p(baseline_container, "RECIEVER"+thread_name, )
+                #except IOError:
+                #    break
+                if not baseline_container:
+                    if baseline_container is False:
+                        pipe_reciever.send("+")
+                        continue
+                    elif baseline_container is None:
+                        sender.terminate()
+                        del sender
+                        pipe_reciever.close()
+                        break
+                        #baseline_container = pipe_reciever.recv()
+                    else:
+                        continue
+
+
+
                 was_found = False
                 if self._status_bar:
                     status_bar_current.update(incr=1)
@@ -4687,7 +5062,8 @@ class Stats(BaseContent,BaseDB):
                 if was_found:
                     continue
                 
-                syntagmas_to_delete.append((baseline_container[0],))
+                #syntagmas_to_delete_queue.append((baseline_container[0],))
+                syntagmas_to_delete_queue.put((baseline_container[0],))
             
             self.threads_status_bucket.put({"name":thread_name, "status":"done"})
             return True
@@ -4696,7 +5072,7 @@ class Stats(BaseContent,BaseDB):
             msg = "_CleanBaselineTableError: See Exception: '{}'. ".format(e)
             self.logger.error(msg, exc_info=self._logger_traceback)
             self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":msg})
-            self._terminated = True
+            self._terminated.value = True
             self.statsdb.rollback()
             return False
 
@@ -4876,11 +5252,13 @@ class Stats(BaseContent,BaseDB):
 
     def optimize_db(self,stream_number=1,thread_name="Thread0",optimized_for_long_syntagmas=False,min_row_pro_sream=1000, cpu_percent_to_get=50, adjust_to_cpu=True):
         if not self._db_frozen:
+            #print("START BL CLEAN")
             if self.clean_baseline_table(stream_number=stream_number,min_row_pro_sream=min_row_pro_sream, cpu_percent_to_get=cpu_percent_to_get, adjust_to_cpu=adjust_to_cpu):
+                #print("END BL CLEAN")
                 #p(self._db_frozen,"self._db_frozen")
                 self.statsdb.update_attr("db_frozen", True)
                 self.set_all_intern_attributes_from_db()
-                self.statsdb._commit()
+                self.statsdb._commit(write_all_cash=True)
                 if self._db_frozen:
                     self.logger.info("Current StatsDB was successfully optimized.")
                     return True
@@ -5059,7 +5437,7 @@ class Stats(BaseContent,BaseDB):
 
 
 
-        self.statsdb._commit()
+        self.statsdb._commit(write_all_cash=True)
 
         ### Step 6: Print Status
         if self._status_bar:
@@ -5177,7 +5555,7 @@ class Stats(BaseContent,BaseDB):
             return True
 
 
-    def _wait_till_all_threads_are_completed(self, waitername, sec_to_wait=3, sec_to_log = 15):
+    def _wait_till_all_threads_are_completed(self, waitername, sec_to_wait=1, sec_to_log = 15):
         time_counter = sec_to_log
         while not ( (len(self.threads_success_exit) >= len(self.active_threads)) or (len(self.threads_unsuccess_exit) != 0)):
         #while len(self.threads_unsuccess_exit) == 0
@@ -5189,6 +5567,7 @@ class Stats(BaseContent,BaseDB):
 
             if not self.threads_status_bucket.empty():
                 answer = self.threads_status_bucket.get()
+                #p(answer, c="m")
                 thread_name = answer["name"]
                 status = answer["status"]
                 if status == "done":
@@ -5208,10 +5587,13 @@ class Stats(BaseContent,BaseDB):
                     sys.exit()
 
 
-                self.threads_status_bucket.task_done()
+                #self.threads_status_bucket.task_done()
 
             time.sleep(sec_to_wait)
             time_counter += sec_to_wait
+            #p(self.threads_success_exit, "self.threads_success_exit", c="g")
+            #p(self.active_threads, "self.active_threads", c="g")
+            #p(self.threads_unsuccess_exit, "self.threads_unsuccess_exit", c="g")
             #self._check_threads()
             self._check_buckets()
 
@@ -5221,30 +5603,14 @@ class Stats(BaseContent,BaseDB):
 
 
 
-
-
-
-
-    def _initialisation_computation_process(self, inp_data, thread_name="Thread0"):
+    def _init_status_bar_for_current_thread(self,len_inp_data, thread_name="Thread0"):
         if self._status_bar:
             if self._threads_num>1:
                 if self._status_bar:
                     unit =  "rows"
                     self.main_status_bar_of_insertions.unit = unit
-                    self.main_status_bar_of_insertions.total += len(inp_data)
+                    self.main_status_bar_of_insertions.total += len_inp_data
 
-        ### Preprocessors Initialization
-        if thread_name not in self.preprocessors:
-            if not self._init_preprocessors(thread_name=thread_name):
-                self.logger.error("Error during Preprocessors initialization. Thread '{}' was stopped.".format(thread_name), exc_info=self._logger_traceback)
-                self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":"Error during Preprocessors initialization"})
-                self._terminated = True
-                return False
-
-        self.logger.debug("_InitComputationalProcess: Was initialized for '{}'-Thread. ".format(thread_name))
-        
-        if self._status_bar:
-            if self._threads_num>1:
                 if not self._timer_on_main_status_bar_was_reset:
                     #p(self.main_status_bar_of_insertions.start, "start1")
                     self.main_status_bar_of_insertions.start= time.time()
@@ -5252,12 +5618,32 @@ class Stats(BaseContent,BaseDB):
                     self._timer_on_main_status_bar_was_reset = True
 
             unit = "rows"
-            status_bar_insertion_in_the_current_thread = self._get_new_status_bar(len(inp_data), "{}:Insertion".format(thread_name), unit)
-        self._check_termination(thread_name=thread_name)
+            status_bar_insertion_in_the_current_thread = self._get_new_status_bar(len_inp_data, "{}:Insertion".format(thread_name), unit)
+
+
         if self._status_bar:
+            self._check_termination(thread_name=thread_name)
+            self.logger.debug("_InitCurrentStatusBar: Was initialized for '{}'-Thread. ".format(thread_name))
             return status_bar_insertion_in_the_current_thread
         else:
             False
+
+    def _initialisation_computation_process(self,thread_name="Thread0"):
+
+        ### Preprocessors Initialization
+        #print(self.preprocessors)
+        if thread_name not in self.preprocessors:
+            if not self._init_preprocessors(thread_name=thread_name):
+                self.logger.error("Error during Preprocessors initialization. Thread '{}' was stopped.".format(thread_name), exc_info=self._logger_traceback)
+                self.threads_status_bucket.put({"name":thread_name, "status":"failed", "info":"Error during Preprocessors initialization"})
+                self._terminated.value = True
+                return False
+        #print(self.preprocessors)
+
+        self.logger.debug("_InitComputationalProcess: Was initialized for '{}'-Thread. ".format(thread_name))
+        self._check_termination(thread_name=thread_name)
+
+
 
 
     def _is_redu(self, sent_index, token_index,redu_free_text_container):
@@ -5271,14 +5657,14 @@ class Stats(BaseContent,BaseDB):
         if not self.threads_error_bucket.empty():
             while not self.threads_error_bucket.empty():
                 e = self.threads_error_bucket.get()
-                self.threads_error_bucket.task_done()
+                #self.threads_error_bucket.task_done()
                 self.logger.error("InsertionError(in_thread_error_bucket): '{}'-Thread throw following Exception: '{}'. ".format(e[0], e[1]), exc_info=self._logger_traceback)
                 status = True
 
         # if not self.channels_error_bucket.empty():
         #     while not self.channels_error_bucket.empty():
         #         e = self.channels_error_bucket.get()
-        #         self.channels_error_bucket.task_done()
+        ##         self.channels_error_bucket.task_done()
         #         self.logger.error("InsertionError(in_channel_error_bucket): '{}'-Thread ('{}') throw following Exception: '{}'. ".format(e[0], e[1],e[2]), exc_info=self._logger_traceback)
         #         status = True
 
@@ -5290,7 +5676,7 @@ class Stats(BaseContent,BaseDB):
 
 
     def _check_termination(self, thread_name="Thread0"):
-        if self._terminated:
+        if self._terminated.value:
             self.logger.critical("'{}'-Thread was terminated.".format(thread_name))
             self.threads_status_bucket.put({"name":thread_name, "status":"terminated"})
             sys.exit()
@@ -5351,6 +5737,7 @@ class Stats(BaseContent,BaseDB):
 ####################################################################################
 ####################################################################################
 ####################################################################################
+
 
 
 

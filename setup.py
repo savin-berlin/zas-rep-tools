@@ -1,7 +1,7 @@
 from setuptools import setup,find_packages
 
 setup(name='zas-rep-tools',
-      version='0.3',
+      version='0.4',
       description='This Tool-set helps to make the repetition search in text much comfortable and faster.',
       url='https://github.com/savin-berlin/zas-rep-tools',
       git_url='https://github.com/savin-berlin/zas-rep-tools.git',
@@ -25,9 +25,9 @@ setup(name='zas-rep-tools',
               'zas-rep-tools=zas_rep_tools.cli.main:main',
           ],
       },
-      classifiers=[ 
-          'Development Status :: 1 - Planning', 
-          'Intended Audience :: Science/Research', 
+      classifiers=[
+          'Development Status :: 1 - Planning',
+          'Intended Audience :: Science/Research',
           'License :: OSI Approved :: MIT License',
           'Programming Language :: Python :: 2.7',
           "Operating System :: MacOS :: MacOS X",

@@ -44,8 +44,10 @@ import traceback
 #from collections import 
 import platform
 import unicodecsv
+from pysqlcipher import dbapi2 as sqlite
+import enlighten
 
-
+from multiprocessing.managers import BaseManager, DictProxy,BaseProxy
 
 
 from zas_rep_tools.src.utils.zaslogger import ZASLogger
@@ -62,7 +64,7 @@ path_to_zas_rep_tools = os.path.dirname(os.path.dirname(os.path.dirname(inspect.
 
 modi = ["error","test", "dev","dev+","dev-", "prod", "free", "prod+t", "test+s+","test+s-", "silent", "prod+","prod-", "blind"]
 punkt_str = set(""".!:;-"#$%&'()*+,/<=>?@[\\]^_`{|}~""")
-emoticons = set(['-(', '-)', '=p', ':-p','-p', '8-)',  '=)','=(', ':-)', ':)', '<3', '{}',  '(-',')-',')-:','(-:','):','(:', 'o:-)', 'x-(',  ':-d',  ':-#', ':-(', ':(', ')','(',  ':p', ':o', ':-|', 'x-p', ':-)*', ':-*', ':*', 'b-)', ':_(', ":'(", '\\:d/', '*-*', ':o3', '#-o', ':*)', '/_^', '>:)', '<><',  '(-}{-)', 'xd', '=d', ')-:', '(-:',  '=/', ':-)(-:', '<:3)~', '~,~', ':-b', '^_^', '<l:0', ':-/', '=8)', '@~)~',    ':s', ':-@', '=o', ':-o',  ':-q', ':>', ':-j', ':-&', '=-o', ':-\\', ':-e',  ';-)', ';)', '|-o', '(.v.)', '~:0', '(*v*)', '=^.^=', '</3','*<:o)', 'o.o','$_$', ':->', '8-#' ])
+emoticons = set(['-(', '-)', '=p', ':-p','-p', '8-)',":d",  '=)','=(', ':-)', ':)', '<3', '{}',  '(-',')-',')-:','(-:','):','(:', 'o:-)', 'x-(',  ':-d',  ':-#', ':-(', ':(', ')','(',  ':p', ':o', ':-|', 'x-p', ':-)*', ':-*', ':*', 'b-)', ':_(', ":'(", '\\:d/', '*-*', ':o3', '#-o', ':*)', '/_^', '>:)', '<><',  '(-}{-)', 'xd', '=d', ')-:', '(-:',  '=/', ':-)(-:', '<:3)~', '~,~', ':-b', '^_^', '<l:0', ':-/', '=8)', '@~)~',  ':s', ':-@', '=o', ':-o',  ':-q', ':>', ':-j', ':-&', '=-o', ':-\\', ':-e',  ';-)', ';)', '|-o', '(.v.)', '~:0', '(*v*)', '=^.^=', '</3','*<:o)', 'o.o','$_$', ':->', '8-#', ";o)", ':")', "._.", ':"(', ";(", ';*', ')=', '(;','^_',  ')(','-"',':/','o_o', ':-', 'x_x', '"-(', '-´¨', '-_-)', 'o-', '=-=-=', '-_^_-', '-{', ':o(', '-_-;', '|-',  '-_-:(', '-|\\','8)', '-;:*', 'o-_-' , '_(','-=',  '^_-',  '-:/', 'º_º', '_\\_','):)',  '_^', '＿_／','v_v','-_0', ':_', '・-','-_-_-','):-*', '-_-_','\\o', '_\\', 'o_0', 'o_ô',  '·-', '=-=', '^_^"',':=)','-}','-_-(', 't-t','•\\•','\\o_o', ';"(', 'u_u',")_",":[","\\-",':-\")', "t^_^t","\\_","-:)","_0",":=","_()=:/",":-_-",";-(", ")-_-",  'v_v\"', "_)", "|_|", "(;)","=-", "_-","n_n", ":o)", "_-_",";:;","_`","):*", '\")', "o\\",  'o_o\"', ";:)", "-_", ";-", "8\")", ":-:", "(-_-", "_-_-_-",  "-(-", "^\\^", ")-`-", "y_y",  "^)","-:", "x-x", "e_e", "_-\\", "{-", "_|", "-\\-",  "^_^-", "-;-)", "/-9", "^-_-^", "-_-\"", ";-;", "^\"", "t-_-", "):-)", "/-/", "-[", ")-)",  "\"(",  "_^\"", "^_^b", "-}-", "-^_^-", "e-e", "-|",       ])
 
 emoji.UNICODE_EMOJI[u'\ufe0f'] = "additional"
 emoji.UNICODE_EMOJI[u'\u200d'] = "additional"
@@ -527,6 +529,10 @@ def get_module_name(n=-2):
         funcName = None
 
     return os.path.splitext(os.path.basename(filename))[0]
+
+
+
+
 
 
 class Status(object):
@@ -1262,9 +1268,96 @@ class LenGen(object):
 
 
 
+
 nextHighest = lambda seq,x: min([(i-x,i) for i in seq if x<=i] or [(0,None)])[1]
 nextLowest  = lambda seq,x: min([(x-i,i) for i in seq if x>=i] or [(0,None)])[1]
 
+
+
+
+
+
+
+
+#______________
+
+class MyMultiManager(BaseManager):
+    pass
+
+
+MyMultiManager.register('defaultdict', defaultdict, DictProxy)
+#MyMultiManager.register('dict', dict, DictProxy)
+#MyMultiManager.register('bool', bool, DictProxy)
+
+
+#manager = Manager()
+
+mgr = MyMultiManager()
+mgr.start()
+
+class DeepDict(defaultdict):
+    def __call__(self):
+        return DeepDict(self.default_factory)
+
+
+class CallableDict(defaultdict):
+    def __call__(self):
+        return mgr.defaultdict( bool)
+
+
+# class CallableDict(dict):
+#     def __call__(self):
+#         return dict
+
+MyMultiManager.register('defaultdict', defaultdict, DictProxy)
+MyMultiManager.register('DeepDict', DeepDict, DictProxy)
+MyMultiManager.register('dict', dict, DictProxy)
+MyMultiManager.register('CallableDict', CallableDict, DictProxy)
+MyMultiManager.register('Rle', Rle)
+MyMultiManager.register('enlighten', enlighten)
+
+#MyMultiManager.register('sqlite_connect', sqlite.connect)
+
+
+
+
+#______________
+
+
+
+
+def intern_sender(pipe, gen, length, chunk_size= 10000):
+    #result = pipe.recv()
+    #sended_num = 0
+    #was_close = False
+    while True:
+        command = pipe.recv()
+        if command == "+":
+            i = 0
+            while i <= chunk_size:
+                try:
+                    #g = [next(gen) for _n in xrange(chunk_size)]
+                    #pipe.send(g)
+                    #g = next(gen)
+                    pipe.send(next(gen))
+                except StopIteration:
+                    pipe.send(None)
+                    break
+                    #i += 1
+
+
+                #p(g, "SENDER", c="r")
+                #pipe.send(next(gen))
+                
+                
+            #sended_num += i
+            pipe.send(False)
+        else:
+            #was_close = True
+            #pipe.close()
+            break
+            pipe.send(None)
+    pipe.send(None)
 
 
 

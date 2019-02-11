@@ -694,9 +694,6 @@ class TestsConfiger(BaseContent,ConfigerData):
 
 
 
-
-
-
     def _check_correctness_of_the_test_data(self):
 
         ## Check mapping of columns and values 

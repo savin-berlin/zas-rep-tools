@@ -1528,7 +1528,7 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
         #self.blogger_corpus()
         self.test_dbs()
         #stats = Stats(mode=self.mode)
-        stats = Stats(mode=self.mode, status_bar = False)#, )
+        stats = Stats(mode=self.mode, status_bar = True)#, )
 
 
         name = self.configer.init_info_data["blogger"]["name"]
@@ -1724,7 +1724,7 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
 
 
     @attr(status='stable')
-    #@wipd
+    @wipd
     def test_main_compute_function_lower_case_for_4_streams_610_2(self):
         self.prj_folder()
         #self.blogger_corpus()
@@ -1746,40 +1746,41 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
         typ= "stats"
 
         #stats = Corpus(logger_level=logging.DEBUG)
+        #self.mode = "dev+"
+
+        # #######without_closing_db_at_the_end #########
+        # stats = Stats(mode=self.mode,use_cash=True, status_bar=True)#, )
+        # stats.init(self.tempdir_project_folder, name, language, visibility,  corpus_id=corpus_id,  version= version, encryption_key=encryption_key, baseline_delimiter="++")
+
+        # corp = Corpus(mode=self.mode)
+        # corp.open(os.path.join(self.tempdir_testdbs,self.db_blogger_plaintext_corp_en))
+
+        # stats.compute(corp,stream_number=4,adjust_to_cpu=False, freeze_db=False)
+        # baseline = stats.statsdb.getall("baseline")
+        # repls = stats.statsdb.getall("replications")
+        # redus = stats.statsdb.getall("reduplications")
+
+        # self.configer.right_rep_num["en"]["repls"].should.be.equal(len(repls))
+        # self.configer.right_rep_num["en"]["redus"].should.be.equal(len(redus))
+        # self._check_correctnes(stats.col_index_orig,self.configer._counted_reps["en"],repls=repls, redus=redus, baseline=baseline)
+
+        # bas_synts = [bs[0] for bs in  baseline]
+        # for r in  redus:
+        #     if r[5] not in bas_synts:
+        #         p(r[5],"ERROR", c="r")
+        #         assert False
+
+        # for r in  repls:
+        #     if r[5] not in bas_synts:
+        #         p(r[5],"ERROR", c="r")
+        #         assert False
 
 
-        #######without_closing_db_at_the_end #########
-        stats = Stats(mode=self.mode,use_cash=True)#, )
-        stats.init(self.tempdir_project_folder, name, language, visibility,  corpus_id=corpus_id,  version= version, encryption_key=encryption_key, baseline_delimiter="++")
-
-        corp = Corpus(mode=self.mode)
-        corp.open(os.path.join(self.tempdir_testdbs,self.db_blogger_plaintext_corp_en))
-
-        stats.compute(corp,stream_number=4,adjust_to_cpu=False, freeze_db=False)
-        baseline = stats.statsdb.getall("baseline")
-        repls = stats.statsdb.getall("replications")
-        redus = stats.statsdb.getall("reduplications")
-
-        self.configer.right_rep_num["en"]["repls"].should.be.equal(len(repls))
-        self.configer.right_rep_num["en"]["redus"].should.be.equal(len(redus))
-        self._check_correctnes(stats.col_index_orig,self.configer._counted_reps["en"],repls=repls, redus=redus, baseline=baseline)
-
-        bas_synts = [bs[0] for bs in  baseline]
-        for r in  redus:
-            if r[5] not in bas_synts:
-                p(r[5],"ERROR", c="r")
-                assert False
-
-        for r in  repls:
-            if r[5] not in bas_synts:
-                p(r[5],"ERROR", c="r")
-                assert False
-
-
+        # p("DONE+++")##
 
         #######with_closing_db_at_the_end #########
 
-        stats = Stats(mode=self.mode,use_cash=True)#, )
+        stats = Stats(mode=self.mode,use_cash=True, status_bar=True)#, )
         stats.init(self.tempdir_project_folder, name, language, visibility,  corpus_id=corpus_id,  version= version, encryption_key=encryption_key, baseline_delimiter="++")
 
         corp = Corpus(mode=self.mode)
@@ -1804,6 +1805,8 @@ class TestZASstatsStats(BaseTester,unittest.TestCase):
             if r[5] not in bas_synts:
                 p(r[5],"ERROR", c="r")
                 assert False
+
+        #p("DONE")
 
 
 

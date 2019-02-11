@@ -2,6 +2,7 @@
 import threading
 import Queue
 import inspect
+from multiprocessing import Value, Process, Manager#, BaseManager, DictProxy
 
 #import apsw
 from pysqlcipher import dbapi2 as sqlite
@@ -9,6 +10,7 @@ from zas_rep_tools.src.utils.custom_exceptions import  ZASCursorError, ZASConnec
 from zas_rep_tools.src.utils.debugger import p
 from  zas_rep_tools.src.classes.sql.basic import BasicConnection, BasicCursor
 from zas_rep_tools.src.classes.basecontent import BaseContent
+from zas_rep_tools.src.utils.helpers import MyMultiManager
 
 
 OperationalError = sqlite.OperationalError
@@ -33,6 +35,8 @@ def connect(*args, **kwargs):
 class MultiThreadMultiCursor(BaseContent,BasicConnection,threading.Thread):#, sqlite):
     def __init__(self, *args, **kwargs):
         #p(kwargs, "2.1**kwargs", c="r")
+        #self.mgr = MyMultiManager()
+        #self.mgr.start()
         super(type(self), self).__init__( **kwargs)
         #p(kwargs, "2.2**kwargs", c="r")
         #BaseContent.__init__(self,*args, **kwargs)
@@ -84,6 +88,8 @@ class MultiThreadMultiCursor(BaseContent,BasicConnection,threading.Thread):#, sq
 class MultiCursor(BasicCursor,threading.Thread):
     def __init__(self, connection,conn_lock,*args, **kwargs):
         threading.Thread.__init__(self)
+        #self.mgr = MyMultiManager()
+        #self.mgr.start()
         self.connection = connection
         self.lock_connection = conn_lock
         self.cursor = self.connection.cursor(*args, **kwargs)

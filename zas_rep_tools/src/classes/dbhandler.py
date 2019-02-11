@@ -49,7 +49,7 @@ from shutil import copyfile
 from zas_rep_tools.src.utils.zaslogger import ZASLogger  
 from zas_rep_tools.src.utils.custom_exceptions import  ZASCursorError, ZASConnectionError,DBHandlerError,ProcessError,ErrorInsertion,ThreadsCrash
 import  zas_rep_tools.src.utils.db_helper as db_helper
-from zas_rep_tools.src.utils.helpers import set_class_mode, print_mode_name, path_to_zas_rep_tools, instance_info, Status,function_name, SharedCounterExtern, SharedCounterIntern, statusesTstring
+from zas_rep_tools.src.utils.helpers import MyMultiManager,set_class_mode, print_mode_name, path_to_zas_rep_tools, instance_info, Status,function_name, SharedCounterExtern, SharedCounterIntern, statusesTstring
 from zas_rep_tools.src.utils.debugger import p
 from zas_rep_tools.src.classes.basecontent import BaseContent, BaseDB
 from zas_rep_tools.src.utils.error_tracking import initialisation
@@ -343,7 +343,7 @@ class DBHandler(BaseContent, BaseDB):
                 try:
                     #c = self._db.cursor()
                     self._threads_cursors[thread_name].execute("PRAGMA key='{}'".format(self._encryption_key))
-                    self._commit()
+                    self._commit(write_all_cash=False)
                     self.is_encrypted = True
                 except Exception as  exception:
                     print_exc_plus() if self._ext_tb else ""
@@ -381,7 +381,7 @@ class DBHandler(BaseContent, BaseDB):
                 os.remove(path_to_db)
                 return status
             #self._init_documents_table_in_corpus()
-            self._commit()
+            self._commit(write_all_cash=False)
             #p(self.tables(), "tables")
             self._update_temp_indexesList_in_instance(thread_name=thread_name)
             #self._update_database_pragma_list(thread_name=thread_name)
@@ -446,7 +446,7 @@ class DBHandler(BaseContent, BaseDB):
                 try:
                     #c = self._db.cursor()
                     self._threads_cursors[thread_name].execute("PRAGMA key='{}'".format(self._encryption_key))
-                    self._commit()
+                    self._commit(write_all_cash=False)
                     self.is_encrypted = True
                 except Exception as  exception:
                     print_exc_plus() if self._ext_tb else ""
@@ -486,7 +486,7 @@ class DBHandler(BaseContent, BaseDB):
                 os.remove(path_to_db)
                 return status
             
-            self._commit()
+            self._commit(write_all_cash=False)
             #self.dbnames.append("main")
 
             self._update_temp_indexesList_in_instance(thread_name=thread_name)
@@ -531,7 +531,7 @@ class DBHandler(BaseContent, BaseDB):
                 try:
                     #c = self._db.cursor()
                     self._threads_cursors[thread_name].execute("PRAGMA key='{}'".format(self._encryption_key))
-                    self._commit()
+                    self._commit(write_all_cash=False)
                     self.is_encrypted = True
                 except Exception as  exception:
                     print_exc_plus() if self._ext_tb else ""
@@ -891,7 +891,7 @@ class DBHandler(BaseContent, BaseDB):
             try:
                 #cursor = self._db.cursor()
                 self._threads_cursors[thread_name].execute(query)
-                self._commit()
+                self._commit(write_all_cash=False)
                 self._update_temp_attributsList_in_instance(thread_name=thread_name)
                 return Status(status=True)
             except Exception as  exception:
@@ -938,7 +938,7 @@ class DBHandler(BaseContent, BaseDB):
             try:
                 #cursor = self._db.cursor()
                 self._threads_cursors[thread_name].execute(query)
-                self._commit()
+                self._commit(write_all_cash=False)
                 self._update_temp_attributsList_in_instance(thread_name=thread_name)
                 return Status(status=True)
             except Exception as  exception:
@@ -1941,91 +1941,86 @@ class DBHandler(BaseContent, BaseDB):
     def _write_cashed_insertion_to_disc(self, write_just_this_commit_number=False, thread_name="Thread0", with_commit=False):
         #p("_write_cashed_insertion_to_disc")
 
-        with self.locker:
-            temp_insertion_counter = 0
-            temp_outsorting_counter = 0
-            if len(self._cashed_dict)>0:
-                if write_just_this_commit_number:
-                    if write_just_this_commit_number not in self._cashed_dict:
-                        msg = "CashedWriterError: Given CommitNumber'{}' is not exist. It wasn't possible to write cashed Insertion into DB. ".format(write_just_this_commit_number)
-                        self.logger.debug(msg)
-                        return Status(status=True)
-                    #temp_cashed_dict = self._cashed_dict[write_just_this_commit_number]
+        #with self.locker:
+        temp_insertion_counter = 0
+        temp_outsorting_counter = 0
+        if len(self._cashed_dict)>0:
+            if write_just_this_commit_number:
+                if write_just_this_commit_number not in self._cashed_dict:
+                    msg = "CashedWriterError(1): Given CommitNumber'{}' is not exist. It wasn't possible to write cashed Insertion into DB. Existing commits: {} ".format(write_just_this_commit_number, self._cashed_dict.keys())
+                    self.logger.error(msg)
+                    return Status(status=False, desc=msg, action="stop_execution")
+                #temp_cashed_dict = self._cashed_dict[write_just_this_commit_number]
 
-                if write_just_this_commit_number:
-                    dict_to_work = {write_just_this_commit_number:self._cashed_dict[write_just_this_commit_number]}
-                else:
-                    dict_to_work = self._cashed_dict
+            if write_just_this_commit_number:
+                dict_to_work = {write_just_this_commit_number:self._cashed_dict[write_just_this_commit_number]}
+                del self._cashed_dict[write_just_this_commit_number]
+            else:
+                dict_to_work = self._cashed_dict
+                del self._cashed_dict
+                self._cashed_dict =  defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list)))))
 
-                dict_to_delete = []
-                for commit_number, commit_number_data in dict_to_work.iteritems():
-                    for current_thread_name, thread_data in commit_number_data.iteritems():
-                        for dbname, db_data in thread_data.iteritems():
-                            for table_name, inp_dict in db_data.iteritems():
-                                status =  self.insertdict(table_name, inp_dict, dbname, thread_name=thread_name)
-                                if not status["status"]:
-                                    #print status
-                                    #if status["action"
-                                    #self.logger.error("CashedInsertionErr(DICT): '{}'".format(status["desc"]))
-                                    return status
-                                else:
-                                    temp_insertion_counter += status["out_obj"]
-                                    temp_outsorting_counter += status["outsort"] 
-                                    #del self._cashed_dict[commit_number][current_thread_name][dbname][table_name]
-                                    dict_to_delete.append((commit_number,current_thread_name,dbname,table_name))
-                                    # else:
-                                    #     del self._cashed_dict[write_just_this_commit_number]
-                                    #     #del self._cashed_dict
-                                    #     #self._cashed_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list)))))
+            #dict_to_delete = []
+            for commit_number, commit_number_data in dict_to_work.iteritems():
+                for current_thread_name, thread_data in commit_number_data.iteritems():
+                    for dbname, db_data in thread_data.iteritems():
+                        for table_name, inp_dict in db_data.iteritems():
+                            status =  self.insertdict(table_name, inp_dict, dbname, thread_name=thread_name)
+                            if not status["status"]:
+                                #print status
+                                #if status["action"
+                                #self.logger.error("CashedInsertionErr(DICT): '{}'".format(status["desc"]))
+                                return status
+                            else:
+                                temp_insertion_counter += status["out_obj"]
+                                temp_outsorting_counter += status["outsort"] 
+                                #dict_to_delete.append((commit_number,current_thread_name,dbname,table_name))
 
-                if dict_to_delete:
-                    for item in dict_to_delete:
-                        del self._cashed_dict[item[0]][item[1]][item[2]][item[3]]
+            #if dict_to_delete:
+            #    for item in dict_to_delete:
+            #        del self._cashed_dict[item[0]][item[1]][item[2]][item[3]]
+                    #self._cashed_dict
 
-            if len(self._cashed_list)>0:
-                if write_just_this_commit_number:
-                    if write_just_this_commit_number not in self._cashed_list:
-                        msg = "CashedWriterError: Given CommitNumber'{}' is not exist. It wasn't possible to write cashed Insertion into DB. ".format(write_just_this_commit_number)
-                        self.logger.debug(msg)
-                        return Status(status=True, desc=msg)
-                    #temp_cashed_list = self._cashed_list[write_just_this_commit_number]
+        if len(self._cashed_list)>0:
+            if write_just_this_commit_number:
+                if write_just_this_commit_number not in self._cashed_list:
+                    msg = "CashedWriterError(2): Given CommitNumber'{}' is not exist. It wasn't possible to write cashed Insertion into DB. Existing commits: {} ".format(write_just_this_commit_number, self._cashed_dict.keys())
+                    self.logger.error(msg)
+                    return Status(status=False, desc=msg, action="stop_execution")
+                #temp_cashed_list = self._cashed_list[write_just_this_commit_number]
 
+        
+            if write_just_this_commit_number:
+                dict_to_work = {write_just_this_commit_number:self._cashed_list[write_just_this_commit_number]}
+                del self._cashed_list[write_just_this_commit_number]
+            else:
+                dict_to_work = self._cashed_list
+                del self._cashed_list
+                self._cashed_list =  defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
+            #list_to_delete = []
+            for commit_number, commit_number_data in dict_to_work.iteritems():
+                for current_thread_name, thread_data in commit_number_data.iteritems():
+                    for dbname, db_data in thread_data.iteritems():
+                        for table_name, inp_dict in db_data.iteritems():
+                            status =  self.insertlist(table_name, inp_dict, dbname, thread_name=thread_name)
+                            if not status["status"]:
+                                #print status
+                                #if status["action"
+                                #self.logger.error("CashedInsertionErr(DICT): '{}'".format(status["desc"]))
+                                return status
+                            else:
+                                temp_insertion_counter += status["out_obj"]
+                                temp_outsorting_counter += status["outsort"]
+                                #del self._cashed_list[commit_number][current_thread_name][dbname][table_name]
+                                #list_to_delete.append((commit_number,current_thread_name,dbname,table_name))
             
-                if write_just_this_commit_number:
-                    dict_to_work = {write_just_this_commit_number:self._cashed_list[write_just_this_commit_number]}
-                else:
-                    dict_to_work = self._cashed_list
-                list_to_delete = []
-                for commit_number, commit_number_data in dict_to_work.iteritems():
-                    for current_thread_name, thread_data in commit_number_data.iteritems():
-                        for dbname, db_data in thread_data.iteritems():
-                            for table_name, inp_dict in db_data.iteritems():
-                                status =  self.insertlist(table_name, inp_dict, dbname, thread_name=thread_name)
-                                if not status["status"]:
-                                    #print status
-                                    #if status["action"
-                                    #self.logger.error("CashedInsertionErr(DICT): '{}'".format(status["desc"]))
-                                    return status
-                                else:
-                                    temp_insertion_counter += status["out_obj"]
-                                    temp_outsorting_counter += status["outsort"]
-                                    #del self._cashed_list[commit_number][current_thread_name][dbname][table_name]
-                                    list_to_delete.append((commit_number,current_thread_name,dbname,table_name))
-                
-                if list_to_delete:
-                    for item in list_to_delete:
-                        del self._cashed_list[item[0]][item[1]][item[2]][item[3]]
+            #if list_to_delete:
+            #    for item in list_to_delete:
+            #        del self._cashed_list[item[0]][item[1]][item[2]][item[3]]
 
-                # if write_just_this_commit_number:
-                #     del self._cashed_list[write_just_this_commit_number]
-                # else:
-                #     del self._cashed_list
-                #     self._cashed_list = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
-            if  with_commit:
-                self._commits_with_lazy_writer.incr()
-                self.commit
 
-            return Status(status=True, out_obj=temp_insertion_counter, outsort=temp_outsorting_counter)
+        gc.collect()
+        return Status(status=True, out_obj=temp_insertion_counter, outsort=temp_outsorting_counter)
             #return Status(status=True, out_obj=temp_insertion_counter)
 
 
@@ -2082,8 +2077,8 @@ class DBHandler(BaseContent, BaseDB):
                     temp_counter_insertion_after_last_commit = int(self._lazy_writer_number_inserts_after_last_commit)
                     self._lazy_writer_all_inserts_counter.incr(temp_counter_insertion_after_last_commit)
                     self._lazy_writer_number_inserts_after_last_commit.clear()
-                    self._commits_with_lazy_writer.incr()
                     self._who_will_proceed_commit[thread_name] = int(self._commits_with_lazy_writer)
+                    self._commits_with_lazy_writer.incr()
                     #p("DBHANDLER:CASH WAS  INSERTED!!!!")
 
             if thread_name in self._who_will_proceed_commit:
@@ -2094,7 +2089,7 @@ class DBHandler(BaseContent, BaseDB):
                     if not status["status"]:
                         return status
 
-                self._commit()
+                self._commit(write_all_cash=False)
                 self.logger.info("LazyWriter: Last {} inserts was committed in the DB. ".format(temp_counter_insertion_after_last_commit))
             
 
@@ -2576,7 +2571,7 @@ class DBHandler(BaseContent, BaseDB):
             return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
 
         self._update_pragma_table_info(thread_name=thread_name)
-        self._commit()
+        self._commit(write_all_cash=False)
         self.logger.debug("'{}'-Column(s) was inserted into the '{}'-Table in '{}'-DB.".format(table_name,table_name,dbname))
         #self._update_temp_tablesList_in_instance(thread_name=thread_name)
         return Status(status=True)
@@ -2611,7 +2606,7 @@ class DBHandler(BaseContent, BaseDB):
             return Status(status=False, track_id=self._error_track_id.incr(), func_name=function_name(-2))
 
         
-        self._commit()
+        self._commit(write_all_cash=False)
         self.logger.debug("'{}'-Table was deleted from the DB (dbname: '{}')".format(table_name,dbname))
         self._update_temp_tablesList_in_instance(thread_name=thread_name)
         return Status(status=True)
@@ -2654,7 +2649,7 @@ class DBHandler(BaseContent, BaseDB):
                 #cursor = self._db.cursor()
                 #p(query)
                 self._threads_cursors[thread_name].execute(query)
-                self._commit()
+                self._commit(write_all_cash=False)
                 return Status(status=True)
             except Exception as  exception:
                 print_exc_plus() if self._ext_tb else ""
@@ -2682,12 +2677,12 @@ class DBHandler(BaseContent, BaseDB):
 
 
 
-    def commit(self):
+    def commit(self,write_all_cash = True):
         s =  self._check_db_should_exist()
         if not s["status"]:
             return s
 
-        if self._use_cash:
+        if write_all_cash and self._use_cash:
             self._write_cashed_insertion_to_disc()
         #self._lazy_writer_counter = 0
 
@@ -2701,12 +2696,12 @@ class DBHandler(BaseContent, BaseDB):
         return temp_number_of_new_insertion_after_last_commit
 
 
-    def _commit(self):
+    def _commit(self, write_all_cash = False):
         s =  self._check_db_should_exist()
         if not s["status"]:
             return s
 
-        if self._use_cash:
+        if write_all_cash and self._use_cash:
             self._write_cashed_insertion_to_disc()
 
         temp_number_of_new_insertion_after_last_commit = int(self.number_of_new_inserts_after_last_commit)
@@ -2721,7 +2716,7 @@ class DBHandler(BaseContent, BaseDB):
 
     def _default_db_closer(self, for_encryption=False):
         try:
-            self._commit()
+            self._commit(write_all_cash=True)
             if self._db:
                 del self._threads_cursors
                 gc.collect()
@@ -2804,7 +2799,7 @@ class DBHandler(BaseContent, BaseDB):
             try:
                 #cursor = self._db.cursor()
                 self._threads_cursors[thread_name].execute(query)
-                self._commit()
+                self._commit(write_all_cash=False)
                 self.logger.debug("'{}'-Table was added into '{}'-DB. ".format(table_name,dbname))
                 self._update_temp_tablesList_in_instance(thread_name=thread_name)
                 self._update_pragma_table_info(thread_name=thread_name)
@@ -2833,7 +2828,7 @@ class DBHandler(BaseContent, BaseDB):
             try:
                 #cursor = self._db.cursor()
                 self._threads_cursors[thread_name].execute("PRAGMA rekey = '{}';".format(new_key_to_encryption))
-                self._commit()
+                self._commit(write_all_cash=False)
                 self._encryption_key = new_key_to_encryption
                 self.logger.info("Encryption Key was changed!")
                 return Status(status=True)
@@ -3492,7 +3487,7 @@ class DBHandler(BaseContent, BaseDB):
 
     def _commit_if_inserts_was_did(self):
         if int(self.number_of_new_inserts_after_last_commit) >0:
-            self._commit()
+            self._commit(write_all_cash=False)
 
 
 
@@ -3604,7 +3599,7 @@ class DBHandler(BaseContent, BaseDB):
             #cursor = self._db.cursor()
             self._threads_cursors[thread_name].execute(query)
             tables_exist = self._threads_cursors[thread_name].fetchall()
-            self._commit()
+            self._commit(write_all_cash=False)
         except Exception as  exception:
             print_exc_plus() if self._ext_tb else ""
             self.logger.error("Something happens while Getting Tables:  '{}'.".format(repr(exception)), exc_info=self._logger_traceback)
@@ -3633,7 +3628,7 @@ class DBHandler(BaseContent, BaseDB):
             #cursor = self._db.cursor()
             self._threads_cursors[thread_name].execute(query)
             indexes_exist = self._threads_cursors[thread_name].fetchall()
-            self._commit()
+            self._commit(write_all_cash=False)
         except Exception as  exception:
             print_exc_plus() if self._ext_tb else ""
             self.logger.error("Something happens while Getting Indexes:  '{}'.".format(repr(exception)), exc_info=self._logger_traceback)
